@@ -198,7 +198,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
       val dividedInputBuffer = inputBuffer.asTypeOf(Vec(numLanes, Vec(2<<bufferDepthPerLane / Phy.DigitalBitsPerCycle, UInt(Phy.DigitalBitsPerCycle.W))))
       for (lane <- 0 until numLanes) {
         io.phy.txTransmitData(lane).bits := dividedInputBuffer(lane)(packetsEnqueued(lane))
-        io.phy.txTransmitData(lane).valid := packetsEnqueued(lane) << log2Ceil(Phy.DigitalBitsPerCycle) < io.mmio.txBitsToSend
+        io.phy.txTransmitData(lane).valid := (packetsEnqueued(lane) << log2Ceil(Phy.DigitalBitsPerCycle)) < io.mmio.txBitsToSend
       }
       switch(io.mmio.txValidFramingMode) {
         is (TxValidFramingMode.ucie) {
@@ -208,7 +208,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
           io.phy.txTransmitValid.bits := VecInit(Seq.fill(Phy.DigitalBitsPerCycle)(true.B)).asUInt
         }
       }
-      io.phy.txTransmitValid.valid := packetsEnqueued(numLanes) << log2Ceil(Phy.DigitalBitsPerCycle) < io.mmio.txBitsToSend
+      io.phy.txTransmitValid.valid := (packetsEnqueued(numLanes) << log2Ceil(Phy.DigitalBitsPerCycle)) < io.mmio.txBitsToSend
       
       for (lane <- 0 to numLanes) {
         val ready = if (lane < numLanes) { io.phy.txTransmitData(lane).ready } else { io.phy.txTransmitValid.ready }
@@ -271,7 +271,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
   newOutputValidBuffer := outputValidBuffer.asTypeOf(newOutputValidBuffer)
   newOutputDataBuffer := outputDataBuffer.asTypeOf(newOutputDataBuffer)
   for (i <- 0 until Phy.DigitalBitsPerCycle) {
-    val idx = rxBitsReceived + i.U - startIdx
+    val idx = rxBitsReceived +& i.U - startIdx
     val shouldWriteIdx = (recordingStarted || startRecording) && startIdx <= i.U
     when (shouldWriteIdx) {
       for (lane <- 0 until numLanes) {
@@ -281,7 +281,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
     }
   }
   when (recordingStarted || startRecording) {
-    rxBitsReceived := rxBitsReceived + Phy.DigitalBitsPerCycle.U - startIdx
+    rxBitsReceived := rxBitsReceived +& Phy.DigitalBitsPerCycle.U - startIdx
   }
   outputValidBuffer := newOutputValidBuffer.asTypeOf(outputValidBuffer)
   outputDataBuffer := newOutputDataBuffer.asTypeOf(outputDataBuffer)
