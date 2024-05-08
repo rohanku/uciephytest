@@ -240,8 +240,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
   io.phy.rxReceiveValid.ready := ready
 
   // Dumb RX logic (only sets threshold to start recording)
-  val recordingStarted = RegInit(false.B)
-  val validHighStreak = RegInit(0.U(log2Ceil(Phy.DigitalBitsPerCycle).W))
+  val recordingStarted = withReset(rxReset) { RegInit(false.B) }
+  val validHighStreak = withReset(rxReset) { RegInit(0.U(log2Ceil(Phy.DigitalBitsPerCycle).W)) }
 
   val startRecording = Wire(Bool())
   val startIdx = Wire(UInt(log2Ceil(Phy.DigitalBitsPerCycle).W))
