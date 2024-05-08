@@ -26,13 +26,13 @@ class TxLane extends Module {
 
   val divClock = RegInit(false.B)
   when (ctr === 0.U) {
-    divClock = !divClock
+    divClock := !divClock
   }
 
   val shiftReg = RegInit(0.U(Phy.SerdesRatio.W))
   shiftReg := shiftReg >> 1.U
   when (ctr === 0.U) {
-    shiftReg := din
+    shiftReg := io.din
   }
 
   io.divClock := clock

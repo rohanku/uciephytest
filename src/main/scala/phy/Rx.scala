@@ -18,16 +18,16 @@ class RxLane extends Module {
 
   val divClock = RegInit(false.B)
   when (ctr === 0.U) {
-    divClock = !divClock
+    divClock := !divClock
   }
 
   val shiftReg = RegInit(0.U(Phy.SerdesRatio.W))
-  shiftReg := shiftReg << 1.U + din.asUInt
+  shiftReg := shiftReg << 1.U + io.din.asUInt
 
-  val outputReg = withClock(divClock) {
+  val outputReg = withClock(divClock.asClock) {
     RegNext(shiftReg)
   }
 
-  io.divClock := divClock
+  io.divClock := divClock.asClock
   io.dout := outputReg
 }

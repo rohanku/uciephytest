@@ -1,19 +1,31 @@
 package uciephytest
 
 import chisel3._
-import chisel3.experimental.VecLiterals.AddObjectLiteralConstructor
 import chiseltest._
-import freechips.rocketchip.util.AsyncQueueParams
 import org.scalatest.flatspec.AnyFlatSpec
-import interfaces._
+
+class UciephyTestHarness(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Module {
+  val io = IO(new UciephyTestMMIO)
+  val test = Module(new UciephyTest(bufferDepthPerLane, numLanes))
+  io <> test.io.mmio
+  val phy = Module(new uciephytest.phy.Phy(numLanes))
+  test.io.phy <> phy.io.test
+  phy.io.top.refClock := clock
+  phy.io.top.rxData := phy.io.top.txData
+  phy.io.top.rxValid := phy.io.top.txValid
+  phy.io.driverPuCtl := 0.U.asTypeOf(phy.io.driverPuCtl)
+  phy.io.driverPdCtl := 0.U.asTypeOf(phy.io.driverPdCtl)
+  phy.io.driverEn := 0.U.asTypeOf(phy.io.driverEn)
+  phy.io.phaseCtl := 0.U.asTypeOf(phy.io.phaseCtl)
+}
 
 class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "UCIe PHY tester"
   it should "work" in {
-    test(new UciephyTest(bufferDepthPerLane = 10, numLanes = 2)) { c =>
+    test(new UciephyTestHarness).withAnnotations(Seq(VcsBackendAnnotation, WriteVcdAnnotation)) { c =>
       // Set up TX
       c.io.txDataChunkIn.initSource()
-      c.io.txData.setSourceClock(c.clock)
+      c.io.txDataChunkIn.setSourceClock(c.clock)
       c.io.txValidFramingMode.poke(TxValidFramingMode.ucie)
       c.io.txFsmRst.poke(true.B)
       c.io.txBitsToSend.poke(64.U)
@@ -49,7 +61,7 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.txTestState.expect(TxTestState.run)
 
       // Wait until all bits are received
-      while (c.io.rxBitsReceived.peek() < 64) {
+      while ((c.io.rxBitsReceived.peek() < 64.U).litToBoolean) {
         c.clock.step()
       }
       c.io.rxBitsReceived.expect(64.U)
@@ -66,34 +78,6 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.clock.step()
       c.io.rxDataChunk.expect("h0fed_cba9_8765_4321".U)
       c.io.rxValidChunk.expect("h1010_1010_1010_1010".U)
-
-
-
-
-      c.io.mainbandLaneIO.txData.enqueueNow(
-        "h1234_5678_9abc_def0_0fed_cba9_8765_4321_1111_2222_3333_4444_5555_6666_7777_8888".U,
-      )
-      c.io.mainbandIo.txData
-        .expectDequeueNow(
-          Vec.Lit(
-            "h1211".U,
-            "h3411".U,
-            "h5622".U,
-            "h7822".U,
-            "h9a33".U,
-            "hbc33".U,
-            "hde44".U,
-            "hf044".U,
-            "h0f55".U,
-            "hed55".U,
-            "hcb66".U,
-            "ha966".U,
-            "h8777".U,
-            "h6577".U,
-            "h4388".U,
-            "h2188".U,
-          ),
-        )
     }
   }
 }

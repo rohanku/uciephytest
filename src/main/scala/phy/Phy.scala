@@ -11,7 +11,7 @@ object Phy {
   val QueueParams = AsyncQueueParams()
 }
 
-class PhyToTestIO(numLanes: Int = 4) extends Bundle {
+class PhyToTestIO(numLanes: Int = 2) extends Bundle {
   // Data passed in by the test RTL this cycle.
   val txTransmitData = Vec(numLanes, Flipped(DecoupledIO(UInt(Phy.DigitalBitsPerCycle.W))))
   // Valid passed in by the test RTL this cycle.
@@ -33,7 +33,7 @@ class RstSync extends Module {
   io.rstbSync := reset
 }
 
-class PhyIO(numLanes: Int = 4) extends Bundle {
+class PhyIO(numLanes: Int = 2) extends Bundle {
   // TX CONTROL
   // =====================
   // Pull-up impedance control per lane (`numLanes` data lanes, 1 valid lane, 2 clock lanes).
@@ -55,7 +55,7 @@ class PhyIO(numLanes: Int = 4) extends Bundle {
   val top = new uciephytest.UciephyTopIO(numLanes)
 }
 
-class Phy(numLanes: Int = 4) extends Module {
+class Phy(numLanes: Int = 2) extends Module {
   val io = IO(new PhyIO(numLanes))
 
   for (lane <- 0 to numLanes) {
