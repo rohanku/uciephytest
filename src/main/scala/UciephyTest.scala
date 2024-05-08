@@ -248,14 +248,13 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
   startIdx := 0.U
 
   // Find correct start index if recording hasn't started already.
-  when(!recordingStarted) {
-    for (i <- Phy.DigitalBitsPerCycle - 1 to 0 by -1) {
-      when ((0 until Phy.DigitalBitsPerCycle - i).map { j => {
-        j.U >= io.mmio.rxValidStartThreshold || io.phy.rxReceiveValid.bits(i + j)
-      }}.reduce(_&&_)) {
+  for (i <- Phy.DigitalBitsPerCycle - 1 to 0 by -1) {
+    val shouldStartRecording = (0 until Phy.DigitalBitsPerCycle - i).map { j => {
+          j.U >= io.mmio.rxValidStartThreshold || io.phy.rxReceiveValid.bits(i + j)
+        }}.reduce(_&&_)
+    when(!recordingStarted && shouldStartRecording) {
         startRecording := true.B
         startIdx := i.U
-      }
     }
   }
 
@@ -265,14 +264,15 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
   val newOutputValidBuffer = Wire(Vec(2<<bufferDepthPerLane, Bool()))
   val newOutputDataBuffer = Wire(Vec(numLanes, Vec(2<<bufferDepthPerLane, Bool())))
   newOutputValidBuffer := outputValidBuffer.asTypeOf(newOutputValidBuffer)
-  when (recordingStarted || startRecording) {
-    for (i <- 0 until Phy.DigitalBitsPerCycle) {
-      when (startIdx <= i.U) {
-        for (lane <- 0 until numLanes) {
-          newOutputDataBuffer(lane)(rxBitsReceived + i.U - startIdx) := io.phy.rxReceiveData(lane).bits(i)
-        }
-        newOutputValidBuffer(rxBitsReceived + i.U - startIdx) := io.phy.rxReceiveValid.bits(i)
+  newOutputDataBuffer := outputDataBuffer.asTypeOf(newOutputDataBuffer)
+  for (i <- 0 until Phy.DigitalBitsPerCycle) {
+    val idx = rxBitsReceived + i.U - startIdx
+    val shouldWriteIdx = (recordingStarted || startRecording) && startIdx <= i.U
+    when (shouldWriteIdx) {
+      for (lane <- 0 until numLanes) {
+          newOutputDataBuffer(lane)(idx) := io.phy.rxReceiveData(lane).bits(i)
       }
+      newOutputValidBuffer(idx) := io.phy.rxReceiveValid.bits(i)
     }
   }
   outputValidBuffer := newOutputValidBuffer.asTypeOf(outputValidBuffer)
