@@ -152,7 +152,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
   // RX registers
   val rxReset = io.mmio.rxFsmRst || reset.asBool
   val rxBitsReceived = withReset(rxReset) { RegInit(0.U((bufferDepthPerLane + 1).W)) }
-  val rxBitErrors = withReset(rxReset) { RegInit(0.U((bufferDeptherPerLane + 1).W)) }
+  val rxBitErrors = withReset(rxReset) { RegInit(0.U((bufferDepthPerLane + 1).W)) }
   val rxSignature = withReset(rxReset) { RegInit(0.U(32.W)) }
 
   val totalChunks = numLanes * (2 << (bufferDepthPerLane - 6))
