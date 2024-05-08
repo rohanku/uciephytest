@@ -22,7 +22,7 @@ class UciephyTestHarness(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extend
 class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "UCIe PHY tester"
   it should "work" in {
-    test(new UciephyTestHarness).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
+    test(new UciephyTestHarness).withAnnotations(Seq(VcsBackendAnnotation, WriteFsdbAnnotation)) { c =>
       c.clock.setTimeout(1000)
       // Set up TX
       c.io.txDataChunkIn.initSource()
