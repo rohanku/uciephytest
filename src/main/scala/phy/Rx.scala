@@ -22,7 +22,7 @@ class RxLane extends Module {
   }
 
   val shiftReg = RegInit(0.U(Phy.SerdesRatio.W))
-  shiftReg := shiftReg << 1.U + io.din.asUInt
+  shiftReg := shiftReg << 1.U | io.din.asUInt
 
   val outputReg = withClock(divClock.asClock) {
     RegNext(shiftReg)

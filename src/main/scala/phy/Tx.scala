@@ -35,6 +35,6 @@ class TxLane extends Module {
     shiftReg := io.din
   }
 
-  io.divClock := clock
+  io.divClock := divClock.asClock
   io.dout := shiftReg(0)
 }
