@@ -22,7 +22,8 @@ class UciephyTestHarness(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extend
 class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "UCIe PHY tester"
   it should "work" in {
-    test(new UciephyTestHarness).withAnnotations(Seq(VcsBackendAnnotation, WriteVcdAnnotation)) { c =>
+    test(new UciephyTestHarness).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
+      c.clock.setTimeout(1000)
       // Set up TX
       c.io.txDataChunkIn.initSource()
       c.io.txDataChunkIn.setSourceClock(c.clock)
@@ -61,7 +62,7 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.txTestState.expect(TxTestState.run)
 
       // Wait until all bits are received
-      while ((c.io.rxBitsReceived.peek() < 64.U).litToBoolean) {
+      while (c.io.rxBitsReceived.peek().litValue < 64) {
         c.clock.step()
       }
       c.io.rxBitsReceived.expect(64.U)
