@@ -153,9 +153,9 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 4) extends Modul
   val totalChunks = numLanes * (2 << (bufferDepthPerLane - 6))
   val addrBits = log2Ceil(totalChunks)
 
-  val inputBuffer = Reg(Vec(numLanes * (2 << (bufferDepthPerLane - 6)), UInt(64.W)))
-  val outputDataBuffer = Reg(Vec(numLanes * (2 << (bufferDepthPerLane - 6)), UInt(64.W)))
-  val outputValidBuffer = Reg(Vec(numLanes * (2 << (bufferDepthPerLane - 6)), UInt(64.W)))
+  val inputBuffer = Reg(Vec(numLanes, Vec(2 << (bufferDepthPerLane - 6), UInt(64.W))))
+  val outputDataBuffer = Reg(Vec(numLanes, Vec(2 << (bufferDepthPerLane - 6), UInt(64.W))))
+  val outputValidBuffer = Reg(Vec(2 << (bufferDepthPerLane - 6), UInt(64.W)))
   val txDataAddr = Wire(UInt(addrBits.W))
   val rxDataAddr = Wire(UInt(addrBits.W))
 
@@ -168,11 +168,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 4) extends Modul
   io.rxBitsReceived := rxBitsReceived
   io.rxBitErrors := rxBitErrors
   io.rxSignature := rxSignature
-  io.rxDataChunk := outputDataBuffer(rxDataAddr)
-  io.rxValidChunk := outputValidBuffer(rxDataAddr)
-
-  txDataAddr := Cat(io.txDataLane, io.txDataOffset)
-  rxDataAddr := Cat(io.rxDataLane, io.rxDataOffset)
+  io.rxDataChunk := outputDataBuffer(io.rxDataLane)(io.rxDataOffset)
+  io.rxValidChunk := outputValidBuffer(io.rxDataLane)(io.rxDataOffset)
 
   for (lane <- 0 until numLanes) {
     io.phy.txTransmitData(lane).bits := 0.U
@@ -187,7 +184,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 4) extends Modul
   switch(txState) {
     is(TxTestState.idle) {
       when (io.txDataChunkIn.valid) {
-        inputBuffer(txDataAddr) := io.txDataChunkIn.bits
+        inputBuffer(io.txDataLane)(io.txDataOffset) := io.txDataChunkIn.bits
       }
 
       when (io.txExecute) {
@@ -237,10 +234,45 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 4) extends Modul
   for (lane <- 0 until numLanes) {
     io.phy.rxReceiveData(lane).ready := ready
   }
+  io.phy.rxReceiveValid.ready := ready
 
-  val validAsserted = RegInit(false.B)
+  // Dumb RX logic (only sets threshold to start recording)
+  val recordingStarted = RegInit(false.B)
   val validHighStreak = RegInit(0.U)
-  val validLowStreak = RegInit(0.U)
+
+  val startRecording = Wire(false.B)
+  val startIdx = Wire(0.U)
+
+  // Find correct start index if recording hasn't started already.
+  when(!recordingStarted) {
+    for (i <- Phy.DigitalBitsPerCycle - 1 to 0 by -1) {
+      when ((0 until Phy.DigitalBitsPerCycle).map { j => {
+        j.U >= io.rxValidStartThreshold || io.phy.rxReceiveValid.bits(i + j)
+      }}.reduce(_&&_)) {
+        startRecording := true.B
+        startIdx := i.U
+      }
+    }
+  }
+
+
+  // Insert new values into the register buffers at the appropriate offset.
+  recordingStarted := recordingStarted || startRecording
+  val newOutputValidBuffer = Wire(Vec(2<<bufferDepthPerLane, Bool()))
+  val newOutputDataBuffer = Wire(Vec(numLanes, Vec(2<<bufferDepthPerLane, Bool())))
+  newOutputValidBuffer := outputValidBuffer.asTypeOf(newOutputValidBuffer)
+  when (recordingStarted || startRecording) {
+    for (i <- 0 until Phy.DigitalBitsPerCycle) {
+      when (startIdx <= i.U) {
+        for (lane <- 0 until numLanes) {
+          newOutputDataBuffer(lane)(rxBitsReceived + i.U - startIdx) := io.phy.rxReceiveData(lane).bits(i)
+        }
+        newOutputValidBuffer(rxBitsReceived + i.U - startIdx) := io.phy.rxReceiveValid.bits(i)
+      }
+    }
+  }
+  outputValidBuffer := newOutputValidBuffer.asTypeOf(outputValidBuffer)
+  outputDataBuffer := newOutputDataBuffer.asTypeOf(outputDataBuffer)
 }
 
 class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Parameters) extends ClockSinkDomain(ClockSinkParameters())(p) {
