@@ -115,7 +115,6 @@ class Phy(numLanes: Int = 4) extends Module {
     }
 
     val rxDigitalLane = if (lane < numLanes) { io.test.rxReceiveData(lane) } else { io.test.rxReceiveValid }
-    rxDigitalLane.bits := 0.U
     val rxDigitalLaneBits = Wire(Vec(Phy.DigitalToPhyBitsRatio, UInt(Phy.SerdesRatio.W)))
     rxDigitalLane.bits := rxDigitalLaneBits.asTypeOf(rxDigitalLane.bits)
     val rxFifos = (0 until Phy.DigitalToPhyBitsRatio).map((i: Int) => {
