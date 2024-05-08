@@ -28,8 +28,8 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.txDataChunkIn.initSource()
       c.io.txDataChunkIn.setSourceClock(c.clock)
       c.io.txValidFramingMode.poke(TxValidFramingMode.ucie)
-      c.io.txFsmRst.poke(true.B)
       c.io.txBitsToSend.poke(64.U)
+      c.io.txFsmRst.poke(true.B)
       c.clock.step()
       c.io.txFsmRst.poke(false.B)
       c.io.txTestState.expect(TxTestState.idle)
@@ -48,11 +48,11 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.txTestState.expect(TxTestState.idle)
 
       // Set up RX
+      c.io.rxBitsReceived.expect(0.U)
+      c.io.rxValidStartThreshold.poke(4.U)
       c.io.rxFsmRst.poke(true.B)
       c.clock.step()
       c.io.rxFsmRst.poke(false.B)
-      c.io.rxBitsReceived.expect(0.U)
-      c.io.rxValidStartThreshold.poke(4.U)
       c.clock.step()
 
       // Start transmitting data
