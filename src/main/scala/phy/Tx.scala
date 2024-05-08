@@ -21,7 +21,20 @@ class TxLaneIO extends Bundle {
 class TxLane extends Module {
   val io = IO(new TxLaneIO)
 
-  // TODO: Fix behavioral model
+  val ctr = RegInit(0.U((log2Ceil(Phy.SerdesRatio) - 1).W))
+  ctr := ctr + 1.U
+
+  val divClock = RegInit(false.B)
+  when (ctr === 0.U) {
+    divClock = !divClock
+  }
+
+  val shiftReg = RegInit(0.U(Phy.SerdesRatio.W))
+  shiftReg := shiftReg >> 1.U
+  when (ctr === 0.U) {
+    shiftReg := din
+  }
+
   io.divClock := clock
-  io.dout := false.B
+  io.dout := shiftReg(0)
 }

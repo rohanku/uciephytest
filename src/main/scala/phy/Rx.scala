@@ -13,7 +13,21 @@ class RxLaneIO extends Bundle {
 class RxLane extends Module {
   val io = IO(new RxLaneIO)
 
-  // TODO: Fix behavioral model
-  io.divClock := clock
-  io.dout := 0.U
+  val ctr = RegInit(0.U((log2Ceil(Phy.SerdesRatio) - 1).W))
+  ctr := ctr + 1.U
+
+  val divClock = RegInit(false.B)
+  when (ctr === 0.U) {
+    divClock = !divClock
+  }
+
+  val shiftReg = RegInit(0.U(Phy.SerdesRatio.W))
+  shiftReg := shiftReg << 1.U + din.asUInt
+
+  val outputReg = withClock(divClock) {
+    RegNext(shiftReg)
+  }
+
+  io.divClock := divClock
+  io.dout := outputReg
 }

@@ -142,8 +142,9 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 4) extends Modul
   val io = IO(new UciephyTestIO(bufferDepthPerLane, numLanes))
 
   // TX registers
-  val txState = RegInit(TxTestState.idle)
-  val packetsEnqueued = RegInit(VecInit(Seq.fill(numLanes + 1)(0.U)))
+  val txReset = txFsmRst || reset.asBool
+  val txState = withReset(txReset) { RegInit(TxTestState.idle) }
+  val packetsEnqueued = withReset(txReset) { RegInit(VecInit(Seq.fill(numLanes + 1)(0.U))) }
 
   // RX registers
   val rxBitsReceived = RegInit(0.U)
