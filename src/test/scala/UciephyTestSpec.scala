@@ -79,15 +79,15 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.rxDataOffset.poke(0.U)
       c.clock.step()
       c.io.rxDataChunk.expect("h1234_5678_9abc_def0".U)
-      c.io.rxValidChunk.expect("hf0f0_f0f0_f0f0_f0f0".U)
+      c.io.rxValidChunk.expect("h0f0f_0f0f_0f0f_0f0f".U)
       c.io.rxDataLane.poke(1.U)
       c.clock.step()
       c.io.rxDataChunk.expect("h0fed_cba9_8765_4321".U)
-      c.io.rxValidChunk.expect("hf0f0_f0f0_f0f0_f0f0".U)
+      c.io.rxValidChunk.expect("h0f0f_0f0f_0f0f_0f0f".U)
 
       // Try a second transmission with different parameters.
       c.io.txValidFramingMode.poke(TxValidFramingMode.simple)
-      c.io.txBitsToSend.poke(128.U)
+      c.io.txBitsToSend.poke(96.U)
       c.io.txFsmRst.poke(true.B)
       c.clock.step()
       c.io.txFsmRst.poke(false.B)
@@ -140,8 +140,8 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
       c.io.rxDataOffset.poke(1.U)
       c.clock.step()
-      c.io.rxDataChunk.expect("h1234_5678_9abc_def0".U)
-      c.io.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
+      c.io.rxDataChunk(31, 0).expect("hcafef00d".U)
+      c.io.rxValidChunk.expect("h0000_0000_ffff_ffff".U)
       c.io.rxDataLane.poke(1.U)
       c.io.rxDataOffset.poke(0.U)
       c.clock.step()
@@ -149,8 +149,8 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
       c.io.rxDataOffset.poke(1.U)
       c.clock.step()
-      c.io.rxDataChunk.expect("hd00d_bead_deed_dea1".U)
-      c.io.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
+      c.io.rxDataChunk(31, 0).expect("hdeed_dea1".U)
+      c.io.rxValidChunk.expect("h0000_0000_ffff_ffff".U)
     }
   }
 }
