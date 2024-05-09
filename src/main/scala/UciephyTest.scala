@@ -211,8 +211,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
       io.phy.txTransmitValid.valid := (packetsEnqueued(numLanes) << log2Ceil(Phy.DigitalBitsPerCycle)) < io.mmio.txBitsToSend
       
       for (lane <- 0 to numLanes) {
-        val ready = if (lane < numLanes) { io.phy.txTransmitData(lane).ready } else { io.phy.txTransmitValid.ready }
-        when (ready) {
+        val digitalLane = if (lane < numLanes) { io.phy.txTransmitData(lane) } else { io.phy.txTransmitValid }
+        when (digitalLane.valid && digitalLane.ready) {
           packetsEnqueued(lane) := packetsEnqueued(lane) + 1.U
         }
       }
@@ -248,43 +248,46 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
   startRecording := false.B
   startIdx := 0.U
 
-  // Find correct start index if recording hasn't started already.
-  for (i <- Phy.DigitalBitsPerCycle - 1 to 0 by -1) {
-    val shouldStartRecording = (0 until Phy.DigitalBitsPerCycle - i).map { j => {
-          j.U >= io.mmio.rxValidStartThreshold - validHighStreak || io.phy.rxReceiveValid.bits(i + j)
-        }}.reduce(_&&_)
-    when(!recordingStarted && shouldStartRecording) {
-      when(i.U +& io.mmio.rxValidStartThreshold > Phy.DigitalBitsPerCycle.U) {
-        validHighStreak := (Phy.DigitalBitsPerCycle - i).U
-      } .otherwise {
-        startRecording := true.B
-        startIdx := i.U
+  // Check valid streak after each packet is dequeued.
+  when (io.phy.rxReceiveValid.ready & io.phy.rxReceiveValid.valid) {
+    // Find correct start index if recording hasn't started already.
+    for (i <- Phy.DigitalBitsPerCycle - 1 to 0 by -1) {
+      val shouldStartRecording = (0 until Phy.DigitalBitsPerCycle - i).map { j => {
+            j.U >= io.mmio.rxValidStartThreshold - validHighStreak || io.phy.rxReceiveValid.bits(i + j)
+          }}.reduce(_&&_)
+      when(!recordingStarted && shouldStartRecording) {
+        when(i.U +& io.mmio.rxValidStartThreshold > Phy.DigitalBitsPerCycle.U) {
+          validHighStreak := (Phy.DigitalBitsPerCycle - i).U
+        } .otherwise {
+          startRecording := true.B
+          startIdx := i.U
+        }
       }
     }
-  }
 
 
-  // Insert new values into the register buffers at the appropriate offset.
-  recordingStarted := recordingStarted || startRecording
-  val newOutputValidBuffer = Wire(Vec(2<<bufferDepthPerLane, Bool()))
-  val newOutputDataBuffer = Wire(Vec(numLanes, Vec(2<<bufferDepthPerLane, Bool())))
-  newOutputValidBuffer := outputValidBuffer.asTypeOf(newOutputValidBuffer)
-  newOutputDataBuffer := outputDataBuffer.asTypeOf(newOutputDataBuffer)
-  for (i <- 0 until Phy.DigitalBitsPerCycle) {
-    val idx = rxBitsReceived +& i.U - startIdx
-    val shouldWriteIdx = (recordingStarted || startRecording) && startIdx <= i.U
-    when (shouldWriteIdx) {
-      for (lane <- 0 until numLanes) {
-          newOutputDataBuffer(lane)(idx) := io.phy.rxReceiveData(lane).bits(i)
+    // Insert new values into the register buffers at the appropriate offset.
+    recordingStarted := recordingStarted || startRecording
+    val newOutputValidBuffer = Wire(Vec(2<<bufferDepthPerLane, Bool()))
+    val newOutputDataBuffer = Wire(Vec(numLanes, Vec(2<<bufferDepthPerLane, Bool())))
+    newOutputValidBuffer := outputValidBuffer.asTypeOf(newOutputValidBuffer)
+    newOutputDataBuffer := outputDataBuffer.asTypeOf(newOutputDataBuffer)
+    for (i <- 0 until Phy.DigitalBitsPerCycle) {
+      val idx = rxBitsReceived +& i.U - startIdx
+      val shouldWriteIdx = (recordingStarted || startRecording) && startIdx <= i.U
+      when (shouldWriteIdx) {
+        for (lane <- 0 until numLanes) {
+            newOutputDataBuffer(lane)(idx) := io.phy.rxReceiveData(lane).bits(i)
+        }
+        newOutputValidBuffer(idx) := io.phy.rxReceiveValid.bits(i)
       }
-      newOutputValidBuffer(idx) := io.phy.rxReceiveValid.bits(i)
     }
+    when (recordingStarted || startRecording) {
+      rxBitsReceived := rxBitsReceived +& Phy.DigitalBitsPerCycle.U - startIdx
+    }
+    outputValidBuffer := newOutputValidBuffer.asTypeOf(outputValidBuffer)
+    outputDataBuffer := newOutputDataBuffer.asTypeOf(outputDataBuffer)
   }
-  when (recordingStarted || startRecording) {
-    rxBitsReceived := rxBitsReceived +& Phy.DigitalBitsPerCycle.U - startIdx
-  }
-  outputValidBuffer := newOutputValidBuffer.asTypeOf(outputValidBuffer)
-  outputDataBuffer := newOutputDataBuffer.asTypeOf(outputDataBuffer)
 }
 
 class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Parameters) extends ClockSinkDomain(ClockSinkParameters())(p) {
