@@ -114,7 +114,6 @@ class Phy(numLanes: Int = 2) extends Module {
 
     val rxDigitalLane = if (lane < numLanes) { io.test.rxReceiveData(lane) } else { io.test.rxReceiveValid }
     val rxDigitalLaneBits = Wire(Vec(Phy.DigitalToPhyBitsRatio, UInt(Phy.SerdesRatio.W)))
-    rxDigitalLane.bits := rxDigitalLaneBits.asTypeOf(rxDigitalLane.bits)
     val rxFifos = (0 until Phy.DigitalToPhyBitsRatio).map((i: Int) => {
       val fifo = Module(new AsyncQueue(UInt(Phy.SerdesRatio.W), Phy.QueueParams))
       rxDigitalLaneBits(i) := fifo.io.deq.bits
@@ -130,6 +129,7 @@ class Phy(numLanes: Int = 2) extends Module {
       } 
       fifo
     })
+    rxDigitalLane.bits := rxDigitalLaneBits.asTypeOf(rxDigitalLane.bits)
     rxDigitalLane.valid := rxFifos.map(_.io.deq.valid).reduce(_ && _)
 
     if (lane < numLanes) {

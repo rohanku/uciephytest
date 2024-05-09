@@ -30,11 +30,11 @@ class TxLane extends Module {
   }
 
   val shiftReg = RegInit(0.U(Phy.SerdesRatio.W))
-  shiftReg := shiftReg >> 1.U
+  shiftReg := shiftReg << 1.U
   when (ctr === 0.U && !divClock) {
     shiftReg := io.din
   }
 
   io.divClock := divClock.asClock
-  io.dout := shiftReg(0)
+  io.dout := shiftReg(Phy.SerdesRatio - 1)
 }
