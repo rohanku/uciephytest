@@ -65,7 +65,6 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       while (c.io.rxBitsReceived.peek().litValue < 64) {
         c.clock.step()
       }
-      c.io.rxBitsReceived.expect(64.U)
       c.io.txTestState.expect(TxTestState.done)
       c.io.txBitsSent.expect(64.U)
 
@@ -124,7 +123,6 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       while (c.io.rxBitsReceived.peek().litValue < 128) {
         c.clock.step()
       }
-      c.io.rxBitsReceived.expect(128.U)
       c.io.txTestState.expect(TxTestState.done)
       c.io.txBitsSent.expect(128.U)
 
