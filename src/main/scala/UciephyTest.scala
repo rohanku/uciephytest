@@ -155,12 +155,12 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
   val rxBitErrors = withReset(rxReset) { RegInit(0.U((bufferDepthPerLane + 1).W)) }
   val rxSignature = withReset(rxReset) { RegInit(0.U(32.W)) }
 
-  val totalChunks = numLanes * (2 << (bufferDepthPerLane - 6))
+  val totalChunks = numLanes * (1 << (bufferDepthPerLane - 6))
   val addrBits = log2Ceil(totalChunks)
 
-  val inputBuffer = Reg(Vec(numLanes, Vec(2 << (bufferDepthPerLane - 6), UInt(64.W))))
-  val outputDataBuffer = Reg(Vec(numLanes, Vec(2 << (bufferDepthPerLane - 6), UInt(64.W))))
-  val outputValidBuffer = Reg(Vec(2 << (bufferDepthPerLane - 6), UInt(64.W)))
+  val inputBuffer = Reg(Vec(numLanes, Vec(1 << (bufferDepthPerLane - 6), UInt(64.W))))
+  val outputDataBuffer = Reg(Vec(numLanes, Vec(1 << (bufferDepthPerLane - 6), UInt(64.W))))
+  val outputValidBuffer = Reg(Vec(1 << (bufferDepthPerLane - 6), UInt(64.W)))
 
   // Use valid lane as reference for how many bits were sent.
   io.mmio.txBitsSent := packetsEnqueued(numLanes) << log2Ceil(Phy.DigitalBitsPerCycle)
@@ -195,7 +195,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
       }
     }
     is(TxTestState.run) {
-      val dividedInputBuffer = inputBuffer.asTypeOf(Vec(numLanes, Vec(2<<bufferDepthPerLane / Phy.DigitalBitsPerCycle, UInt(Phy.DigitalBitsPerCycle.W))))
+      val dividedInputBuffer = inputBuffer.asTypeOf(Vec(numLanes, Vec((1 << bufferDepthPerLane) / Phy.DigitalBitsPerCycle, UInt(Phy.DigitalBitsPerCycle.W))))
       for (lane <- 0 until numLanes) {
         io.phy.txTransmitData(lane).bits := dividedInputBuffer(lane)(packetsEnqueued(lane))
         io.phy.txTransmitData(lane).valid := (packetsEnqueued(lane) << log2Ceil(Phy.DigitalBitsPerCycle)) < io.mmio.txBitsToSend
@@ -268,8 +268,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
 
     // Insert new values into the register buffers at the appropriate offset.
     recordingStarted := recordingStarted || startRecording
-    val newOutputValidBuffer = Wire(Vec(2<<bufferDepthPerLane, Bool()))
-    val newOutputDataBuffer = Wire(Vec(numLanes, Vec(2<<bufferDepthPerLane, Bool())))
+    val newOutputValidBuffer = Wire(Vec(1 << bufferDepthPerLane, Bool()))
+    val newOutputDataBuffer = Wire(Vec(numLanes, Vec(1 << bufferDepthPerLane, Bool())))
     newOutputValidBuffer := outputValidBuffer.asTypeOf(newOutputValidBuffer)
     newOutputDataBuffer := outputDataBuffer.asTypeOf(newOutputDataBuffer)
     for (i <- 0 until Phy.DigitalBitsPerCycle) {

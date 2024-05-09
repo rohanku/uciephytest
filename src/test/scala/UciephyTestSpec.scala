@@ -24,16 +24,30 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
   it should "work" in {
     test(new UciephyTestHarness).withAnnotations(Seq(VcsBackendAnnotation, WriteFsdbAnnotation)) { c =>
       c.clock.setTimeout(1000)
+      // Set up chip
+      c.reset.poke(true.B)
       // Set up TX
       c.io.txDataChunkIn.initSource()
       c.io.txDataChunkIn.setSourceClock(c.clock)
       c.io.txValidFramingMode.poke(TxValidFramingMode.ucie)
       c.io.txBitsToSend.poke(64.U)
       c.io.txFsmRst.poke(true.B)
-      c.clock.step()
+      // Set up RX
+      c.io.rxValidStartThreshold.poke(4.U)
+      c.io.rxFsmRst.poke(true.B)
+
+      // Strobe reset
+      for (i <- 0 until 3) {
+        c.clock.step()
+      }
+
+      // Check reset state
+      c.reset.poke(false.B)
       c.io.txFsmRst.poke(false.B)
       c.io.txTestState.expect(TxTestState.idle)
       c.io.txBitsSent.expect(0.U)
+      c.io.rxBitsReceived.expect(0.U)
+      c.io.rxFsmRst.poke(false.B)
 
       // Test TX data entry
       c.io.txDataLane.poke(0.U)
@@ -46,14 +60,6 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.clock.step()
       c.io.txDataChunkOut.expect("h0fed_cba9_8765_4321".U)
       c.io.txTestState.expect(TxTestState.idle)
-
-      // Set up RX
-      c.io.rxValidStartThreshold.poke(4.U)
-      c.io.rxFsmRst.poke(true.B)
-      c.clock.step()
-      c.io.rxBitsReceived.expect(0.U)
-      c.io.rxFsmRst.poke(false.B)
-      c.clock.step()
 
       // Start transmitting data
       c.io.txExecute.poke(true.B)
