@@ -140,7 +140,7 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
       c.io.rxDataOffset.poke(1.U)
       c.clock.step()
-      c.io.rxDataChunk(31, 0).expect("hcafef00d".U)
+      assert(c.io.rxDataChunk.peek().litValue & 0xffffffff == 0xcafef00d)
       c.io.rxValidChunk.expect("h0000_0000_ffff_ffff".U)
       c.io.rxDataLane.poke(1.U)
       c.io.rxDataOffset.poke(0.U)
@@ -149,7 +149,7 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
       c.io.rxDataOffset.poke(1.U)
       c.clock.step()
-      c.io.rxDataChunk(31, 0).expect("hdeed_dea1".U)
+      assert(c.io.rxDataChunk.peek().litValue & 0xffffffff == 0xdeeddea1)
       c.io.rxValidChunk.expect("h0000_0000_ffff_ffff".U)
     }
   }
