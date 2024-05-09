@@ -82,7 +82,7 @@ class Phy(numLanes: Int = 2) extends Module with RequireAsyncReset {
       fifo.io.enq.bits := txDigitalLane.bits(Phy.SerdesRatio*(i+1) - 1, Phy.SerdesRatio*i)
       fifo.io.enq.valid := txDigitalLane.valid && txDigitalLane.ready
       fifo.io.enq_clock := clock
-      fifo.io.enq_reset := reset
+      fifo.io.enq_reset := reset.asBool
       fifo.io.deq_clock := txLane.io.divClock
       fifo.io.deq_reset := !rstSyncTx.io.rstbSync.asBool
       fifo.io.deq.ready := currentFifoTx === i.U
@@ -120,7 +120,7 @@ class Phy(numLanes: Int = 2) extends Module with RequireAsyncReset {
       rxDigitalLaneBits(i) := fifo.io.deq.bits
       fifo.io.deq.ready := rxDigitalLane.valid && rxDigitalLane.ready
       fifo.io.deq_clock := clock
-      fifo.io.deq_reset := reset
+      fifo.io.deq_reset := reset.asBool
       fifo.io.enq_clock := rxLane.io.divClock
       fifo.io.enq_reset := !rstSyncRx.io.rstbSync.asBool
       fifo.io.enq.bits := rxLane.io.dout
