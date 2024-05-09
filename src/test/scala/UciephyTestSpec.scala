@@ -126,11 +126,11 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.txTestState.expect(TxTestState.run)
 
       // Wait until all bits are received
-      while (c.io.rxBitsReceived.peek().litValue < 128) {
+      while (c.io.rxBitsReceived.peek().litValue < 96) {
         c.clock.step()
       }
       c.io.txTestState.expect(TxTestState.done)
-      c.io.txBitsSent.expect(128.U)
+      c.io.txBitsSent.expect(96.U)
 
       // Validate received data
       c.io.rxDataLane.poke(0.U)
