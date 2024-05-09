@@ -55,7 +55,7 @@ class PhyIO(numLanes: Int = 2) extends Bundle {
   val top = new uciephytest.UciephyTopIO(numLanes)
 }
 
-class Phy(numLanes: Int = 2) extends Module {
+class Phy(numLanes: Int = 2) extends Module with RequireAsyncReset {
   val io = IO(new PhyIO(numLanes))
 
   for (lane <- 0 to numLanes) {
@@ -86,11 +86,9 @@ class Phy(numLanes: Int = 2) extends Module {
       fifo.io.deq_clock := txLane.io.divClock
       fifo.io.deq_reset := !rstSyncTx.io.rstbSync.asBool
       fifo.io.deq.ready := currentFifoTx === i.U
-      when (currentFifoTx === i.U) {
-        when (fifo.io.deq.valid) {
-          txLane.io.din := fifo.io.deq.bits
-          currentFifoTx := (currentFifoTx + 1.U) % Phy.DigitalToPhyBitsRatio.U
-        }      
+      when (fifo.io.deq.ready && fifo.io.deq.valid) {
+        txLane.io.din := fifo.io.deq.bits
+        currentFifoTx := (currentFifoTx + 1.U) % Phy.DigitalToPhyBitsRatio.U
       }
       fifo
     })
