@@ -231,7 +231,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
   
   // Only dequeue if all lanes can be dequeued simultaneously.
   val ready = (0 to numLanes).map(lane => {
-          if (lane < numLanes) { !io.phy.rxReceiveData(lane).valid } else { !io.phy.rxReceiveValid.valid }
+          if (lane < numLanes) { io.phy.rxReceiveData(lane).valid } else { io.phy.rxReceiveValid.valid }
         }).reduce(_ && _)
 
   for (lane <- 0 until numLanes) {
