@@ -37,7 +37,7 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.rxFsmRst.poke(true.B)
 
       // Strobe reset
-      for (i <- 0 until 3) {
+      for (i <- 0 until 64) {
         c.clock.step()
       }
 
