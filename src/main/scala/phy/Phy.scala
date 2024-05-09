@@ -11,7 +11,7 @@ object Phy {
   val QueueParams = AsyncQueueParams()
 }
 
-class PhyToTestIO(numLanes: Int = 4) extends Bundle {
+class PhyToTestIO(numLanes: Int = 2) extends Bundle {
   // Data passed in by the test RTL this cycle.
   val txTransmitData = Vec(numLanes, Flipped(DecoupledIO(UInt(Phy.DigitalBitsPerCycle.W))))
   // Valid passed in by the test RTL this cycle.
@@ -33,7 +33,7 @@ class RstSync extends Module {
   io.rstbSync := reset
 }
 
-class PhyIO(numLanes: Int = 4) extends Bundle {
+class PhyIO(numLanes: Int = 2) extends Bundle {
   // TX CONTROL
   // =====================
   // Pull-up impedance control per lane (`numLanes` data lanes, 1 valid lane, 2 clock lanes).
@@ -55,7 +55,7 @@ class PhyIO(numLanes: Int = 4) extends Bundle {
   val top = new uciephytest.UciephyTopIO(numLanes)
 }
 
-class Phy(numLanes: Int = 4) extends Module {
+class Phy(numLanes: Int = 2) extends Module {
   val io = IO(new PhyIO(numLanes))
 
   for (lane <- 0 to numLanes) {
@@ -70,7 +70,7 @@ class Phy(numLanes: Int = 4) extends Module {
     val rstSyncTx = withClockAndReset(txLane.io.divClock, !reset.asBool) {
       Module(new RstSync)
     }
-    val currentFifoTx  = withClock(txLane.io.divClock) {
+    val currentFifoTx  = withClockAndReset(txLane.io.divClock, reset.asAsyncReset) {
       RegInit(0.U(log2Ceil(Phy.DigitalToPhyBitsRatio).W))
     }
 
@@ -86,11 +86,9 @@ class Phy(numLanes: Int = 4) extends Module {
       fifo.io.deq_clock := txLane.io.divClock
       fifo.io.deq_reset := !rstSyncTx.io.rstbSync.asBool
       fifo.io.deq.ready := currentFifoTx === i.U
-      when (currentFifoTx === i.U) {
-        when (fifo.io.deq.valid) {
-          txLane.io.din := fifo.io.deq.bits
-          currentFifoTx := (currentFifoTx + 1.U) % Phy.DigitalToPhyBitsRatio.U
-        }      
+      when (fifo.io.deq.ready && fifo.io.deq.valid) {
+        txLane.io.din := fifo.io.deq.bits
+        currentFifoTx := (currentFifoTx + 1.U) % Phy.DigitalToPhyBitsRatio.U
       }
       fifo
     })
@@ -110,14 +108,12 @@ class Phy(numLanes: Int = 4) extends Module {
     val rstSyncRx = withClockAndReset(rxLane.io.divClock, !reset.asBool) {
       Module(new RstSync)
     }
-    val currentFifoRx  = withClock(rxLane.io.divClock) {
+    val currentFifoRx  = withClockAndReset(rxLane.io.divClock, reset.asAsyncReset) {
       RegInit(0.U(log2Ceil(Phy.DigitalToPhyBitsRatio).W))
     }
 
     val rxDigitalLane = if (lane < numLanes) { io.test.rxReceiveData(lane) } else { io.test.rxReceiveValid }
-    rxDigitalLane.bits := 0.U
     val rxDigitalLaneBits = Wire(Vec(Phy.DigitalToPhyBitsRatio, UInt(Phy.SerdesRatio.W)))
-    rxDigitalLane.bits := rxDigitalLaneBits.asTypeOf(rxDigitalLane.bits)
     val rxFifos = (0 until Phy.DigitalToPhyBitsRatio).map((i: Int) => {
       val fifo = Module(new AsyncQueue(UInt(Phy.SerdesRatio.W), Phy.QueueParams))
       rxDigitalLaneBits(i) := fifo.io.deq.bits
@@ -133,6 +129,7 @@ class Phy(numLanes: Int = 4) extends Module {
       } 
       fifo
     })
+    rxDigitalLane.bits := rxDigitalLaneBits.asTypeOf(rxDigitalLane.bits)
     rxDigitalLane.valid := rxFifos.map(_.io.deq.valid).reduce(_ && _)
 
     if (lane < numLanes) {
