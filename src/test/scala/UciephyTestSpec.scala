@@ -74,11 +74,11 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.rxDataOffset.poke(0.U)
       c.clock.step()
       c.io.rxDataChunk.expect("h1234_5678_9abc_def0".U)
-      c.io.rxValidChunk.expect("h1010_1010_1010_1010".U)
+      c.io.rxValidChunk.expect("hf0f0_f0f0_f0f0_f0f0".U)
       c.io.rxDataLane.poke(1.U)
       c.clock.step()
       c.io.rxDataChunk.expect("h0fed_cba9_8765_4321".U)
-      c.io.rxValidChunk.expect("h1010_1010_1010_1010".U)
+      c.io.rxValidChunk.expect("hf0f0_f0f0_f0f0_f0f0".U)
 
       // Try a second transmission with different parameters.
       c.io.txValidFramingMode.poke(TxValidFramingMode.simple)
@@ -101,13 +101,13 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.txDataOffset.poke(0.U)
       c.io.txDataChunkIn.enqueueNow("h0fed_cba9_8765_4321".U)
       c.clock.step()
-      c.io.txDataOffset.poke(0.U)
+      c.io.txDataOffset.poke(1.U)
       c.io.txDataChunkIn.enqueueNow("hd00d_bead_deed_dea1".U)
       c.clock.step()
       c.io.txTestState.expect(TxTestState.idle)
 
       // Set up RX
-      c.io.rxValidStartThreshold.poke(4.U)
+      c.io.rxValidStartThreshold.poke(1.U)
       c.io.rxFsmRst.poke(true.B)
       c.clock.step()
       c.io.rxBitsReceived.expect(0.U)
@@ -121,23 +121,32 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.txTestState.expect(TxTestState.run)
 
       // Wait until all bits are received
-      while (c.io.rxBitsReceived.peek().litValue < 64) {
+      while (c.io.rxBitsReceived.peek().litValue < 128) {
         c.clock.step()
       }
-      c.io.rxBitsReceived.expect(64.U)
+      c.io.rxBitsReceived.expect(128.U)
       c.io.txTestState.expect(TxTestState.done)
-      c.io.txBitsSent.expect(64.U)
+      c.io.txBitsSent.expect(128.U)
 
       // Validate received data
       c.io.rxDataLane.poke(0.U)
       c.io.rxDataOffset.poke(0.U)
       c.clock.step()
       c.io.rxDataChunk.expect("h1234_5678_9abc_def0".U)
-      c.io.rxValidChunk.expect("h1010_1010_1010_1010".U)
+      c.io.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
+      c.io.rxDataOffset.poke(1.U)
+      c.clock.step()
+      c.io.rxDataChunk.expect("h1234_5678_9abc_def0".U)
+      c.io.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
       c.io.rxDataLane.poke(1.U)
+      c.io.rxDataOffset.poke(0.U)
       c.clock.step()
       c.io.rxDataChunk.expect("h0fed_cba9_8765_4321".U)
-      c.io.rxValidChunk.expect("h1010_1010_1010_1010".U)
+      c.io.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
+      c.io.rxDataOffset.poke(1.U)
+      c.clock.step()
+      c.io.rxDataChunk.expect("hd00d_bead_deed_dea1".U)
+      c.io.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
     }
   }
 }
