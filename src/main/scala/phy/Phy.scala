@@ -2,6 +2,7 @@ package uciephytest.phy
 
 import chisel3._
 import chisel3.util._
+import chisel3.experimental.dataview._
 import freechips.rocketchip.util.{AsyncQueue, AsyncQueueParams}
 
 object Phy {
@@ -44,7 +45,12 @@ class PhyIO(numLanes: Int = 2) extends Bundle {
   // When low, the driver enters a high-Z state.
   val driverEn = Input(Vec(numLanes + 3, Bool()))
   // Phase control per lane (`numLanes` data lanes, 1 valid lane, 2 clock lanes). 
-  val phaseCtl = Input(Vec(numLanes + 3, UInt(8.W))) 
+  val phaseCtl = Input(Vec(numLanes + 3, UInt(8.W)))
+
+  // RX CONTROL
+  // =====================
+  // Termination impedance control per lane (`numLanes` data lanes, 1 valid lane, 2 clock lanes).
+  val terminationCtl = Input(Vec(numLanes + 3, UInt(8.W))) 
 
   // TEST INTERFACE
   // =====================
@@ -58,9 +64,22 @@ class PhyIO(numLanes: Int = 2) extends Bundle {
 class Phy(numLanes: Int = 2) extends Module {
   val io = IO(new PhyIO(numLanes))
 
+
+  val terminationCtl = Wire(Vec(numLanes + 3, UInt(64.W)))
+  for (lane <- 0 until numLanes + 3) {
+    val decoder = Module(new Decoder(64))
+    decoder.io.binary := io.terminationCtl(lane)
+    terminationCtl(lane) := decoder.io.thermometer
+  }
+
+  // Set up clocking
+  val rxClkP = Module(new RxClk)
+  rxClkP.io.clkin := io.top.rxClkP
+  rxClkP.io.zctl := terminationCtl(numLanes + 1).asTypeOf(new TerminationControlIO)
+
   for (lane <- 0 to numLanes) {
 
-    val txLane = withClock(io.top.refClock) { Module(new TxLane) }
+    val txLane = withClock(io.top.refClkP) { Module(new TxLane) }
     txLane.io.driverPuCtl := io.driverPuCtl(lane)
     txLane.io.driverPdCtl := io.driverPdCtl(lane)
     txLane.io.driverEn := io.driverEn(lane)
@@ -102,7 +121,7 @@ class Phy(numLanes: Int = 2) extends Module {
     }
 
     // TODO: Change to use top-level clkp and clkn
-    val rxLane = withClock(io.top.refClock) { Module(new RxLane) }
+    val rxLane = Module(new RxLane)
 
     // TODO: double check reset sense.
     val rstSyncRx = withClockAndReset(rxLane.io.divClock, !reset.asBool) {

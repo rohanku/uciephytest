@@ -2,16 +2,20 @@ package uciephytest.phy
 
 import chisel3._
 import chisel3.util._
+import chisel3.experimental.noPrefix
 
 class RxLaneIO extends Bundle {
-  // TODO: Add termination control and other control pins
-  val divClock = Output(Clock())
   val din = Input(Bool())
-  val dout = Output(UInt(Phy.SerdesRatio.W))
+  val dout = noPrefix { new RxDoutIO }
+  val clk = Input(Clock())
+  val clkb = Input(Clock())
+  val divclk = Output(Clock())
+  val resetb = Input(Clock())
+  val terminationCtl = new TerminationControlIO
 }
 
-class RxLane extends Module {
-  val io = IO(new RxLaneIO)
+class RxLane extends RawModule {
+  val io = noPrefix { IO(new RxLaneIO) }
 
   val ctr = RegInit(0.U((log2Ceil(Phy.SerdesRatio) - 1).W))
   ctr := ctr + 1.U

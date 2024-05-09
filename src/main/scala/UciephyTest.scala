@@ -48,13 +48,17 @@ object TxTestState extends ChiselEnum {
 class UciephyTopIO(numLanes: Int = 2) extends Bundle {
   val txData = Output(Vec(numLanes, Bool()))
   val txValid = Output(Bool())
-  val refClock = Input(Clock())
-  // val txClkP = Output(Clock())
-  // val txClkN = Output(Clock())
+  val refClkP = Input(Clock())
+  val refClkN = Input(Clock())
+  val txClkP = Output(Clock())
+  val txClkN = Output(Clock())
   val rxData = Input(Vec(numLanes, Bool()))
   val rxValid = Input(Bool())
-  // val rxClkP = Input(Clock())
-  // val rxClkN = Input(Clock())
+  val rxClkP = Input(Clock())
+  val rxClkN = Input(Clock())
+  val pllIref = Input(Bool())
+  val clkRxOutP = Output(Clock())
+  val clkRxOutN = Output(Clock())
 }
 
 class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Bundle {
