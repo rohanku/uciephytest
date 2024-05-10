@@ -12,6 +12,7 @@ class RxLaneIO extends Bundle {
   val divclk = Output(Clock())
   val resetb = Input(Bool())
   val zctl = noPrefix { new TerminationControlIO }
+  val vref_ctl = noPrefix { new VrefControlIO }
 }
 
 class RxLane extends RawModule {

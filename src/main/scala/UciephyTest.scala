@@ -324,10 +324,14 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val rxDataLane = RegInit(0.U(log2Ceil(params.numLanes).W))
       val rxDataOffset = RegInit(0.U((params.bufferDepthPerLane - 6).W))
       val rxPermute = RegInit(VecInit((0 until Phy.SerdesRatio).map(_.U(log2Ceil(Phy.SerdesRatio).W))))
-      val driverPuCtl = RegInit(VecInit(Seq.fill(params.numLanes + 3)(0.U(8.W))))
-      val driverPdCtl = RegInit(VecInit(Seq.fill(params.numLanes + 3)(0.U(8.W))))
-      val driverEn = RegInit(VecInit(Seq.fill(params.numLanes + 3)(false.B)))
-      val phaseCtl = RegInit(VecInit(Seq.fill(params.numLanes + 3)(0.U(8.W))))
+      val driverPuCtl = RegInit(VecInit(Seq.fill(params.numLanes + 5)(0.U(48.W))))
+      val driverPdCtl = RegInit(VecInit(Seq.fill(params.numLanes + 5)(0.U(48.W))))
+      val driverEn = RegInit(VecInit(Seq.fill(params.numLanes + 5)(false.B)))
+      val clockingMiscCtl = RegInit(VecInit(Seq.fill(params.numLanes + 2)(0.U(64.W))))
+      val clockingEnCtl = RegInit(VecInit(Seq.fill(params.numLanes + 2)(0.U(64.W))))
+      val clockingEnbCtl = RegInit(VecInit(Seq.fill(params.numLanes + 2)(~0.U(64.W))))
+      val terminationCtl = RegInit(VecInit(Seq.fill(params.numLanes + 3)(~0.U(64.W))))
+      val vrefCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(64.W))))
 
       txFsmRst.ready := true.B
       txExecute.ready := true.B
@@ -359,7 +363,11 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       phy.io.driverPuCtl := driverPuCtl
       phy.io.driverPdCtl := driverPuCtl
       phy.io.driverEn := driverEn
-      phy.io.phaseCtl := phaseCtl
+      phy.io.clockingMiscCtl := clockingMiscCtl
+      phy.io.clockingEnCtl := clockingEnCtl
+      phy.io.clockingEnbCtl := clockingEnbCtl
+      phy.io.terminationCtl := terminationCtl
+      phy.io.vrefCtl := vrefCtl
 
       val toRegField = (r: UInt) => {
         RegField(r.getWidth, r, RegWriteFn((valid, data) => {
@@ -404,12 +412,25 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         RegField.r(64, test.io.mmio.rxValidChunk),
       ) ++ (0 until Phy.SerdesRatio).map((i: Int) => {
           toRegField(rxPermute(i))
-      }) ++ (0 until params.numLanes + 3).flatMap((i: Int) => {
+      }) ++ (0 until params.numLanes + 5).flatMap((i: Int) => {
           Seq(
             toRegField(driverPuCtl(i)),
             toRegField(driverPuCtl(i)),
             toRegField(driverEn(i)),
-            toRegField(phaseCtl(i))
+          )
+      }) ++ (0 until params.numLanes + 2).flatMap((i: Int) => {
+          Seq(
+            toRegField(clockingMiscCtl(i)),
+            toRegField(clockingEnCtl(i)),
+            toRegField(clockingEnbCtl(i)),
+          )
+      }) ++ (0 until params.numLanes + 3).flatMap((i: Int) => {
+          Seq(
+            toRegField(terminationCtl(i)),
+          )
+      }) ++ (0 until params.numLanes + 1).flatMap((i: Int) => {
+          Seq(
+            toRegField(vrefCtl(i)),
           )
       })
 

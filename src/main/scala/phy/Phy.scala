@@ -57,13 +57,19 @@ class PhyIO(numLanes: Int = 2) extends Bundle {
   // Driver enable signal per lane (`numLanes` data lanes, 1 valid lane, 2 clock lanes, 2 ref clock out). 
   // When low, the driver enters a high-Z state.
   val driverEn = Input(Vec(numLanes + 5, Bool()))
-  // Phase control per lane (`numLanes` data lanes, 1 valid lane, 2 clock lanes, 2 ref clock out). 
-  val phaseCtl = Input(Vec(numLanes + 5, UInt(8.W)))
+  // Misc clocking control per lane (`numLanes` data lanes, 1 valid lane, 1 clock). 
+  val clockingMiscCtl = Input(Vec(numLanes + 2, UInt(64.W)))
+  // En clocking control per lane (`numLanes` data lanes, 1 valid lane, 1 clock). 
+  val clockingEnCtl = Input(Vec(numLanes + 2, UInt(64.W)))
+  // Enb clocking control per lane (`numLanes` data lanes, 1 valid lane, 1 clock). 
+  val clockingEnbCtl = Input(Vec(numLanes + 2, UInt(64.W)))
 
   // RX CONTROL
   // =====================
   // Termination impedance control per lane (`numLanes` data lanes, 1 valid lane, 2 clock lanes).
   val terminationCtl = Input(Vec(numLanes + 3, UInt(64.W))) 
+  // Reference voltage control.
+  val vrefCtl = Input(Vec(numLanes + 1, UInt(14.W))) 
 
   // TEST INTERFACE
   // =====================
@@ -91,6 +97,12 @@ class Phy(numLanes: Int = 2) extends Module {
     }
   }
 
+  val connectClockingCtl = (clocking_ctl: ClockingControlIO, lane: Int) => {
+    clocking_ctl.misc := io.clockingMiscCtl(lane).asTypeOf(clocking_ctl.misc)
+    clocking_ctl.en := io.clockingEnCtl(lane).asTypeOf(clocking_ctl.en)
+    clocking_ctl.enb := io.clockingEnbCtl(lane).asTypeOf(clocking_ctl.enb)
+  }
+
   // Set up clocking
   val rxClkP = Module(new RxClk)
   rxClkP.io.clkin := io.top.rxClkP
@@ -102,13 +114,14 @@ class Phy(numLanes: Int = 2) extends Module {
   refClkRx.io.vip := io.top.refClkP
   refClkRx.io.vin := io.top.refClkN
   val txClk = Module(new TxClk)
-  txClk.io.clk := refClkRx.io.vop
-  txClk.io.clkb := refClkRx.io.von
+  txClk.io.injp := refClkRx.io.vop
+  txClk.io.injm := refClkRx.io.von
   io.top.txClkP := txClk.io.clkout
   io.top.txClkN := txClk.io.clkoutb
   for (i <- 0 to 1) {
     connectDriverCtl(txClk.io.driver_ctl(i), numLanes + 1 + i)
   }
+  connectClockingCtl(txClk.io.clocking_ctl, numLanes + 1)
   // Connect reference clock to pad drivers
   val refClkPDriver = Module(new TxDriver)
   refClkPDriver.io.din := refClkRx.io.vop
@@ -124,10 +137,11 @@ class Phy(numLanes: Int = 2) extends Module {
 
   for (lane <- 0 to numLanes) {
     val txLane = Module(new TxLane)
-    txLane.io.clk := refClkRx.io.vop
-    txLane.io.clkb := refClkRx.io.von
+    txLane.io.injp := refClkRx.io.vop
+    txLane.io.injm := refClkRx.io.von
     txLane.io.resetb := !reset.asBool
     connectDriverCtl(txLane.io.driver_ctl, lane)
+    connectClockingCtl(txLane.io.clocking_ctl, lane)
 
     // TODO: double check reset sense.
     val rstSyncTx = withClockAndReset(txLane.io.divclk, !reset.asBool) {
@@ -170,6 +184,7 @@ class Phy(numLanes: Int = 2) extends Module {
     rxLane.io.clkb := rxClkN.io.clkout
     rxLane.io.zctl := io.terminationCtl(lane).asTypeOf(rxLane.io.zctl)
     rxLane.io.resetb := !reset.asBool
+    rxLane.io.vref_ctl := io.vrefCtl(lane).asTypeOf(rxLane.io.vref_ctl)
 
     // TODO: double check reset sense.
     val rstSyncRx = withClockAndReset(rxLane.io.divclk, !reset.asBool) {
