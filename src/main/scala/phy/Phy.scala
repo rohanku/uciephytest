@@ -125,10 +125,10 @@ class Phy(numLanes: Int = 2) extends Module {
   // Connect reference clock to pad drivers
   val refClkPDriver = Module(new TxDriver)
   refClkPDriver.io.din := refClkRx.io.vop
-  io.top.clkRxOutP := refClkPDriver.io.dout
+  io.top.clkRxOutP := refClkPDriver.io.dout.asClock
   val refClkNDriver = Module(new TxDriver)
   refClkNDriver.io.din := refClkRx.io.von
-  io.top.clkRxOutN := refClkNDriver.io.dout
+  io.top.clkRxOutN := refClkNDriver.io.dout.asClock
   for (i <- 0 to 1) {
     val lane = numLanes + 3 + i
     val driver = if (i == 0) { refClkPDriver } else { refClkNDriver }
