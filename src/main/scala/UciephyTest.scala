@@ -261,7 +261,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
     }
 
     val mask = Wire(UInt(Phy.DigitalBitsPerCycle.W))
-    mask := 1.U << io.mmio.rxValidStartThreshold - 1.U
+    mask := (1.U << io.mmio.rxValidStartThreshold) - 1.U
     // Find correct start index if recording hasn't started already.
     for (i <- Phy.DigitalBitsPerCycle - 1 to 0 by -1) {
       val shouldStartRecording = ((io.phy.rxReceiveValid.bits >> i.U) & mask) === mask
@@ -273,7 +273,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
 
     for (i <- Phy.DigitalBitsPerCycle to 0 by -1) {
       val mask = Wire(UInt(Phy.DigitalBitsPerCycle.W))
-      mask := ~(1.U << i.U - 1.U)
+      mask := ~((1.U << i.U) - 1.U)
       when ((io.phy.rxReceiveValid.bits & mask) === mask) {
         validHighStreak := (Phy.DigitalBitsPerCycle - i).U
       }
@@ -290,9 +290,9 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
       val numExtraBits = Phy.DigitalBitsPerCycle.U - validHighStreak
       val dataOffset = validHighStreak + rxBitsReceivedOffset
       val prevMask = Wire(UInt(128.W))
-      prevMask := (1.U << validHighStreak - 1.U) << rxBitsReceivedOffset
+      prevMask := ((1.U << validHighStreak) - 1.U) << rxBitsReceivedOffset
       val dataMask = Wire(UInt(128.W))
-      dataMask := (1.U << Phy.DigitalBitsPerCycle.U - 1.U) << dataOffset
+      dataMask := ((1.U << Phy.DigitalBitsPerCycle.U) - 1.U) << dataOffset
       val keepMask = Wire(UInt(128.W))
       keepMask := ~(prevMask | dataMask)
       for (lane <- 0 until numLanes) {
@@ -318,7 +318,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
       rxBitsReceived := rxBitsReceived +& Phy.DigitalBitsPerCycle.U +& validHighStreak
     } .otherwise {
       val dataMask = Wire(UInt(128.W))
-      dataMask := (1.U << (Phy.DigitalBitsPerCycle.U - startIdx) - 1.U) << rxBitsReceivedOffset
+      dataMask := ((1.U << (Phy.DigitalBitsPerCycle.U - startIdx)) - 1.U) << rxBitsReceivedOffset
       val keepMask = Wire(UInt(128.W))
       keepMask := ~dataMask
       when (recordingStarted || startRecording) {
