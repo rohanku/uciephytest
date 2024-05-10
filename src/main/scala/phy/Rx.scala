@@ -23,7 +23,7 @@ class RxLane extends RawModule {
   val ctr = withClockAndReset(io.clk, !io.resetb) { RegInit(0.U((log2Ceil(Phy.SerdesRatio) - 1).W)) }
   ctr := ctr + 1.U
 
-  val divClock = RegInit(false.B)
+  val divClock = withClockAndReset(io.clk, !io.resetb) { RegInit(false.B) }
   when (ctr === 0.U) {
     divClock := !divClock
   }
@@ -32,11 +32,11 @@ class RxLane extends RawModule {
   shiftReg := shiftReg << 1.U | io.din.asUInt
 
   val outputReg = withClock(divClock.asClock) {
-    RegNext(shiftReg)
+    RegNext(Reverse(shiftReg))
   }
 
   io.divclk := divClock.asClock
-  io.dout := outputReg
+  io.dout := outputReg.asTypeOf(io.dout)
 }
 
 class RxClkIO extends Bundle {

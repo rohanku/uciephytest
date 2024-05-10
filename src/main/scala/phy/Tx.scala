@@ -23,7 +23,6 @@ class ClockingControlIO extends Bundle {
   val in_buf_5 = Output(Bool()).suggestName("in_buf<5>")
   val in_buf_6 = Output(Bool()).suggestName("in_buf<6>")
   val in_buf_7 = Output(Bool()).suggestName("in_buf<7>")
-  val in = Input(Bool())
   val inbm = Output(Bool())
   val inbp = Output(Bool())
   val injmb = Output(Bool())
@@ -44,6 +43,7 @@ class ClockingControlIO extends Bundle {
 class TxLaneIO extends Bundle {
   val injp = Input(Bool())
   val injm = Input(Bool())
+  val in = Input(Bool())
   val din = noPrefix { new TxDinIO }
   val dout = Output(Bool())
   val divclk = Output(Clock())
@@ -66,18 +66,22 @@ class TxLane extends RawModule {
   }
 
   val shiftReg = withClockAndReset(io.injp.asClock, !io.resetb) { RegInit(0.U(Phy.SerdesRatio.W)) }
-  shiftReg := shiftReg << 1.U
+  shiftReg := shiftReg >> 1.U
   when (ctr === 0.U && !divClock) {
-    shiftReg := io.din
+    shiftReg := io.din.asTypeOf(shiftReg)
   }
 
   io.divclk := divClock.asClock
-  io.dout := shiftReg(Phy.SerdesRatio - 1)
+  io.dout := shiftReg(0)
+
+  io.driver_ctl <> 0.U.asTypeOf(io.driver_ctl)
+  io.clocking_ctl <> 0.U.asTypeOf(io.clocking_ctl)
 }
 
 class TxClkIO extends Bundle {
   val injp = Input(Bool())
   val injm = Input(Bool())
+  val in = Input(Bool())
   val clkout = Output(Bool())
   val clkoutb = Output(Bool())
   val driver_ctl = Vec(2, new DriverControlIO)
@@ -88,6 +92,12 @@ class TxClk extends RawModule {
   val io = noPrefix { IO(new TxClkIO) }
 
   override val desiredName = "txclk"
+
+  io.clkout := io.injm
+  io.clkoutb := io.injp
+
+  io.driver_ctl <> 0.U.asTypeOf(io.driver_ctl)
+  io.clocking_ctl <> 0.U.asTypeOf(io.clocking_ctl)
 }
 
 class TxDriverIO extends Bundle {
@@ -100,4 +110,7 @@ class TxDriver extends RawModule {
   val io = noPrefix { IO(new TxDriverIO) }
 
   override val desiredName = "txdriver"
+
+  io.dout := io.din
+  io.driver_ctl <> 0.U.asTypeOf(io.driver_ctl)
 }

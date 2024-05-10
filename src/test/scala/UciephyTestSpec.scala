@@ -12,8 +12,11 @@ class UciephyTestHarness(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extend
   test.io.phy <> phy.io.test
   phy.io.top.refClkP := clock
   phy.io.top.refClkN := (!clock.asBool).asClock
+  phy.io.top.rxClkP := phy.io.top.txClkP
+  phy.io.top.rxClkN := phy.io.top.txClkN
   phy.io.top.rxData := phy.io.top.txData
   phy.io.top.rxValid := phy.io.top.txValid
+  phy.io.top.pllIref := false.B
   phy.io.driverPuCtl := 0.U.asTypeOf(phy.io.driverPuCtl)
   phy.io.driverPdCtl := 0.U.asTypeOf(phy.io.driverPdCtl)
   phy.io.driverEn := 0.U.asTypeOf(phy.io.driverEn)

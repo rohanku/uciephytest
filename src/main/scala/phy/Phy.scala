@@ -34,6 +34,9 @@ class RefClkRx extends RawModule {
   val io = IO(new RefClkRxIO)
 
   override val desiredName = "refclkrx"
+
+  io.vop := io.vin
+  io.von := io.vip
 }
 
 class RstSyncIO extends Bundle {
@@ -116,6 +119,7 @@ class Phy(numLanes: Int = 2) extends Module {
   val txClk = Module(new TxClk)
   txClk.io.injp := refClkRx.io.vop
   txClk.io.injm := refClkRx.io.von
+  txClk.io.in := io.top.pllIref
   io.top.txClkP := txClk.io.clkout.asClock
   io.top.txClkN := txClk.io.clkoutb.asClock
   for (i <- 0 to 1) {
@@ -139,6 +143,7 @@ class Phy(numLanes: Int = 2) extends Module {
     val txLane = Module(new TxLane)
     txLane.io.injp := refClkRx.io.vop
     txLane.io.injm := refClkRx.io.von
+    txLane.io.in := io.top.pllIref
     txLane.io.resetb := !reset.asBool
     connectDriverCtl(txLane.io.driver_ctl, lane)
     connectClockingCtl(txLane.io.clocking_ctl, lane)
@@ -151,7 +156,7 @@ class Phy(numLanes: Int = 2) extends Module {
       RegInit(0.U(log2Ceil(Phy.DigitalToPhyBitsRatio).W))
     }
 
-    txLane.io.din := 0.U
+    txLane.io.din := (0.U).asTypeOf(txLane.io.din)
 
     val txDigitalLane = if (lane < numLanes) { io.test.txTransmitData(lane) } else { io.test.txTransmitValid }
     val txFifos = (0 until Phy.DigitalToPhyBitsRatio).map((i: Int) => {
@@ -164,7 +169,7 @@ class Phy(numLanes: Int = 2) extends Module {
       fifo.io.deq_reset := !rstSyncTx.io.rstbSync.asBool
       fifo.io.deq.ready := currentFifoTx === i.U
       when (fifo.io.deq.ready && fifo.io.deq.valid) {
-        txLane.io.din := fifo.io.deq.bits
+        txLane.io.din := fifo.io.deq.bits.asTypeOf(txLane.io.din)
         currentFifoTx := (currentFifoTx + 1.U) % Phy.DigitalToPhyBitsRatio.U
       }
       fifo
@@ -180,8 +185,8 @@ class Phy(numLanes: Int = 2) extends Module {
 
     // TODO: Change to use top-level clkp and clkn
     val rxLane = Module(new RxLane)
-    rxLane.io.clk := rxClkP.io.clkout
-    rxLane.io.clkb := rxClkN.io.clkout
+    rxLane.io.clk := rxClkP.io.clkout.asClock
+    rxLane.io.clkb := rxClkN.io.clkout.asClock
     rxLane.io.zctl := io.terminationCtl(lane).asTypeOf(rxLane.io.zctl)
     rxLane.io.resetb := !reset.asBool
     rxLane.io.vref_ctl := io.vrefCtl(lane).asTypeOf(rxLane.io.vref_ctl)

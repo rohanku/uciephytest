@@ -107,12 +107,12 @@ class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends B
   // this is 4 since UCIe specifies asserting valid for 4 bit periods then de-asserting valid for 4 bit periods
   // during transmission. If the valid transmission is buggy, can set this to 1 such that data is received as long
   // as valid goes high for at least 1 bit period.
-  val rxValidStartThreshold = Input(UInt(4.W))
+  val rxValidStartThreshold = Input(UInt(log2Ceil(Phy.DigitalBitsPerCycle).W))
   // The number of bit periods that valid must be low for the transmission to be considered invalid. By default,
   // this is 4 since UCIe specifies asserting valid for 4 bit periods then de-asserting valid for 4 bit periods
   // during transmission. If the valid transmission is buggy, can set this to 0 so that
   // data starts being received as soon as valid goes high and ignores any glitches afterwards.
-  val rxValidStopThreshold = Input(UInt(4.W))
+  val rxValidStopThreshold = Input(UInt(log2Ceil(Phy.DigitalBitsPerCycle).W))
   // Resets the RX FSM (i.e. resetting the number of bits received and the offset within the output
   // buffer to 0).
   val rxFsmRst = Input(Bool())
@@ -246,6 +246,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
   // Dumb RX logic (only sets threshold to start recording)
   val recordingStarted = withReset(rxReset) { RegInit(false.B) }
   val validHighStreak = withReset(rxReset) { RegInit(0.U(log2Ceil(Phy.DigitalBitsPerCycle).W)) }
+  val prevDataBits = withReset(rxReset) { RegInit(VecInit(Seq.fill(numLanes)(0.U(Phy.DigitalBitsPerCycle.W)))) }
 
   val startRecording = Wire(Bool())
   val startIdx = Wire(UInt(log2Ceil(Phy.DigitalBitsPerCycle).W))
@@ -254,6 +255,10 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
 
   // Check valid streak after each packet is dequeued.
   when (io.phy.rxReceiveValid.ready & io.phy.rxReceiveValid.valid) {
+    // Store data in a register
+    for (lane <- 0 until numLanes) {
+      prevDataBits(lane) := io.phy.rxReceiveData(lane).bits
+    }
     // Find correct start index if recording hasn't started already.
     for (i <- Phy.DigitalBitsPerCycle - 1 to 0 by -1) {
       val shouldStartRecording = (0 until Phy.DigitalBitsPerCycle - i).map { j => {
@@ -276,18 +281,38 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
     val newOutputDataBuffer = Wire(Vec(numLanes, Vec(1 << bufferDepthPerLane, Bool())))
     newOutputValidBuffer := outputValidBuffer.asTypeOf(newOutputValidBuffer)
     newOutputDataBuffer := outputDataBuffer.asTypeOf(newOutputDataBuffer)
-    for (i <- 0 until Phy.DigitalBitsPerCycle) {
-      val idx = rxBitsReceived +& i.U - startIdx
-      val shouldWriteIdx = (recordingStarted || startRecording) && startIdx <= i.U
-      when (shouldWriteIdx) {
+    when (startIdx === 0.U && startRecording) {
+      for (i <- 0 until Phy.DigitalBitsPerCycle) {
+        val idx = rxBitsReceived +& i.U - Phy.DigitalBitsPerCycle.U + validHighStreak
+        val shouldWriteIdx = Phy.DigitalBitsPerCycle.U <= i.U + validHighStreak
+        when (shouldWriteIdx) {
+          for (lane <- 0 until numLanes) {
+            newOutputDataBuffer(lane)(idx) := prevDataBits(lane)(i)
+          }
+          newOutputValidBuffer(idx) := true.B
+        }
+      }
+      for (i <- 0 until Phy.DigitalBitsPerCycle) {
+        val idx = rxBitsReceived +& i.U + validHighStreak
         for (lane <- 0 until numLanes) {
-            newOutputDataBuffer(lane)(idx) := io.phy.rxReceiveData(lane).bits(i)
+          newOutputDataBuffer(lane)(idx) := io.phy.rxReceiveData(lane).bits(i)
         }
         newOutputValidBuffer(idx) := io.phy.rxReceiveValid.bits(i)
       }
-    }
-    when (recordingStarted || startRecording) {
-      rxBitsReceived := rxBitsReceived +& Phy.DigitalBitsPerCycle.U - startIdx
+      rxBitsReceived := rxBitsReceived +& Phy.DigitalBitsPerCycle.U + validHighStreak
+    } .otherwise {
+      for (i <- 0 until Phy.DigitalBitsPerCycle) {
+        val idx = rxBitsReceived +& i.U - startIdx
+        when (recordingStarted || startRecording) {
+          when (startIdx <= i.U) {
+            for (lane <- 0 until numLanes) {
+                newOutputDataBuffer(lane)(idx) := io.phy.rxReceiveData(lane).bits(i)
+            }
+            newOutputValidBuffer(idx) := io.phy.rxReceiveValid.bits(i)
+          }
+          rxBitsReceived := rxBitsReceived +& Phy.DigitalBitsPerCycle.U - startIdx
+        }
+      }
     }
     outputValidBuffer := newOutputValidBuffer.asTypeOf(outputValidBuffer)
     outputDataBuffer := newOutputDataBuffer.asTypeOf(outputDataBuffer)
@@ -318,8 +343,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val txDataOffset = RegInit(0.U((params.bufferDepthPerLane - 6).W))
       val txPermute = RegInit(VecInit((0 until Phy.SerdesRatio).map(_.U(log2Ceil(Phy.SerdesRatio).W))))
       val rxLfsrSeed = RegInit(VecInit(Seq.fill(params.numLanes)(0.U(Phy.SerdesRatio.W))))
-      val rxValidStartThreshold = RegInit(4.U(4.W))
-      val rxValidStopThreshold = RegInit(4.U(4.W))
+      val rxValidStartThreshold = RegInit(4.U(log2Ceil(Phy.DigitalBitsPerCycle).W))
+      val rxValidStopThreshold = RegInit(4.U(log2Ceil(Phy.DigitalBitsPerCycle).W))
       val rxFsmRst = Wire(DecoupledIO(UInt(1.W)))
       val rxDataLane = RegInit(0.U(log2Ceil(params.numLanes).W))
       val rxDataOffset = RegInit(0.U((params.bufferDepthPerLane - 6).W))
