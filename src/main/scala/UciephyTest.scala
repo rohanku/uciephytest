@@ -259,63 +259,90 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
     for (lane <- 0 until numLanes) {
       prevDataBits(lane) := io.phy.rxReceiveData(lane).bits
     }
+
+    val mask = Wire(UInt(Phy.DigitalBitsPerCycle.W))
+    mask := 1.U << io.mmio.rxValidStartThreshold - 1.U
     // Find correct start index if recording hasn't started already.
     for (i <- Phy.DigitalBitsPerCycle - 1 to 0 by -1) {
-      val shouldStartRecording = (0 until Phy.DigitalBitsPerCycle - i).map { j => {
-            j.U >= io.mmio.rxValidStartThreshold - validHighStreak || io.phy.rxReceiveValid.bits(i + j)
-          }}.reduce(_&&_)
+      val shouldStartRecording = ((io.phy.rxReceiveValid.bits >> i.U) & mask) === mask
       when(!recordingStarted && shouldStartRecording) {
-        when(i.U +& io.mmio.rxValidStartThreshold > Phy.DigitalBitsPerCycle.U) {
-          validHighStreak := (Phy.DigitalBitsPerCycle - i).U
-        } .otherwise {
-          startRecording := true.B
-          startIdx := i.U
-        }
+        startRecording := true.B
+        startIdx := i.U
       }
     }
 
+    for (i <- Phy.DigitalBitsPerCycle to 0 by -1) {
+      val mask = Wire(UInt(Phy.DigitalBitsPerCycle.W))
+      mask := ~(1.U << i.U - 1.U)
+      when ((io.phy.rxReceiveValid.bits & mask) === mask) {
+        validHighStreak := (Phy.DigitalBitsPerCycle - i).U
+      }
+    }
 
-    // Insert new values into the register buffers at the appropriate offset.
     recordingStarted := recordingStarted || startRecording
-    val newOutputValidBuffer = Wire(Vec(1 << bufferDepthPerLane, Bool()))
-    val newOutputDataBuffer = Wire(Vec(numLanes, Vec(1 << bufferDepthPerLane, Bool())))
-    newOutputValidBuffer := outputValidBuffer.asTypeOf(newOutputValidBuffer)
-    newOutputDataBuffer := outputDataBuffer.asTypeOf(newOutputDataBuffer)
+
+
+    val rxBitsReceivedOffset = rxBitsReceived % 64.U
+    val rxBlock0 = rxBitsReceived >> 6.U
+    val rxBlock1 = rxBlock0 + 1.U
+    // Insert new values into the register buffers at the appropriate offset.
     when (startIdx === 0.U && startRecording) {
-      for (i <- 0 until Phy.DigitalBitsPerCycle) {
-        val idx = rxBitsReceived +& i.U +& validHighStreak - Phy.DigitalBitsPerCycle.U 
-        val shouldWriteIdx = Phy.DigitalBitsPerCycle.U <= i.U +& validHighStreak
-        when (shouldWriteIdx) {
-          for (lane <- 0 until numLanes) {
-            newOutputDataBuffer(lane)(idx) := prevDataBits(lane)(i)
-          }
-          newOutputValidBuffer(idx) := true.B
-        }
+      val numExtraBits = Phy.DigitalBitsPerCycle.U - validHighStreak
+      val dataOffset = validHighStreak + rxBitsReceivedOffset
+      val prevMask = Wire(UInt(128.W))
+      prevMask := (1.U << validHighStreak - 1.U) << rxBitsReceivedOffset
+      val dataMask = Wire(UInt(128.W))
+      dataMask := (1.U << Phy.DigitalBitsPerCycle.U - 1.U) << dataOffset
+      val keepMask = Wire(UInt(128.W))
+      keepMask := ~(prevMask | dataMask)
+      for (lane <- 0 until numLanes) {
+        val prev = Wire(UInt(128.W))
+        prev := (prevDataBits(lane) << (rxBitsReceived % 64.U)) >> numExtraBits
+        val data = Wire(UInt(128.W))
+        data := io.phy.rxReceiveData(lane).bits << dataOffset
+        val keep = Wire(UInt(128.W))
+        keep := Cat(outputDataBuffer(lane)(rxBlock1), outputDataBuffer(lane)(rxBlock0))
+        val newData = Wire(UInt(128.W))
+        newData := (prev & prevMask) | (data & dataMask) | (keep & keepMask)
+        outputDataBuffer(lane)(rxBlock0) := newData(63, 0)
+        outputDataBuffer(lane)(rxBlock1) := newData(127, 64)
       }
-      for (i <- 0 until Phy.DigitalBitsPerCycle) {
-        val idx = rxBitsReceived +& i.U +& validHighStreak
-        for (lane <- 0 until numLanes) {
-          newOutputDataBuffer(lane)(idx) := io.phy.rxReceiveData(lane).bits(i)
-        }
-        newOutputValidBuffer(idx) := io.phy.rxReceiveValid.bits(i)
-      }
+      val data = Wire(UInt(128.W))
+      data := io.phy.rxReceiveValid.bits << dataOffset
+      val keep = Wire(UInt(128.W))
+      keep := Cat(outputValidBuffer(rxBlock1), outputValidBuffer(rxBlock0))
+      val newData = Wire(UInt(128.W))
+      newData := prevMask | (data & dataMask) | (keep & keepMask)
+      outputValidBuffer(rxBlock0) := newData(63, 0)
+      outputValidBuffer(rxBlock1) := newData(127, 64)
       rxBitsReceived := rxBitsReceived +& Phy.DigitalBitsPerCycle.U +& validHighStreak
     } .otherwise {
-      for (i <- 0 until Phy.DigitalBitsPerCycle) {
-        val idx = rxBitsReceived +& i.U - startIdx
-        when (recordingStarted || startRecording) {
-          when (startIdx <= i.U) {
-            for (lane <- 0 until numLanes) {
-                newOutputDataBuffer(lane)(idx) := io.phy.rxReceiveData(lane).bits(i)
-            }
-            newOutputValidBuffer(idx) := io.phy.rxReceiveValid.bits(i)
-          }
-          rxBitsReceived := rxBitsReceived +& Phy.DigitalBitsPerCycle.U - startIdx
+      val dataMask = Wire(UInt(128.W))
+      dataMask := (1.U << (Phy.DigitalBitsPerCycle.U - startIdx) - 1.U) << rxBitsReceivedOffset
+      val keepMask = Wire(UInt(128.W))
+      keepMask := ~dataMask
+      when (recordingStarted || startRecording) {
+        for (lane <- 0 until numLanes) {
+          val data = Wire(UInt(128.W))
+          data := (io.phy.rxReceiveData(lane).bits << rxBitsReceivedOffset) >> startIdx
+          val keep = Wire(UInt(128.W))
+          keep := Cat(outputDataBuffer(lane)(rxBlock1), outputDataBuffer(lane)(rxBlock0))
+          val newData = Wire(UInt(128.W))
+          newData := (data & dataMask) | (keep & keepMask)
+          outputDataBuffer(lane)(rxBlock0) := newData(63, 0)
+          outputDataBuffer(lane)(rxBlock1) := newData(127, 64)
         }
+        val data = Wire(UInt(128.W))
+        data := (io.phy.rxReceiveValid.bits << rxBitsReceivedOffset) >> startIdx
+        val keep = Wire(UInt(128.W))
+        keep := Cat(outputValidBuffer(rxBlock1), outputValidBuffer(rxBlock0))
+        val newData = Wire(UInt(128.W))
+        newData := (data & dataMask) | (keep & keepMask)
+        outputValidBuffer(rxBlock0) := newData(63, 0)
+        outputValidBuffer(rxBlock1) := newData(127, 64)
+        rxBitsReceived := rxBitsReceived +& Phy.DigitalBitsPerCycle.U - startIdx
       }
     }
-    outputValidBuffer := newOutputValidBuffer.asTypeOf(outputValidBuffer)
-    outputDataBuffer := newOutputDataBuffer.asTypeOf(outputDataBuffer)
   }
 }
 
