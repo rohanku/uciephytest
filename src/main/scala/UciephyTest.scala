@@ -283,8 +283,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
     newOutputDataBuffer := outputDataBuffer.asTypeOf(newOutputDataBuffer)
     when (startIdx === 0.U && startRecording) {
       for (i <- 0 until Phy.DigitalBitsPerCycle) {
-        val idx = rxBitsReceived +& i.U - Phy.DigitalBitsPerCycle.U + validHighStreak
-        val shouldWriteIdx = Phy.DigitalBitsPerCycle.U <= i.U + validHighStreak
+        val idx = rxBitsReceived +& i.U +& validHighStreak - Phy.DigitalBitsPerCycle.U 
+        val shouldWriteIdx = Phy.DigitalBitsPerCycle.U <= i.U +& validHighStreak
         when (shouldWriteIdx) {
           for (lane <- 0 until numLanes) {
             newOutputDataBuffer(lane)(idx) := prevDataBits(lane)(i)
@@ -293,13 +293,13 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
         }
       }
       for (i <- 0 until Phy.DigitalBitsPerCycle) {
-        val idx = rxBitsReceived +& i.U + validHighStreak
+        val idx = rxBitsReceived +& i.U +& validHighStreak
         for (lane <- 0 until numLanes) {
           newOutputDataBuffer(lane)(idx) := io.phy.rxReceiveData(lane).bits(i)
         }
         newOutputValidBuffer(idx) := io.phy.rxReceiveValid.bits(i)
       }
-      rxBitsReceived := rxBitsReceived +& Phy.DigitalBitsPerCycle.U + validHighStreak
+      rxBitsReceived := rxBitsReceived +& Phy.DigitalBitsPerCycle.U +& validHighStreak
     } .otherwise {
       for (i <- 0 until Phy.DigitalBitsPerCycle) {
         val idx = rxBitsReceived +& i.U - startIdx

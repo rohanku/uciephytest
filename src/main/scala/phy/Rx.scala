@@ -20,10 +20,10 @@ class RxLane extends RawModule {
 
   override val desiredName = "rxdata"
 
-  val ctr = withClockAndReset(io.clk, !io.resetb) { RegInit(0.U((log2Ceil(Phy.SerdesRatio) - 1).W)) }
+  val ctr = withClockAndReset(io.clk, !io.resetb) { RegInit(7.U((log2Ceil(Phy.SerdesRatio) - 1).W)) }
   ctr := ctr + 1.U
 
-  val divClock = withClockAndReset(io.clk, !io.resetb) { RegInit(false.B) }
+  val divClock = withClockAndReset(io.clk, !io.resetb) { RegInit(true.B) }
   when (ctr === 0.U) {
     divClock := !divClock
   }

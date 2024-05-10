@@ -120,7 +120,7 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.txTestState.expect(TxTestState.idle)
 
       // Set up RX
-      c.io.rxValidStartThreshold.poke(1.U)
+      c.io.rxValidStartThreshold.poke(31.U)
       c.io.rxFsmRst.poke(true.B)
       c.clock.step()
       c.io.rxBitsReceived.expect(0.U)
