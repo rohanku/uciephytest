@@ -49,4 +49,6 @@ class RxClk extends RawModule {
   val io = noPrefix { IO(new RxClkIO) }
 
   override val desiredName = "rxclk"
+
+  io.clkout := io.clkin
 }

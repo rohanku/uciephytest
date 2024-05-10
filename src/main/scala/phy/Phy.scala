@@ -105,19 +105,19 @@ class Phy(numLanes: Int = 2) extends Module {
 
   // Set up clocking
   val rxClkP = Module(new RxClk)
-  rxClkP.io.clkin := io.top.rxClkP
+  rxClkP.io.clkin := io.top.rxClkP.asBool
   rxClkP.io.zctl := io.terminationCtl(numLanes + 1).asTypeOf(rxClkP.io.zctl)
   val rxClkN = Module(new RxClk)
-  rxClkN.io.clkin := io.top.rxClkN
+  rxClkN.io.clkin := io.top.rxClkN.asBool
   rxClkN.io.zctl := io.terminationCtl(numLanes + 2).asTypeOf(rxClkN.io.zctl)
   val refClkRx = Module(new RefClkRx)
-  refClkRx.io.vip := io.top.refClkP
-  refClkRx.io.vin := io.top.refClkN
+  refClkRx.io.vip := io.top.refClkP.asBool
+  refClkRx.io.vin := io.top.refClkN.asBool
   val txClk = Module(new TxClk)
   txClk.io.injp := refClkRx.io.vop
   txClk.io.injm := refClkRx.io.von
-  io.top.txClkP := txClk.io.clkout
-  io.top.txClkN := txClk.io.clkoutb
+  io.top.txClkP := txClk.io.clkout.asClock
+  io.top.txClkN := txClk.io.clkoutb.asClock
   for (i <- 0 to 1) {
     connectDriverCtl(txClk.io.driver_ctl(i), numLanes + 1 + i)
   }
