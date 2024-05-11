@@ -21,7 +21,6 @@ class TxDinIO extends Bundle {
   val din_13 = Input(Bool())
   val din_14 = Input(Bool())
   val din_15 = Input(Bool())
-  val din_16 = Input(Bool())
 }
 
 class RxDoutIO extends Bundle {
@@ -41,7 +40,6 @@ class RxDoutIO extends Bundle {
   val dout_13 = Output(Bool())
   val dout_14 = Output(Bool())
   val dout_15 = Output(Bool())
-  val dout_16 = Output(Bool())
 }
 
 class TerminationControlIO extends Bundle {
@@ -407,18 +405,6 @@ class EnbClockingControlIO extends Bundle {
 }
 
 class VrefControlIO extends Bundle {
-  val sel0_0 = Input(Bool()).suggestName("sel0<0>")
-  val sel0_1 = Input(Bool()).suggestName("sel0<1>")
-  val sel0_2 = Input(Bool()).suggestName("sel0<2>")
-  val sel0_3 = Input(Bool()).suggestName("sel0<3>")
-  val sel0_4 = Input(Bool()).suggestName("sel0<4>")
-  val sel0_5 = Input(Bool()).suggestName("sel0<5>")
-  val sel0_6 = Input(Bool()).suggestName("sel0<6>")
-  val sel1_0 = Input(Bool()).suggestName("sel1<0>")
-  val sel1_1 = Input(Bool()).suggestName("sel1<1>")
-  val sel1_2 = Input(Bool()).suggestName("sel1<2>")
-  val sel1_3 = Input(Bool()).suggestName("sel1<3>")
-  val sel1_4 = Input(Bool()).suggestName("sel1<4>")
-  val sel1_5 = Input(Bool()).suggestName("sel1<5>")
-  val sel1_6 = Input(Bool()).suggestName("sel1<6>")
+  val sel0 = Input(UInt(7.W))
+  val sel1 = Input(UInt(7.W))
 }
