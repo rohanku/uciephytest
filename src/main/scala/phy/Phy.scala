@@ -30,13 +30,13 @@ class RefClkRxIO extends Bundle {
   val von = Output(Bool())
 }
 
-class RefClkRx extends RawModule {
+class RefClkRx extends BlackBox {
   val io = IO(new RefClkRxIO)
 
-  override val desiredName = "refclkrx"
+  override val desiredName = "AA_CLK_RX"
 
-  io.vop := io.vin
-  io.von := io.vip
+  // io.vop := io.vin
+  // io.von := io.vip
 }
 
 class RstSyncIO extends Bundle {
