@@ -224,14 +224,6 @@ class MiscClockingControlIO extends Bundle {
   val ph_selb = Input(Bits(2.W))
 }
 
-class EnClockingControlIO extends Bundle {
-  val en = Input(Bits(64.W))
-}
-
-class EnbClockingControlIO extends Bundle {
-  val enb = Input(Bits(64.W))
-}
-
 class VrefControlIO extends Bundle {
   val sel0 = Input(UInt(7.W))
   val sel1 = Input(UInt(7.W))

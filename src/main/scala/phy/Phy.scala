@@ -90,13 +90,13 @@ class Phy(numLanes: Int = 2) extends Module {
     when (io.driverEn(lane)) {
       driver_ctl.pu_ctl := io.driverPuCtl(lane).asTypeOf(driver_ctl.pu_ctl)
       driver_ctl.pd_ctlb := (~io.driverPdCtl(lane)).asTypeOf(driver_ctl.pd_ctlb)
-      driver_ctl.driver_en := true.B
-      driver_ctl.driver_en_b := false.B
+      driver_ctl.en := true.B
+      driver_ctl.en_b := false.B
     } .otherwise {
       driver_ctl.pu_ctl := 0.U(48.W).asTypeOf(driver_ctl.pu_ctl)
       driver_ctl.pd_ctlb := (~0.U(48.W)).asTypeOf(driver_ctl.pd_ctlb)
-      driver_ctl.driver_en := false.B
-      driver_ctl.driver_en_b := true.B
+      driver_ctl.en := false.B
+      driver_ctl.en_b := true.B
     }
   }
 

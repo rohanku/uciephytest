@@ -225,13 +225,81 @@ class VerilogRxLane extends BlackBox {
 class RxClkIO extends Bundle {
   val clkin = Input(Bool())
   val clkout = Output(Bool())
-  val zctl = noPrefix { new TerminationControlIO }
+  val zctl = new TerminationControlIO
 }
 
 class RxClk extends RawModule {
   val io = IO(new RxClkIO)
 
-  io.clkout := io.clkin
+  val verilogBlackBox = Module(new VerilogRxClk)
+  verilogBlackBox.io.clkin := io.clkin
+  io.clkout := verilogBlackBox.io.clkout
+  verilogBlackBox.io.zctl_0 := io.zctl.zctl_0
+  verilogBlackBox.io.zctl_1 := io.zctl.zctl_1
+  verilogBlackBox.io.zctl_2 := io.zctl.zctl_2
+  verilogBlackBox.io.zctl_3 := io.zctl.zctl_3
+  verilogBlackBox.io.zctl_4 := io.zctl.zctl_4
+  verilogBlackBox.io.zctl_5 := io.zctl.zctl_5
+  verilogBlackBox.io.zctl_6 := io.zctl.zctl_6
+  verilogBlackBox.io.zctl_7 := io.zctl.zctl_7
+  verilogBlackBox.io.zctl_8 := io.zctl.zctl_8
+  verilogBlackBox.io.zctl_9 := io.zctl.zctl_9
+  verilogBlackBox.io.zctl_10 := io.zctl.zctl_10
+  verilogBlackBox.io.zctl_11 := io.zctl.zctl_11
+  verilogBlackBox.io.zctl_12 := io.zctl.zctl_12
+  verilogBlackBox.io.zctl_13 := io.zctl.zctl_13
+  verilogBlackBox.io.zctl_14 := io.zctl.zctl_14
+  verilogBlackBox.io.zctl_15 := io.zctl.zctl_15
+  verilogBlackBox.io.zctl_16 := io.zctl.zctl_16
+  verilogBlackBox.io.zctl_17 := io.zctl.zctl_17
+  verilogBlackBox.io.zctl_18 := io.zctl.zctl_18
+  verilogBlackBox.io.zctl_19 := io.zctl.zctl_19
+  verilogBlackBox.io.zctl_20 := io.zctl.zctl_20
+  verilogBlackBox.io.zctl_21 := io.zctl.zctl_21
+  verilogBlackBox.io.zctl_22 := io.zctl.zctl_22
+  verilogBlackBox.io.zctl_23 := io.zctl.zctl_23
+  verilogBlackBox.io.zctl_24 := io.zctl.zctl_24
+  verilogBlackBox.io.zctl_25 := io.zctl.zctl_25
+  verilogBlackBox.io.zctl_26 := io.zctl.zctl_26
+  verilogBlackBox.io.zctl_27 := io.zctl.zctl_27
+  verilogBlackBox.io.zctl_28 := io.zctl.zctl_28
+  verilogBlackBox.io.zctl_29 := io.zctl.zctl_29
+  verilogBlackBox.io.zctl_30 := io.zctl.zctl_30
+  verilogBlackBox.io.zctl_31 := io.zctl.zctl_31
+  verilogBlackBox.io.zctl_32 := io.zctl.zctl_32
+  verilogBlackBox.io.zctl_33 := io.zctl.zctl_33
+  verilogBlackBox.io.zctl_34 := io.zctl.zctl_34
+  verilogBlackBox.io.zctl_35 := io.zctl.zctl_35
+  verilogBlackBox.io.zctl_36 := io.zctl.zctl_36
+  verilogBlackBox.io.zctl_37 := io.zctl.zctl_37
+  verilogBlackBox.io.zctl_38 := io.zctl.zctl_38
+  verilogBlackBox.io.zctl_39 := io.zctl.zctl_39
+  verilogBlackBox.io.zctl_40 := io.zctl.zctl_40
+  verilogBlackBox.io.zctl_41 := io.zctl.zctl_41
+  verilogBlackBox.io.zctl_42 := io.zctl.zctl_42
+  verilogBlackBox.io.zctl_43 := io.zctl.zctl_43
+  verilogBlackBox.io.zctl_44 := io.zctl.zctl_44
+  verilogBlackBox.io.zctl_45 := io.zctl.zctl_45
+  verilogBlackBox.io.zctl_46 := io.zctl.zctl_46
+  verilogBlackBox.io.zctl_47 := io.zctl.zctl_47
+  verilogBlackBox.io.zctl_48 := io.zctl.zctl_48
+  verilogBlackBox.io.zctl_49 := io.zctl.zctl_49
+  verilogBlackBox.io.zctl_50 := io.zctl.zctl_50
+  verilogBlackBox.io.zctl_51 := io.zctl.zctl_51
+  verilogBlackBox.io.zctl_52 := io.zctl.zctl_52
+  verilogBlackBox.io.zctl_53 := io.zctl.zctl_53
+  verilogBlackBox.io.zctl_54 := io.zctl.zctl_54
+  verilogBlackBox.io.zctl_55 := io.zctl.zctl_55
+  verilogBlackBox.io.zctl_56 := io.zctl.zctl_56
+  verilogBlackBox.io.zctl_57 := io.zctl.zctl_57
+  verilogBlackBox.io.zctl_58 := io.zctl.zctl_58
+  verilogBlackBox.io.zctl_59 := io.zctl.zctl_59
+  verilogBlackBox.io.zctl_60 := io.zctl.zctl_60
+  verilogBlackBox.io.zctl_61 := io.zctl.zctl_61
+  verilogBlackBox.io.zctl_62 := io.zctl.zctl_62
+  verilogBlackBox.io.zctl_63 := io.zctl.zctl_63
+
+  // io.clkout := io.clkin
 }
 
 class VerilogRxClkIO extends Bundle {
@@ -307,6 +375,4 @@ class VerilogRxClk extends BlackBox {
   val io = IO(new VerilogRxClkIO)
 
   override val desiredName = "rxclk"
-
-  io.clkout := io.clkin
 }
