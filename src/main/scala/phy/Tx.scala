@@ -17,7 +17,6 @@ class ClkDriverControlIO extends Bundle {
 
 class ClockingControlIO extends Bundle {
   // Use outputs for signals that do not need to be connected
-  val NBIAS = Output(Bool())
   val VCM = Output(Bool())
   val in_buf = Output(Bits(8.W))
   val inbm = Output(Bool())
@@ -168,7 +167,6 @@ class TxLane extends RawModule {
   verilogBlackBox.io.pd_ctlb_47 := io.driver_ctl.pd_ctlb.pd_ctlb_47
   verilogBlackBox.io.driver_en := io.driver_ctl.en
   verilogBlackBox.io.driver_en_b := io.driver_ctl.en_b
-  io.clocking_ctl.NBIAS := verilogBlackBox.io.NBIAS
   io.clocking_ctl.VCM := verilogBlackBox.io.VCM
   io.clocking_ctl.in_buf := verilogBlackBox.io.in_buf
   io.clocking_ctl.inbm := verilogBlackBox.io.inbm
@@ -333,7 +331,6 @@ class VerilogTxLaneIO extends Bundle {
   val pd_ctlb_47 = Input(Bool())
   val driver_en = Input(Bool()) 
   val driver_en_b = Input(Bool()) 
-  val NBIAS = Output(Bool())
   val VCM = Output(Bool())
   val in_buf = Output(Bits(8.W))
   val inbm = Output(Bool())
