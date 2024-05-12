@@ -213,6 +213,7 @@ class VerilogRxLaneIO extends Bundle {
   val zctl_63 = Input(Bool())
   val sel0 = Input(UInt(7.W))
   val sel1 = Input(UInt(7.W))
+  val out0 = Output(Bool())
 }
 
 class VerilogRxLane extends BlackBox {

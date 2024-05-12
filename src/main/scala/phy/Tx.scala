@@ -11,30 +11,23 @@ class DriverControlIO extends Bundle {
   val driver_en_b = Input(Bool()) 
 }
 
+class ClkDriverControlIO extends Bundle {
+  val pu_ctl = noPrefix { new DriverPuControlIO }
+  val pd_ctlb = noPrefix { new DriverPdControlIO }
+}
+
 class ClockingControlIO extends Bundle {
   // Use outputs for signals that do not need to be connected
   val NBIAS = Output(Bool())
   val VCM = Output(Bool())
-  val in_buf_0 = Output(Bool()).suggestName("in_buf<0>")
-  val in_buf_1 = Output(Bool()).suggestName("in_buf<1>")
-  val in_buf_2 = Output(Bool()).suggestName("in_buf<2>")
-  val in_buf_3 = Output(Bool()).suggestName("in_buf<3>")
-  val in_buf_4 = Output(Bool()).suggestName("in_buf<4>")
-  val in_buf_5 = Output(Bool()).suggestName("in_buf<5>")
-  val in_buf_6 = Output(Bool()).suggestName("in_buf<6>")
-  val in_buf_7 = Output(Bool()).suggestName("in_buf<7>")
+  val in_buf = Output(Bits(8.W))
   val inbm = Output(Bool())
   val inbp = Output(Bool())
   val injmb = Output(Bool())
   val injpb = Output(Bool())
-  val mid_0 = Output(Bool()).suggestName("mid<0>")
-  val mid_1 = Output(Bool()).suggestName("mid<1>")
-  val mid_2 = Output(Bool()).suggestName("mid<2>")
-  val mid_3 = Output(Bool()).suggestName("mid<3>")
-  val mid_4 = Output(Bool()).suggestName("mid<4>")
-  val mid_5 = Output(Bool()).suggestName("mid<5>")
-  val mid_6 = Output(Bool()).suggestName("mid<6>")
-  val mid_7 = Output(Bool()).suggestName("mid<7>")
+  val mid = Output(Bits(8.W))
+  val mixer_out = Output(Bool())
+  val mixer_outb = Output(Bool())
   val misc = noPrefix { new MiscClockingControlIO }
   val en = noPrefix { new EnClockingControlIO }
   val enb = noPrefix { new EnbClockingControlIO }
@@ -55,7 +48,7 @@ class TxLaneIO extends Bundle {
 class TxLane extends RawModule {
   val io = noPrefix { IO(new TxLaneIO) }
 
-  override val desiredName = "txdata"
+  override val desiredName = "TX_data_lane"
 
   val ctr = withClockAndReset(io.injp.asClock, !io.resetb) { RegInit(0.U((log2Ceil(Phy.SerdesRatio) - 1).W)) }
   ctr := ctr + 1.U
@@ -79,25 +72,41 @@ class TxLane extends RawModule {
 }
 
 class TxClkIO extends Bundle {
+  val txckp = Output(Bool())
+  val txckn = Output(Bool())
+  val driver0 = new ClkDriverControlIO
+  val driver1 = new ClkDriverControlIO
+  val driver0_en = Input(Bool()) 
+  val driver0_en_b = Input(Bool()) 
+  val driver1_en = Input(Bool()) 
+  val driver1_en_b = Input(Bool()) 
+  val VCM = Output(Bool())
+  val en = noPrefix { new EnClockingControlIO }
+  val enb = noPrefix { new EnbClockingControlIO }
+  val in = Input(Bool())
   val injp = Input(Bool())
   val injm = Input(Bool())
-  val in = Input(Bool())
-  val clkout = Output(Bool())
-  val clkoutb = Output(Bool())
-  val driver_ctl = Vec(2, new DriverControlIO)
-  val clocking_ctl = noPrefix { new ClockingControlIO }
+  val inbm = Output(Bool())
+  val inbp = Output(Bool())
+  val injmb = Output(Bool())
+  val injpb = Output(Bool())
+  val mid = Output(Bits(8.W))
 }
 
 class TxClk extends RawModule {
   val io = noPrefix { IO(new TxClkIO) }
 
-  override val desiredName = "txclk"
+  override val desiredName = "TX_clk_tile"
 
-  io.clkout := io.injm
-  io.clkoutb := io.injp
+  io.txckp := io.injp
+  io.txckn := io.injm
 
-  io.driver_ctl <> 0.U.asTypeOf(io.driver_ctl)
-  io.clocking_ctl <> 0.U.asTypeOf(io.clocking_ctl)
+  io.driver0 <> 0.U.asTypeOf(io.driver0)
+  io.driver1 <> 0.U.asTypeOf(io.driver1)
+  io.driver0_en := true.B
+  io.driver1_en := true.B
+  io.driver0_en_b := false.B
+  io.driver1_en_b := false.B
 }
 
 class TxDriverIO extends Bundle {

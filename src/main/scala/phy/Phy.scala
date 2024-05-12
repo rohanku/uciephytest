@@ -120,8 +120,8 @@ class Phy(numLanes: Int = 2) extends Module {
   txClk.io.injp := refClkRx.io.vop
   txClk.io.injm := refClkRx.io.von
   txClk.io.in := io.top.pllIref
-  io.top.txClkP := txClk.io.clkout.asClock
-  io.top.txClkN := txClk.io.clkoutb.asClock
+  io.top.txClkP := txClk.io.txckp.asClock
+  io.top.txClkN := txClk.io.txckn.asClock
   for (i <- 0 to 1) {
     connectDriverCtl(txClk.io.driver_ctl(i), numLanes + 1 + i)
   }
