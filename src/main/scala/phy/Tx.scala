@@ -370,7 +370,14 @@ class TxClkIO extends Bundle {
   val txckp = Output(Bool())
   val txckn = Output(Bool())
   val driver_ctl = Vec(2, new DriverControlIO)
-  val clocking_ctl = new ClockingControlIO
+  val VCM = Output(Bool())
+  val inbm = Output(Bool())
+  val inbp = Output(Bool())
+  val injmb = Output(Bool())
+  val injpb = Output(Bool())
+  val mid = Output(Bits(8.W))
+  val en = Input(Bits(64.W))
+  val enb = Input(Bits(64.W))
 }
 
 class TxClk extends RawModule {
@@ -578,14 +585,14 @@ class TxClk extends RawModule {
   verilogBlackBox.io.driver1_pd_ctlb_47 := io.driver_ctl(1).pd_ctlb.pd_ctlb_47
   verilogBlackBox.io.driver1_en := io.driver_ctl(1).en
   verilogBlackBox.io.driver1_en_b := io.driver_ctl(1).en_b
-  io.clocking_ctl.VCM := verilogBlackBox.io.VCM
-  io.clocking_ctl.inbm := verilogBlackBox.io.inbm
-  io.clocking_ctl.inbp := verilogBlackBox.io.inbp
-  io.clocking_ctl.injmb := verilogBlackBox.io.injmb
-  io.clocking_ctl.injpb := verilogBlackBox.io.injpb
-  io.clocking_ctl.mid := verilogBlackBox.io.mid
-  verilogBlackBox.io.en := io.clocking_ctl.en
-  verilogBlackBox.io.enb := io.clocking_ctl.enb
+  io.VCM := verilogBlackBox.io.VCM
+  io.inbm := verilogBlackBox.io.inbm
+  io.inbp := verilogBlackBox.io.inbp
+  io.injmb := verilogBlackBox.io.injmb
+  io.injpb := verilogBlackBox.io.injpb
+  io.mid := verilogBlackBox.io.mid
+  verilogBlackBox.io.en := io.en
+  verilogBlackBox.io.enb := io.enb
 
   // io.txckp := io.injp
   // io.txckn := io.injm
