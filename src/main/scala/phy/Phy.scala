@@ -30,13 +30,13 @@ class RefClkRxIO extends Bundle {
   val von = Output(Bool())
 }
 
-class RefClkRx extends RawModule {
+class RefClkRx extends BlackBox {
   val io = IO(new RefClkRxIO)
 
-  override val desiredName = "refclkrx"
+  override val desiredName = "AA_CLK_RX"
 
-  io.vop := io.vin
-  io.von := io.vip
+  // io.vop := io.vin
+  // io.von := io.vip
 }
 
 class RstSyncIO extends Bundle {
@@ -90,13 +90,13 @@ class Phy(numLanes: Int = 2) extends Module {
     when (io.driverEn(lane)) {
       driver_ctl.pu_ctl := io.driverPuCtl(lane).asTypeOf(driver_ctl.pu_ctl)
       driver_ctl.pd_ctlb := (~io.driverPdCtl(lane)).asTypeOf(driver_ctl.pd_ctlb)
-      driver_ctl.driver_en := true.B
-      driver_ctl.driver_en_b := false.B
+      driver_ctl.en := true.B
+      driver_ctl.en_b := false.B
     } .otherwise {
       driver_ctl.pu_ctl := 0.U(48.W).asTypeOf(driver_ctl.pu_ctl)
       driver_ctl.pd_ctlb := (~0.U(48.W)).asTypeOf(driver_ctl.pd_ctlb)
-      driver_ctl.driver_en := false.B
-      driver_ctl.driver_en_b := true.B
+      driver_ctl.en := false.B
+      driver_ctl.en_b := true.B
     }
   }
 
@@ -120,12 +120,13 @@ class Phy(numLanes: Int = 2) extends Module {
   txClk.io.injp := refClkRx.io.vop
   txClk.io.injm := refClkRx.io.von
   txClk.io.in := io.top.pllIref
-  io.top.txClkP := txClk.io.clkout.asClock
-  io.top.txClkN := txClk.io.clkoutb.asClock
+  io.top.txClkP := txClk.io.txckp.asClock
+  io.top.txClkN := txClk.io.txckn.asClock
   for (i <- 0 to 1) {
     connectDriverCtl(txClk.io.driver_ctl(i), numLanes + 1 + i)
   }
-  connectClockingCtl(txClk.io.clocking_ctl, numLanes + 1)
+  txClk.io.en := io.clockingEnCtl(numLanes + 1).asTypeOf(txClk.io.en)
+  txClk.io.enb := io.clockingEnbCtl(numLanes + 1).asTypeOf(txClk.io.enb)
   // Connect reference clock to pad drivers
   val refClkPDriver = Module(new TxDriver)
   refClkPDriver.io.din := refClkRx.io.vop
