@@ -47,8 +47,6 @@ class TxLaneIO extends Bundle {
 class TxLane extends RawModule {
   val io = IO(new TxLaneIO)
 
-  override val desiredName = "TX_data_lane"
-
   val verilogBlackBox = Module(new VerilogTxLane)
   verilogBlackBox.io.injp := io.injp
   verilogBlackBox.io.injm := io.injm
@@ -580,26 +578,12 @@ class TxClk extends RawModule {
   verilogBlackBox.io.driver1_pd_ctlb_47 := io.driver_ctl(1).pd_ctlb.pd_ctlb_47
   verilogBlackBox.io.driver1_en := io.driver_ctl(1).en
   verilogBlackBox.io.driver1_en_b := io.driver_ctl(1).en_b
-  io.clocking_ctl.NBIAS := verilogBlackBox.io.NBIAS
   io.clocking_ctl.VCM := verilogBlackBox.io.VCM
-  io.clocking_ctl.in_buf := verilogBlackBox.io.in_buf
   io.clocking_ctl.inbm := verilogBlackBox.io.inbm
   io.clocking_ctl.inbp := verilogBlackBox.io.inbp
   io.clocking_ctl.injmb := verilogBlackBox.io.injmb
   io.clocking_ctl.injpb := verilogBlackBox.io.injpb
   io.clocking_ctl.mid := verilogBlackBox.io.mid
-  io.clocking_ctl.mixer_out := verilogBlackBox.io.mixer_out
-  io.clocking_ctl.mixer_outb := verilogBlackBox.io.mixer_outb
-  verilogBlackBox.io.band_ctrl := io.clocking_ctl.misc.band_ctrl
-  verilogBlackBox.io.band_ctrlb := io.clocking_ctl.misc.band_ctrlb
-  verilogBlackBox.io.band_sel := io.clocking_ctl.misc.band_sel
-  verilogBlackBox.io.band_selb := io.clocking_ctl.misc.band_selb
-  verilogBlackBox.io.mix_en := io.clocking_ctl.misc.mix_en
-  verilogBlackBox.io.mix_enb := io.clocking_ctl.misc.mix_enb
-  verilogBlackBox.io.mux_en := io.clocking_ctl.misc.mux_en
-  verilogBlackBox.io.mux_enb := io.clocking_ctl.misc.mux_enb
-  verilogBlackBox.io.ph_sel := io.clocking_ctl.misc.ph_sel
-  verilogBlackBox.io.ph_selb := io.clocking_ctl.misc.ph_selb
   verilogBlackBox.io.en := io.clocking_ctl.en
   verilogBlackBox.io.enb := io.clocking_ctl.enb
 
@@ -816,26 +800,12 @@ class VerilogTxClkIO extends Bundle {
   val driver1_pd_ctlb_47 = Input(Bool())
   val driver1_en = Input(Bool()) 
   val driver1_en_b = Input(Bool()) 
-  val NBIAS = Output(Bool())
   val VCM = Output(Bool())
-  val in_buf = Output(Bits(8.W))
   val inbm = Output(Bool())
   val inbp = Output(Bool())
   val injmb = Output(Bool())
   val injpb = Output(Bool())
   val mid = Output(Bits(8.W))
-  val mixer_out = Output(Bool())
-  val mixer_outb = Output(Bool())
-  val band_ctrl = Input(Bits(2.W))
-  val band_ctrlb = Input(Bits(2.W))
-  val band_sel = Input(Bits(2.W))
-  val band_selb = Input(Bits(2.W))
-  val mix_en = Input(Bits(16.W))
-  val mix_enb = Input(Bits(16.W))
-  val mux_en = Input(Bits(8.W))
-  val mux_enb = Input(Bits(8.W))
-  val ph_sel = Input(Bits(2.W))
-  val ph_selb = Input(Bits(2.W))
   val en = Input(Bits(64.W))
   val enb = Input(Bits(64.W))
 }
