@@ -176,12 +176,12 @@ class TxLane extends RawModule {
   io.clocking_ctl.mid := verilogBlackBox.io.mid
   io.clocking_ctl.mixer_out := verilogBlackBox.io.mixer_out
   io.clocking_ctl.mixer_outb := verilogBlackBox.io.mixer_outb
-  verilogBlackBox.io.band_ctrl := io.clocking_ctl.misc.band_ctrl
-  verilogBlackBox.io.band_ctrlb := io.clocking_ctl.misc.band_ctrlb
+  verilogBlackBox.io.band_ctrl := "b01".U(2.W)
+  verilogBlackBox.io.band_ctrlb := "b10".U(2.W)
   verilogBlackBox.io.band_sel := io.clocking_ctl.misc.band_sel
   verilogBlackBox.io.band_selb := io.clocking_ctl.misc.band_selb
-  verilogBlackBox.io.mix_en := io.clocking_ctl.misc.mix_en
-  verilogBlackBox.io.mix_enb := io.clocking_ctl.misc.mix_enb
+  verilogBlackBox.io.mix_en := 0.U(16.W)
+  verilogBlackBox.io.mix_enb := ~0.U(16.W)
   verilogBlackBox.io.mux_en := io.clocking_ctl.misc.mux_en
   verilogBlackBox.io.mux_enb := io.clocking_ctl.misc.mux_enb
   verilogBlackBox.io.ph_sel := io.clocking_ctl.misc.ph_sel
