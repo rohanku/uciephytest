@@ -451,19 +451,19 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val ESD_pll_iref = Module(new Esd)
       val ESD_clk_ref_p = Module(new Esd)
       val ESD_clk_ref_n = Module(new Esd)
-      ESD_txclkn.io.term := phy.io.top.txClkN
-      ESD_txclkp.io.term := phy.io.top.txClkP
+      ESD_txclkn.io.term := phy.io.top.txClkN.asBool
+      ESD_txclkp.io.term := phy.io.top.txClkP.asBool
       ESD_txdata8.io.term := phy.io.top.txData(0)
       ESD_txvld.io.term := phy.io.top.txValid
       ESD_txdata12.io.term := phy.io.top.txData(1)
-      ESD_rxckp.io.term := topIO.out(0)._1.rxClkP
-      ESD_rxckn.io.term := topIO.out(0)._1.rxClkN
+      ESD_rxckp.io.term := topIO.out(0)._1.rxClkP.asBool
+      ESD_rxckn.io.term := topIO.out(0)._1.rxClkN.asBool
       ESD_rxdata8.io.term := topIO.out(0)._1.rxData(0)
       ESD_rxdata12.io.term := topIO.out(0)._1.rxData(1)
       ESD_rxvld.io.term := topIO.out(0)._1.rxValid
       ESD_pll_iref.io.term := topIO.out(0)._1.pllIref
-      ESD_clk_ref_p.io.term := phy.io.top.clkRxOutP
-      ESD_clk_ref_n.io.term := phy.io.top.clkRxOutN
+      ESD_clk_ref_p.io.term := phy.io.top.clkRxOutP.asBool
+      ESD_clk_ref_n.io.term := phy.io.top.clkRxOutN.asBool
 
       var mmioRegs = Seq(
         toRegField(txTestMode),
