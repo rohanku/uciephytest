@@ -346,6 +346,14 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Modul
   }
 }
 
+class Esd extends BlackBox {
+  val io = IO(new Bundle {
+    val term = Input(Bool())
+  })
+
+  override val desiredName = "AA_ESD"
+}
+
 class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Parameters) extends ClockSinkDomain(ClockSinkParameters())(p) {
   val device = new SimpleDevice("uciephytest", Seq("ucbbar,uciephytest")) 
   val node = TLRegisterNode(Seq(AddressSet(params.address, 4096-1)), device, "reg/control", beatBytes=beatBytes)
@@ -412,14 +420,14 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       phy.io.test <> test.io.phy
       topIO.out(0)._1 <> phy.io.top
 
-      phy.io.driverPuCtl := driverPuCtl
-      phy.io.driverPdCtl := driverPuCtl
+      phy.io.driverPuCtl := VecInit(Seq.fill(params.numLanes + 5)("hFFFFFFFFFFFFFFFF".U(64.W)))
+      phy.io.driverPdCtl := VecInit(Seq.fill(params.numLanes + 5)(0.U(64.W)))
       phy.io.driverEn := driverEn
       phy.io.clockingMiscCtl := clockingMiscCtl
-      phy.io.clockingEnCtl := clockingEnCtl
-      phy.io.clockingEnbCtl := clockingEnbCtl
-      phy.io.terminationCtl := terminationCtl
-      phy.io.vrefCtl := vrefCtl
+      phy.io.clockingEnCtl := VecInit(Seq.fill(params.numLanes + 2)("h0FF".U(64.W)))
+      phy.io.clockingEnbCtl := VecInit(Seq.fill(params.numLanes + 2)(~"h0FF".U(64.W)))
+      phy.io.terminationCtl := VecInit(Seq.fill(params.numLanes + 3)("h39".U(64.W)))
+      phy.io.vrefCtl := VecInit(Seq.fill(params.numLanes + 1)(0.U(14.W)))
 
       val toRegField = (r: UInt) => {
         RegField(r.getWidth, r, RegWriteFn((valid, data) => {
@@ -429,6 +437,33 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
           true.B
         }), None)
       }
+
+      val ESD_txclkn = Module(new Esd)
+      val ESD_txclkp = Module(new Esd)
+      val ESD_txdata8 = Module(new Esd)
+      val ESD_txvld = Module(new Esd)
+      val ESD_txdata12 = Module(new Esd)
+      val ESD_rxckp = Module(new Esd)
+      val ESD_rxckn = Module(new Esd)
+      val ESD_rxdata8 = Module(new Esd)
+      val ESD_rxdata12 = Module(new Esd)
+      val ESD_rxvld = Module(new Esd)
+      val ESD_pll_iref = Module(new Esd)
+      val ESD_clk_ref_p = Module(new Esd)
+      val ESD_clk_ref_n = Module(new Esd)
+      ESD_txclkn.io.term := phy.io.top.txClkN
+      ESD_txclkp.io.term := phy.io.top.txClkP
+      ESD_txdata8.io.term := phy.io.top.txData(0)
+      ESD_txvld.io.term := phy.io.top.txValid
+      ESD_txdata12.io.term := phy.io.top.txData(1)
+      ESD_rxckp.io.term := topIO.out(0)._1.rxClkP
+      ESD_rxckn.io.term := topIO.out(0)._1.rxClkN
+      ESD_rxdata8.io.term := topIO.out(0)._1.rxData(0)
+      ESD_rxdata12.io.term := topIO.out(0)._1.rxData(1)
+      ESD_rxvld.io.term := topIO.out(0)._1.rxValid
+      ESD_pll_iref.io.term := topIO.out(0)._1.pllIref
+      ESD_clk_ref_p.io.term := phy.io.top.clkRxOutP
+      ESD_clk_ref_n.io.term := phy.io.top.clkRxOutN
 
       var mmioRegs = Seq(
         toRegField(txTestMode),
