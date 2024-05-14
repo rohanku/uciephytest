@@ -10,15 +10,15 @@ class DriverControlIO extends Bundle {
 
 class ClockingControlIO extends Bundle {
   // Use outputs for signals that do not need to be connected
-  val VCM = Output(Bool())
-  val in_buf = Output(Bits(8.W))
-  val inbm = Output(Bool())
-  val inbp = Output(Bool())
-  val injmb = Output(Bool())
-  val injpb = Output(Bool())
-  val mid = Output(Bits(8.W))
-  val mixer_out = Output(Bool())
-  val mixer_outb = Output(Bool())
+  // val VCM = Output(Bool())
+  // val in_buf = Output(Bits(8.W))
+  // val inbm = Output(Bool())
+  // val inbp = Output(Bool())
+  // val injmb = Output(Bool())
+  // val injpb = Output(Bool())
+  // val mid = Output(Bits(8.W))
+  // val mixer_out = Output(Bool())
+  // val mixer_outb = Output(Bool())
   val misc = new MiscClockingControlIO
   val en = Input(Bits(64.W))
   val enb = Input(Bits(64.W))
