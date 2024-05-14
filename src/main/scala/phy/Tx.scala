@@ -73,8 +73,8 @@ class TxLane extends RawModule {
   // io.clocking_ctl.mid := verilogBlackBox.io.mid
   // io.clocking_ctl.mixer_out := verilogBlackBox.io.mixer_out
   // io.clocking_ctl.mixer_outb := verilogBlackBox.io.mixer_outb
-  verilogBlackBox.io.band_ctrl := "b01".U(2.W)
-  verilogBlackBox.io.band_ctrlb := "b10".U(2.W)
+  // verilogBlackBox.io.band_ctrl := "b01".U(2.W)
+  // verilogBlackBox.io.band_ctrlb := "b10".U(2.W)
   // verilogBlackBox.io.band_sel := io.clocking_ctl.misc.band_sel
   // verilogBlackBox.io.band_selb := io.clocking_ctl.misc.band_selb
   // verilogBlackBox.io.mix_en := 0.U(16.W)
@@ -141,8 +141,8 @@ class VerilogTxLaneIO extends Bundle {
   // val mid = Output(Bits(8.W))
   // val mixer_out = Output(Bool())
   // val mixer_outb = Output(Bool())
-  val band_ctrl = Input(Bits(2.W))
-  val band_ctrlb = Input(Bits(2.W))
+  // val band_ctrl = Input(Bits(2.W))
+  // val band_ctrlb = Input(Bits(2.W))
   // val band_sel = Input(Bits(2.W))
   // val band_selb = Input(Bits(2.W))
   // val mix_en = Input(Bits(16.W))
