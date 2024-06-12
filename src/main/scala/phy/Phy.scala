@@ -127,18 +127,6 @@ class Phy(numLanes: Int = 2) extends Module {
   }
   txClk.io.en := io.clockingEnCtl(numLanes + 1).asTypeOf(txClk.io.en)
   txClk.io.enb := io.clockingEnbCtl(numLanes + 1).asTypeOf(txClk.io.enb)
-  // Connect reference clock to pad drivers
-  val refClkPDriver = Module(new TxDriver)
-  refClkPDriver.io.din := refClkRx.io.vop
-  io.top.clkRxOutP := refClkPDriver.io.dout.asClock
-  val refClkNDriver = Module(new TxDriver)
-  refClkNDriver.io.din := refClkRx.io.von
-  io.top.clkRxOutN := refClkNDriver.io.dout.asClock
-  for (i <- 0 to 1) {
-    val lane = numLanes + 3 + i
-    val driver = if (i == 0) { refClkPDriver } else { refClkNDriver }
-    connectDriverCtl(driver.io.driver_ctl, lane)
-  }
 
   for (lane <- 0 to numLanes) {
     val txLane = Module(new TxLane)

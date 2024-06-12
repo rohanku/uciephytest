@@ -57,8 +57,6 @@ class UciephyTopIO(numLanes: Int = 2) extends Bundle {
   val rxClkP = Input(Clock())
   val rxClkN = Input(Clock())
   val pllIref = Input(Bool())
-  val clkRxOutP = Output(Clock())
-  val clkRxOutN = Output(Clock())
 }
 
 class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Bundle {
@@ -420,14 +418,14 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       phy.io.test <> test.io.phy
       topIO.out(0)._1 <> phy.io.top
 
-      phy.io.driverPuCtl := VecInit(Seq.fill(params.numLanes + 5)("hFFFFFFFFFFFFFFFF".U(64.W)))
-      phy.io.driverPdCtl := VecInit(Seq.fill(params.numLanes + 5)(0.U(64.W)))
+      phy.io.driverPuCtl := driverPuCtl
+      phy.io.driverPdCtl := driverPdCtl
       phy.io.driverEn := driverEn
       phy.io.clockingMiscCtl := clockingMiscCtl
-      phy.io.clockingEnCtl := VecInit(Seq.fill(params.numLanes + 2)("h0FF".U(64.W)))
-      phy.io.clockingEnbCtl := VecInit(Seq.fill(params.numLanes + 2)(~"h0FF".U(64.W)))
-      phy.io.terminationCtl := VecInit(Seq.fill(params.numLanes + 3)("h39".U(64.W)))
-      phy.io.vrefCtl := VecInit(Seq.fill(params.numLanes + 1)(0.U(14.W)))
+      phy.io.clockingEnCtl := clockingEnCtl
+      phy.io.clockingEnbCtl := clockingEnbCtl
+      phy.io.terminationCtl := terminationCtl
+      phy.io.vrefCtl := vrefCtl
 
       val toRegField = (r: UInt) => {
         RegField(r.getWidth, r, RegWriteFn((valid, data) => {
@@ -462,8 +460,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       ESD_rxdata12.io.term := topIO.out(0)._1.rxData(1)
       ESD_rxvld.io.term := topIO.out(0)._1.rxValid
       ESD_pll_iref.io.term := topIO.out(0)._1.pllIref
-      ESD_clk_ref_p.io.term := phy.io.top.clkRxOutP.asBool
-      ESD_clk_ref_n.io.term := phy.io.top.clkRxOutN.asBool
+      ESD_clk_ref_p.io.term := phy.io.top.refClkP.asBool
+      ESD_clk_ref_n.io.term := phy.io.top.refClkN.asBool
 
       var mmioRegs = Seq(
         toRegField(txTestMode),
