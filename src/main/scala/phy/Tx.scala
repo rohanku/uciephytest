@@ -613,7 +613,6 @@ class VerilogTxLaneIO extends Bundle {
   val ilro_en_61 = Input(Bool())
   val ilro_en_62 = Input(Bool())
   val ilro_en_63 = Input(Bool())
-  val ilro_en_64 = Input(Bool())
   val ilro_enb_0 = Input(Bool())
   val ilro_enb_1 = Input(Bool())
   val ilro_enb_2 = Input(Bool())
@@ -678,7 +677,6 @@ class VerilogTxLaneIO extends Bundle {
   val ilro_enb_61 = Input(Bool())
   val ilro_enb_62 = Input(Bool())
   val ilro_enb_63 = Input(Bool())
-  val ilro_enb_64 = Input(Bool())
 }
 
 class VerilogTxLane extends BlackBox {
@@ -1309,7 +1307,6 @@ class VerilogTxClkIO extends Bundle {
   val ilro_en_61 = Input(Bool())
   val ilro_en_62 = Input(Bool())
   val ilro_en_63 = Input(Bool())
-  val ilro_en_64 = Input(Bool())
   val ilro_enb_0 = Input(Bool())
   val ilro_enb_1 = Input(Bool())
   val ilro_enb_2 = Input(Bool())
@@ -1374,7 +1371,6 @@ class VerilogTxClkIO extends Bundle {
   val ilro_enb_61 = Input(Bool())
   val ilro_enb_62 = Input(Bool())
   val ilro_enb_63 = Input(Bool())
-  val ilro_enb_64 = Input(Bool())
 }
 
 class VerilogTxClk extends BlackBox {
