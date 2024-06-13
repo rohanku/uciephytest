@@ -33,7 +33,7 @@ class RefClkRxIO extends Bundle {
 class RefClkRx extends BlackBox {
   val io = IO(new RefClkRxIO)
 
-  override val desiredName = "AA_CLK_RX"
+  override val desiredName = "refclkrx"
 
   // io.vop := io.vin
   // io.von := io.vip

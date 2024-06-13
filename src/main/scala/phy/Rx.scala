@@ -219,7 +219,7 @@ class VerilogRxLaneIO extends Bundle {
 class VerilogRxLane extends BlackBox {
   val io = IO(new VerilogRxLaneIO)
 
-  override val desiredName = "RX_tile"
+  override val desiredName = "rxtile"
 }
 
 class RxClkIO extends Bundle {

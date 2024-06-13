@@ -682,7 +682,7 @@ class VerilogTxLaneIO extends Bundle {
 class VerilogTxLane extends BlackBox {
   val io = IO(new VerilogTxLaneIO)
 
-  override val desiredName = "TX_data_lane"
+  override val desiredName = "txdatatile"
 }
 
 class TxClkIO extends Bundle {
@@ -1376,7 +1376,7 @@ class VerilogTxClkIO extends Bundle {
 class VerilogTxClk extends BlackBox {
   val io = IO(new VerilogTxClkIO)
 
-  override val desiredName = "TX_clk_tile"
+  override val desiredName = "txclktile"
 }
 
 class TxDriverIO extends Bundle {
