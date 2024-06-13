@@ -72,7 +72,7 @@ class PhyIO(numLanes: Int = 2) extends Bundle {
   // Termination impedance control per lane (`numLanes` data lanes, 1 valid lane, 2 clock lanes).
   val terminationCtl = Input(Vec(numLanes + 3, UInt(64.W))) 
   // Reference voltage control.
-  val vrefCtl = Input(Vec(numLanes + 1, UInt(14.W))) 
+  val vrefCtl = Input(Vec(numLanes + 1, UInt(7.W))) 
 
   // TEST INTERFACE
   // =====================
@@ -178,7 +178,7 @@ class Phy(numLanes: Int = 2) extends Module {
     rxLane.io.clkb := rxClkN.io.clkout.asClock
     rxLane.io.zctl := io.terminationCtl(lane).asTypeOf(rxLane.io.zctl)
     rxLane.io.resetb := !reset.asBool
-    rxLane.io.vref_ctl := io.vrefCtl(lane).asTypeOf(rxLane.io.vref_ctl)
+    rxLane.io.vref_ctl := io.vrefCtl(lane)
 
     // TODO: double check reset sense.
     val rstSyncRx = withClockAndReset(rxLane.io.divclk, !reset.asBool) {

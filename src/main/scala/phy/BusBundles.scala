@@ -223,8 +223,3 @@ class MiscClockingControlIO extends Bundle {
   val ph_sel = Input(Bits(2.W))
   val ph_selb = Input(Bits(2.W))
 }
-
-class VrefControlIO extends Bundle {
-  val sel0 = Input(UInt(7.W))
-  val sel1 = Input(UInt(7.W))
-}

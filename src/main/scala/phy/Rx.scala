@@ -12,7 +12,7 @@ class RxLaneIO extends Bundle {
   val divclk = Output(Clock())
   val resetb = Input(Bool())
   val zctl = new TerminationControlIO
-  val vref_ctl = new VrefControlIO
+  val vref_ctl = Input(UInt(7.W))
 }
 
 class RxLane extends RawModule {
@@ -104,8 +104,13 @@ class RxLane extends RawModule {
   verilogBlackBox.io.zctl_61 := io.zctl.zctl_61
   verilogBlackBox.io.zctl_62 := io.zctl.zctl_62
   verilogBlackBox.io.zctl_63 := io.zctl.zctl_63
-  verilogBlackBox.io.sel0 := io.vref_ctl.sel0
-  verilogBlackBox.io.sel1 := io.vref_ctl.sel1
+  verilogBlackBox.io.vref_sel_0 := io.vref_ctl(0)
+  verilogBlackBox.io.vref_sel_1 := io.vref_ctl(1)
+  verilogBlackBox.io.vref_sel_2 := io.vref_ctl(2)
+  verilogBlackBox.io.vref_sel_3 := io.vref_ctl(3)
+  verilogBlackBox.io.vref_sel_4 := io.vref_ctl(4)
+  verilogBlackBox.io.vref_sel_5 := io.vref_ctl(5)
+  verilogBlackBox.io.vref_sel_6 := io.vref_ctl(6)
   // val ctr = withClockAndReset(io.clk, !io.resetb) { RegInit(7.U((log2Ceil(Phy.SerdesRatio) - 1).W)) }
   // ctr := ctr + 1.U
 
@@ -211,8 +216,13 @@ class VerilogRxLaneIO extends Bundle {
   val zctl_61 = Input(Bool())
   val zctl_62 = Input(Bool())
   val zctl_63 = Input(Bool())
-  val sel0 = Input(UInt(7.W))
-  val sel1 = Input(UInt(7.W))
+  val vref_sel_0 = Input(Bool())
+  val vref_sel_1 = Input(Bool())
+  val vref_sel_2 = Input(Bool())
+  val vref_sel_3 = Input(Bool())
+  val vref_sel_4 = Input(Bool())
+  val vref_sel_5 = Input(Bool())
+  val vref_sel_6 = Input(Bool())
   val out0 = Output(Bool())
 }
 
