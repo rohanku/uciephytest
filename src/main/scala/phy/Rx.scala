@@ -223,7 +223,6 @@ class VerilogRxLaneIO extends Bundle {
   val vref_sel_4 = Input(Bool())
   val vref_sel_5 = Input(Bool())
   val vref_sel_6 = Input(Bool())
-  val out0 = Output(Bool())
 }
 
 class VerilogRxLane extends BlackBox {
