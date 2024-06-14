@@ -349,7 +349,7 @@ class Esd extends BlackBox {
     val term = Input(Bool())
   })
 
-  override val desiredName = "AA_ESD"
+  override val desiredName = "ucie_esd"
 }
 
 class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Parameters) extends ClockSinkDomain(ClockSinkParameters())(p) {
