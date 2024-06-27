@@ -912,7 +912,7 @@ class TxClk extends RawModule {
   verilogBlackBox.io.en_b_n := io.driver_ctl(1).en_b
   val enTherm = Wire(UInt(64.W))
   val enbTherm = Wire(UInt(64.W))
-  enTherm := (1.U << io.clocking_ctl.en) - 1.U
+  enTherm := (1.U << io.en) - 1.U
   enbTherm := ~enTherm
   verilogBlackBox.io.ilro_en_0 := enTherm(0)
   verilogBlackBox.io.ilro_en_1 := enTherm(1)
