@@ -54,23 +54,23 @@ class PhyIO(numLanes: Int = 2) extends Bundle {
   // TX CONTROL
   // =====================
   // Pull-up impedance control per lane (`numLanes` data lanes, 1 valid lane, 2 clock lanes, 2 ref clock out).
-  val driverPuCtl = Input(Vec(numLanes + 5, UInt(48.W))) 
+  val driverPuCtl = Input(Vec(numLanes + 5, UInt(6.W))) 
   // Pull-down impedance control per lane (`numLanes` data lanes, 1 valid lane, 2 clock lanes, 2 ref clock out).
-  val driverPdCtl = Input(Vec(numLanes + 5, UInt(48.W))) 
+  val driverPdCtl = Input(Vec(numLanes + 5, UInt(6.W))) 
   // Driver enable signal per lane (`numLanes` data lanes, 1 valid lane, 2 clock lanes, 2 ref clock out). 
   // When low, the driver enters a high-Z state.
   val driverEn = Input(Vec(numLanes + 5, Bool()))
   // Misc clocking control per lane (`numLanes` data lanes, 1 valid lane, 1 clock). 
   val clockingMiscCtl = Input(Vec(numLanes + 2, UInt(64.W)))
   // En clocking control per lane (`numLanes` data lanes, 1 valid lane, 1 clock). 
-  val clockingEnCtl = Input(Vec(numLanes + 2, UInt(64.W)))
+  val clockingEnCtl = Input(Vec(numLanes + 2, UInt(6.W)))
   // Enb clocking control per lane (`numLanes` data lanes, 1 valid lane, 1 clock). 
-  val clockingEnbCtl = Input(Vec(numLanes + 2, UInt(64.W)))
+  val clockingEnbCtl = Input(Vec(numLanes + 2, UInt(6.W)))
 
   // RX CONTROL
   // =====================
   // Termination impedance control per lane (`numLanes` data lanes, 1 valid lane, 2 clock lanes).
-  val terminationCtl = Input(Vec(numLanes + 3, UInt(64.W))) 
+  val terminationCtl = Input(Vec(numLanes + 3, UInt(6.W))) 
   // Reference voltage control.
   val vrefCtl = Input(Vec(numLanes + 1, UInt(7.W))) 
 
@@ -89,12 +89,12 @@ class Phy(numLanes: Int = 2) extends Module {
   val connectDriverCtl = (driver_ctl: DriverControlIO, lane: Int) => {
     when (io.driverEn(lane)) {
       driver_ctl.pu_ctl := io.driverPuCtl(lane).asTypeOf(driver_ctl.pu_ctl)
-      driver_ctl.pd_ctlb := (~io.driverPdCtl(lane)).asTypeOf(driver_ctl.pd_ctlb)
+      driver_ctl.pd_ctl := io.driverPdCtl(lane).asTypeOf(driver_ctl.pd_ctlb)
       driver_ctl.en := true.B
       driver_ctl.en_b := false.B
     } .otherwise {
-      driver_ctl.pu_ctl := 0.U(48.W).asTypeOf(driver_ctl.pu_ctl)
-      driver_ctl.pd_ctlb := (~0.U(48.W)).asTypeOf(driver_ctl.pd_ctlb)
+      driver_ctl.pu_ctl := 0.U(6.W).asTypeOf(driver_ctl.pu_ctl)
+      driver_ctl.pd_ctl := 0.U(6.W).asTypeOf(driver_ctl.pd_ctlb)
       driver_ctl.en := false.B
       driver_ctl.en_b := true.B
     }

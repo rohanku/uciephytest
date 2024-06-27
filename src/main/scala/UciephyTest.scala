@@ -382,13 +382,13 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val rxDataLane = RegInit(0.U(log2Ceil(params.numLanes).W))
       val rxDataOffset = RegInit(0.U((params.bufferDepthPerLane - 6).W))
       val rxPermute = RegInit(VecInit((0 until Phy.SerdesRatio).map(_.U(log2Ceil(Phy.SerdesRatio).W))))
-      val driverPuCtl = RegInit(VecInit(Seq.fill(params.numLanes + 5)(0.U(48.W))))
-      val driverPdCtl = RegInit(VecInit(Seq.fill(params.numLanes + 5)(0.U(48.W))))
+      val driverPuCtl = RegInit(VecInit(Seq.fill(params.numLanes + 5)(0.U(6.W))))
+      val driverPdCtl = RegInit(VecInit(Seq.fill(params.numLanes + 5)(0.U(6.W))))
       val driverEn = RegInit(VecInit(Seq.fill(params.numLanes + 5)(false.B)))
       val clockingMiscCtl = RegInit(VecInit(Seq.fill(params.numLanes + 2)(0.U(64.W))))
-      val clockingEnCtl = RegInit(VecInit(Seq.fill(params.numLanes + 2)(0.U(64.W))))
-      val clockingEnbCtl = RegInit(VecInit(Seq.fill(params.numLanes + 2)(~0.U(64.W))))
-      val terminationCtl = RegInit(VecInit(Seq.fill(params.numLanes + 3)(~0.U(64.W))))
+      val clockingEnCtl = RegInit(VecInit(Seq.fill(params.numLanes + 2)(0.U(6.W))))
+      val clockingEnbCtl = RegInit(VecInit(Seq.fill(params.numLanes + 2)(~0.U(6.W))))
+      val terminationCtl = RegInit(VecInit(Seq.fill(params.numLanes + 3)(~0.U(6.W))))
       val vrefCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(64.W))))
 
       txFsmRst.ready := true.B
