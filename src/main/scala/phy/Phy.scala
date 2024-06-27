@@ -64,8 +64,6 @@ class PhyIO(numLanes: Int = 2) extends Bundle {
   val clockingMiscCtl = Input(Vec(numLanes + 2, UInt(64.W)))
   // En clocking control per lane (`numLanes` data lanes, 1 valid lane, 1 clock). 
   val clockingEnCtl = Input(Vec(numLanes + 2, UInt(6.W)))
-  // Enb clocking control per lane (`numLanes` data lanes, 1 valid lane, 1 clock). 
-  val clockingEnbCtl = Input(Vec(numLanes + 2, UInt(6.W)))
 
   // RX CONTROL
   // =====================
@@ -89,12 +87,12 @@ class Phy(numLanes: Int = 2) extends Module {
   val connectDriverCtl = (driver_ctl: DriverControlIO, lane: Int) => {
     when (io.driverEn(lane)) {
       driver_ctl.pu_ctl := io.driverPuCtl(lane).asTypeOf(driver_ctl.pu_ctl)
-      driver_ctl.pd_ctl := io.driverPdCtl(lane).asTypeOf(driver_ctl.pd_ctlb)
+      driver_ctl.pd_ctl := io.driverPdCtl(lane).asTypeOf(driver_ctl.pd_ctl)
       driver_ctl.en := true.B
       driver_ctl.en_b := false.B
     } .otherwise {
       driver_ctl.pu_ctl := 0.U(6.W).asTypeOf(driver_ctl.pu_ctl)
-      driver_ctl.pd_ctl := 0.U(6.W).asTypeOf(driver_ctl.pd_ctlb)
+      driver_ctl.pd_ctl := 0.U(6.W).asTypeOf(driver_ctl.pd_ctl)
       driver_ctl.en := false.B
       driver_ctl.en_b := true.B
     }
@@ -103,7 +101,6 @@ class Phy(numLanes: Int = 2) extends Module {
   val connectClockingCtl = (clocking_ctl: ClockingControlIO, lane: Int) => {
     clocking_ctl.misc := io.clockingMiscCtl(lane).asTypeOf(clocking_ctl.misc)
     clocking_ctl.en := io.clockingEnCtl(lane).asTypeOf(clocking_ctl.en)
-    clocking_ctl.enb := io.clockingEnbCtl(lane).asTypeOf(clocking_ctl.enb)
   }
 
   // Set up clocking
@@ -126,7 +123,6 @@ class Phy(numLanes: Int = 2) extends Module {
     connectDriverCtl(txClk.io.driver_ctl(i), numLanes + 1 + i)
   }
   txClk.io.en := io.clockingEnCtl(numLanes + 1).asTypeOf(txClk.io.en)
-  txClk.io.enb := io.clockingEnbCtl(numLanes + 1).asTypeOf(txClk.io.enb)
 
   for (lane <- 0 to numLanes) {
     val txLane = Module(new TxLane)
