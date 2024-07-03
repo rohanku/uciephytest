@@ -211,7 +211,7 @@ class DriverPdControlIO extends Bundle {
   val pd_ctlb_47 = Input(Bool())
 }
 
-class MiscClockingControlIO extends Bundle {
+class PiClockingControlIO extends Bundle {
   val band_ctrl = Input(Bits(2.W))
   val band_ctrlb = Input(Bits(2.W))
   val band_sel = Input(Bits(2.W))
@@ -222,4 +222,13 @@ class MiscClockingControlIO extends Bundle {
   val mux_enb = Input(Bits(8.W))
   val ph_sel = Input(Bits(2.W))
   val ph_selb = Input(Bits(2.W))
+}
+
+class MiscClockingControlIO extends Bundle {
+  val clkp_pen = Input(Bits(5.W))
+  val clkp_pen = Input(Bits(5.W))
+  val clkp_nen = Input(Bits(5.W))
+  val clkn_pen = Input(Bits(5.W))
+  val clkn_nen = Input(Bits(5.W))
+  val delay = Input(Bits(6.W))
 }
