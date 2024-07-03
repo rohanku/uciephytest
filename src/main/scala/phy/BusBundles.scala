@@ -226,7 +226,6 @@ class PiClockingControlIO extends Bundle {
 
 class MiscClockingControlIO extends Bundle {
   val clkp_pen = Input(Bits(5.W))
-  val clkp_pen = Input(Bits(5.W))
   val clkp_nen = Input(Bits(5.W))
   val clkn_pen = Input(Bits(5.W))
   val clkn_nen = Input(Bits(5.W))

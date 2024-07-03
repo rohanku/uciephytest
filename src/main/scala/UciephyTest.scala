@@ -385,8 +385,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val driverPuCtl = RegInit(VecInit(Seq.fill(params.numLanes + 5)(0.U(6.W))))
       val driverPdCtl = RegInit(VecInit(Seq.fill(params.numLanes + 5)(0.U(6.W))))
       val driverEn = RegInit(VecInit(Seq.fill(params.numLanes + 5)(false.B)))
-      val clockingMiscCtl = RegInit(VecInit(Seq.fill(params.numLanes + 2)(0.U(64.W))))
-      val clockingEnCtl = RegInit(VecInit(Seq.fill(params.numLanes + 2)(0.U(6.W))))
+      val clockingPiCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(64.W))))
+      val clockingMiscCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(26.W))))
       val terminationCtl = RegInit(VecInit(Seq.fill(params.numLanes + 3)(~0.U(6.W))))
       val vrefCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(64.W))))
 
@@ -420,8 +420,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       phy.io.driverPuCtl := driverPuCtl
       phy.io.driverPdCtl := driverPdCtl
       phy.io.driverEn := driverEn
+      phy.io.clockingPiCtl := clockingPiCtl
       phy.io.clockingMiscCtl := clockingMiscCtl
-      phy.io.clockingEnCtl := clockingEnCtl
       phy.io.terminationCtl := terminationCtl
       phy.io.vrefCtl := vrefCtl
 
