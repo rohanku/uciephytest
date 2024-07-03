@@ -503,8 +503,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
           )
       }) ++ (0 until params.numLanes + 2).flatMap((i: Int) => {
           Seq(
+            toRegField(clockingPiCtl(i)),
             toRegField(clockingMiscCtl(i)),
-            toRegField(clockingEnCtl(i)),
           )
       }) ++ (0 until params.numLanes + 3).flatMap((i: Int) => {
           Seq(
