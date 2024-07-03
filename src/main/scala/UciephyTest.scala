@@ -501,7 +501,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
             toRegField(driverPuCtl(i)),
             toRegField(driverEn(i)),
           )
-      }) ++ (0 until params.numLanes + 2).flatMap((i: Int) => {
+      }) ++ (0 until params.numLanes + 1).flatMap((i: Int) => {
           Seq(
             toRegField(clockingPiCtl(i)),
             toRegField(clockingMiscCtl(i)),
