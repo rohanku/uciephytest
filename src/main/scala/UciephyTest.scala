@@ -385,7 +385,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val driverPuCtl = RegInit(VecInit(Seq.fill(params.numLanes + 5)(0.U(6.W))))
       val driverPdCtl = RegInit(VecInit(Seq.fill(params.numLanes + 5)(0.U(6.W))))
       val driverEn = RegInit(VecInit(Seq.fill(params.numLanes + 5)(false.B)))
-      val clockingPiCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(64.W))))
+      val clockingPiCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(52.W))))
       val clockingMiscCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(26.W))))
       val terminationCtl = RegInit(VecInit(Seq.fill(params.numLanes + 3)(~0.U(6.W))))
       val vrefCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(64.W))))

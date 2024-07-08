@@ -214,14 +214,10 @@ class DriverPdControlIO extends Bundle {
 class PiClockingControlIO extends Bundle {
   val band_ctrl = Input(Bits(2.W))
   val band_ctrlb = Input(Bits(2.W))
-  val band_sel = Input(Bits(2.W))
-  val band_selb = Input(Bits(2.W))
   val mix_en = Input(Bits(16.W))
   val mix_enb = Input(Bits(16.W))
   val mux_en = Input(Bits(8.W))
   val mux_enb = Input(Bits(8.W))
-  val ph_sel = Input(Bits(2.W))
-  val ph_selb = Input(Bits(2.W))
 }
 
 class MiscClockingControlIO extends Bundle {

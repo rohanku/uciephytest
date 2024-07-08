@@ -61,7 +61,7 @@ class PhyIO(numLanes: Int = 2) extends Bundle {
   // When low, the driver enters a high-Z state.
   val driverEn = Input(Vec(numLanes + 5, Bool()))
   // Misc clocking control per lane (`numLanes` data lanes, 1 valid lane). 
-  val clockingPiCtl = Input(Vec(numLanes + 1, UInt(64.W)))
+  val clockingPiCtl = Input(Vec(numLanes + 1, UInt(52.W)))
   // Misc clocking control per lane (`numLanes` data lanes, 1 valid lane). 
   val clockingMiscCtl = Input(Vec(numLanes + 1, UInt(26.W)))
 
