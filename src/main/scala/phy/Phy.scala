@@ -42,42 +42,18 @@ class RefClkRx extends BlackBox {
 class ClkMuxIO extends Bundle {
   val in0 = Input(Bool())
   val in1 = Input(Bool())
-  val mux0_en0 = Input(Bool())
-  val mux0_en1 = Input(Bool())
-  val mux1_en0 = Input(Bool())
-  val mux1_en1 = Input(Bool())
+  val mux0_en_0 = Input(Bool())
+  val mux0_en_1 = Input(Bool())
+  val mux1_en_0 = Input(Bool())
+  val mux1_en_1 = Input(Bool())
   val out = Output(Bool())
   val outb = Output(Bool())
 }
 
-class ClkMux extends BlackBox with HasBlackBoxInline {
+class ClkMux extends BlackBox {
   val io = IO(new ClkMuxIO)
 
   override val desiredName = "clkmux_wrapper"
-
-  setInline("clkmux_wrapper.v",
-    """module clkmux_wrapper (
-      |    input  in0,
-      |    input  in1,
-      |    input mux0_en0,
-      |    input mux0_en1,
-      |    input mux1_en0, 
-      |    input mux1_en1, 
-      |    output out,
-      |    output outb
-      |);
-      |    clkmux clkmux_inner(
-      |       .\in<0> (in0),
-      |       .\in<1> (in1),
-      |       .\mux0_en<0> (mux0_en0),
-      |       .\mux0_en<1> (mux0_en1),
-      |       .\mux1_en<0> (mux1_en0),
-      |       .\mux1_en<1> (mux1_en1),
-      |       .out (out),
-      |       .outb (outb)
-      |    );
-      |endmodule
-    """.stripMargin)
 }
 
 class RstSyncIO extends Bundle {
@@ -157,17 +133,17 @@ class Phy(numLanes: Int = 2) extends Module {
   val clkMuxP = Module(new ClkMux)
   clkMuxP.io.in0 := refClkRx.io.vop
   clkMuxP.io.in1 := false.B
-  clkMuxP.io.mux0_en0 := true.B
-  clkMuxP.io.mux0_en1 := false.B
-  clkMuxP.io.mux1_en0 := false.B
-  clkMuxP.io.mux1_en1 := false.B
+  clkMuxP.io.mux0_en_0 := true.B
+  clkMuxP.io.mux0_en_1 := false.B
+  clkMuxP.io.mux1_en_0 := false.B
+  clkMuxP.io.mux1_en_1 := false.B
   val clkMuxN = Module(new ClkMux)
   clkMuxN.io.in0 := refClkRx.io.von
   clkMuxN.io.in1 := false.B
-  clkMuxN.io.mux0_en0 := true.B
-  clkMuxN.io.mux0_en1 := false.B
-  clkMuxN.io.mux1_en0 := false.B
-  clkMuxN.io.mux1_en1 := false.B
+  clkMuxN.io.mux0_en_0 := true.B
+  clkMuxN.io.mux0_en_1 := false.B
+  clkMuxN.io.mux1_en_0 := false.B
+  clkMuxN.io.mux1_en_1 := false.B
   val txClkP_wire = Wire(Bool())
   val txClkN_wire = Wire(Bool())
   txClkP_wire := clkMuxP.io.out
