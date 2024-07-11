@@ -56,7 +56,7 @@ class ClkMux extends BlackBox with HasBlackBoxInline {
   override val desiredName = "clkmux_wrapper"
 
   setInline("clkmux_wrapper.v",
-    """module (
+    """module clkmux_wrapper (
       |    input  in0,
       |    input  in1,
       |    input mux0_en0,
