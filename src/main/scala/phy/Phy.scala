@@ -39,6 +39,26 @@ class RefClkRx extends BlackBox {
   // io.von := io.vip
 }
 
+class ClkMuxIo extends Bundle {
+  val in0 = Input(Bool()).suggestName("in<0>")
+  val in1 = Input(Bool()).suggestName("in<1>")
+  val mux0_en0 = Input(Bool()).suggestName("mux0_en<0>")
+  val mux0_en1 = Input(Bool()).suggestName("mux0_en<1>")
+  val mux1_en0 = Input(Bool()).suggestName("mux1_en<0>")
+  val mux1_en1 = Input(Bool()).suggestName("mux1_en<1>")
+  val out = Output(Bool())
+  val outb = Output(Bool())
+}
+
+class ClkMux extends BlackBox {
+  val io = IO(new ClkMuxIO)
+
+  override val desiredName = "clkmux"
+
+  // io.vop := io.vin
+  // io.von := io.vip
+}
+
 class RstSyncIO extends Bundle {
   val rstbSync = Output(Reset())
 }
@@ -113,6 +133,20 @@ class Phy(numLanes: Int = 2) extends Module {
   val refClkRx = Module(new RefClkRx)
   refClkRx.io.vip := io.top.refClkP.asBool
   refClkRx.io.vin := io.top.refClkN.asBool
+  val clkMuxP = Module(new ClkMux)
+  clkMuxP.io.in0 := refClkRx.io.vop
+  clkMuxP.io.in1 := false.B
+  clkMuxP.io.mux0_en0 := true.B
+  clkMuxP.io.mux0_en1 := false.B
+  clkMuxP.io.mux1_en0 := false.B
+  clkMuxP.io.mux1_en1 := false.B
+  val clkMuxN = Module(new ClkMux)
+  clkMuxN.io.in0 := refClkRx.io.von
+  clkMuxN.io.in1 := false.B
+  clkMuxN.io.mux0_en0 := true.B
+  clkMuxN.io.mux0_en1 := false.B
+  clkMuxN.io.mux1_en0 := false.B
+  clkMuxN.io.mux1_en1 := false.B
   val txClkP = Module(new TxDriver)
   txClkP.io.din := refClkRx.io.vop
   io.top.txClkP := txClkP.io.dout.asClock
