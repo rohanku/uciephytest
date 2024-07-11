@@ -63,7 +63,7 @@ class ClkMux extends BlackBox with HasBlackBoxInline {
       |    input mux0_en1,
       |    input mux1_en0, 
       |    input mux1_en1, 
-      |    output out
+      |    output out,
       |    output outb
       |);
       |    clkmux clkmux_inner(
