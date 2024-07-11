@@ -53,7 +53,7 @@ class ClkMuxIO extends Bundle {
 class ClkMux extends BlackBox {
   val io = IO(new ClkMuxIO)
 
-  override val desiredName = "clkmux_wrapper"
+  override val desiredName = "clkmux"
 }
 
 class RstSyncIO extends Bundle {
