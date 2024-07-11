@@ -50,7 +50,7 @@ class ClkMuxIO extends Bundle {
   val outb = Output(Bool())
 }
 
-class ClkMux extends BlackBox {
+class ClkMux extends BlackBox with HasBlackBoxInline {
   val io = IO(new ClkMuxIO)
 
   override val desiredName = "clkmux_wrapper"
