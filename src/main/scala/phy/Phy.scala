@@ -40,12 +40,12 @@ class RefClkRx extends BlackBox {
 }
 
 class ClkMuxIO extends Bundle {
-  val in0 = Input(Bool()).suggestName("in<0>")
-  val in1 = Input(Bool()).suggestName("in<1>")
-  val mux0_en0 = Input(Bool()).suggestName("mux0_en<0>")
-  val mux0_en1 = Input(Bool()).suggestName("mux0_en<1>")
-  val mux1_en0 = Input(Bool()).suggestName("mux1_en<0>")
-  val mux1_en1 = Input(Bool()).suggestName("mux1_en<1>")
+  val in0 = Input(Bool())
+  val in1 = Input(Bool())
+  val mux0_en0 = Input(Bool())
+  val mux0_en1 = Input(Bool())
+  val mux1_en0 = Input(Bool())
+  val mux1_en1 = Input(Bool())
   val out = Output(Bool())
   val outb = Output(Bool())
 }
@@ -53,10 +53,31 @@ class ClkMuxIO extends Bundle {
 class ClkMux extends BlackBox {
   val io = IO(new ClkMuxIO)
 
-  override val desiredName = "clkmux"
+  override val desiredName = "clkmux_wrapper"
 
-  // io.vop := io.vin
-  // io.von := io.vip
+  setInline("clkmux_wrapper.v",
+    """module (
+      |    input  in0,
+      |    input  in1,
+      |    input mux0_en0,
+      |    input mux0_en1,
+      |    input mux1_en0, 
+      |    input mux1_en1, 
+      |    output out
+      |    output outb
+      |);
+      |    clkmux clkmux_inner(
+      |       .\in<0> (in0),
+      |       .\in<1> (in1),
+      |       .\mux0_en<0> (mux0_en0),
+      |       .\mux0_en<1> (mux0_en1),
+      |       .\mux1_en<0> (mux1_en0),
+      |       .\mux1_en<1> (mux1_en1),
+      |       .out (out),
+      |       .outb (outb)
+      |    );
+      |endmodule
+    """.stripMargin)
 }
 
 class RstSyncIO extends Bundle {
@@ -147,19 +168,23 @@ class Phy(numLanes: Int = 2) extends Module {
   clkMuxN.io.mux0_en1 := false.B
   clkMuxN.io.mux1_en0 := false.B
   clkMuxN.io.mux1_en1 := false.B
+  val txClkP_wire = Wire(Bool())
+  val txClkN_wire = Wire(Bool())
+  txClkP_wire := clkMuxP.io.out
+  txClkN_wire := clkMuxN.io.out
   val txClkP = Module(new TxDriver)
-  txClkP.io.din := refClkRx.io.vop
+  txClkP.io.din := txClkP_wire
   io.top.txClkP := txClkP.io.dout.asClock
   connectDriverCtl(txClkP.io.driver_ctl, numLanes + 1)
   val txClkN = Module(new TxDriver)
-  txClkN.io.din := refClkRx.io.von
+  txClkN.io.din := txClkN_wire
   io.top.txClkN := txClkN.io.dout.asClock
   connectDriverCtl(txClkN.io.driver_ctl, numLanes + 2)
 
   for (lane <- 0 to numLanes) {
     val txLane = Module(new TxLaneDll)
-    txLane.io.vinp := refClkRx.io.vop
-    txLane.io.vinn := refClkRx.io.von
+    txLane.io.vinp := txClkP_wire
+    txLane.io.vinn := txClkN_wire
     txLane.io.resetb := !reset.asBool
     connectDriverCtl(txLane.io.driver_ctl, lane)
     connectClockingCtl(txLane.io.clocking_ctl, lane)
