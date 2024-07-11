@@ -39,7 +39,7 @@ class RefClkRx extends BlackBox {
   // io.von := io.vip
 }
 
-class ClkMuxIo extends Bundle {
+class ClkMuxIO extends Bundle {
   val in0 = Input(Bool()).suggestName("in<0>")
   val in1 = Input(Bool()).suggestName("in<1>")
   val mux0_en0 = Input(Bool()).suggestName("mux0_en<0>")
