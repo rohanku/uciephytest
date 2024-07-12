@@ -387,5 +387,5 @@ class VerilogRxClkIO extends Bundle {
 class VerilogRxClk extends BlackBox {
   val io = IO(new VerilogRxClkIO)
 
-  override val desiredName = "rxclk"
+  override val desiredName = "rxclk_with_esd"
 }

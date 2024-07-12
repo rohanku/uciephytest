@@ -2063,5 +2063,5 @@ class VerilogTxDriverIO extends Bundle {
 class VerilogTxDriver extends BlackBox {
   val io = IO(new VerilogTxDriverIO)
 
-  override val desiredName = "txclk"
+  override val desiredName = "txclk_with_esd"
 }
