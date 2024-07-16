@@ -3,17 +3,32 @@ package uciephytest
 import chisel3._
 import chisel3.util._
 import freechips.rocketchip.prci._
-import freechips.rocketchip.subsystem.{BaseSubsystem, PBUS}
+import freechips.rocketchip.subsystem.{BaseSubsystem, PBUS, SBUS, CacheBlockBytes}
 import org.chipsalliance.cde.config.{Parameters, Field, Config}
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.regmapper.{HasRegMap, RegField, RegWriteFn}
 import freechips.rocketchip.tilelink._
 import uciephytest.phy.{Phy, PhyToTestIO}
+import freechips.rocketchip.util.{AsyncQueueParams}
+import testchipip.soc.{OBUS}
+import edu.berkeley.cs.ucie.digital.tilelink._
+import edu.berkeley.cs.ucie.digital.interfaces.{FdiParams, RdiParams, AfeParams}
+import edu.berkeley.cs.ucie.digital.protocol.{ProtocolLayerParams}
+import edu.berkeley.cs.ucie.digital.sideband.{SidebandParams}
+import edu.berkeley.cs.ucie.digital.logphy.{LinkTrainingParams}
 
 case class UciephyTestParams(
   address: BigInt = 0x4000,
   bufferDepthPerLane: Int = 10,
   numLanes: Int = 2,
+  protoParams: ProtocolLayerParams = ProtocolLayerParams(),
+  tlParams: TileLinkParams = TileLinkParams(address = 0x0000, addressRange = ((2L << 32)-1), configAddress = 0x7000, inwardQueueDepth = 2, outwardQueueDepth = 2),
+  fdiParams: FdiParams = FdiParams(width = 64, dllpWidth = 64, sbWidth = 32),
+  rdiParams: RdiParams = RdiParams(width = 64, sbWidth = 32),
+  sbParams: SidebandParams = SidebandParams(),
+  linkTrainingParams: LinkTrainingParams = LinkTrainingParams(),
+  afeParams: AfeParams = AfeParams(),
+  laneAsyncQueueParams: AsyncQueueParams = AsyncQueueParams()
 )
 
 case object UciephyTestKey extends Field[Option[UciephyTestParams]](None)
@@ -357,6 +372,19 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
   val node = TLRegisterNode(Seq(AddressSet(params.address, 4096-1)), device, "reg/control", beatBytes=beatBytes)
 
   val topIO = BundleBridgeSource(() => new UciephyTopIO(params.numLanes))
+
+  val uciTL = LazyModule(new UCITLFront(
+        tlParams    = params.tlParams,
+        protoParams = params.protoParams,
+        fdiParams   = params.fdiParams,
+        rdiParams   = params.rdiParams,
+        sbParams    = params.sbParams,
+        //myId        = myId,
+        linkTrainingParams = params.linkTrainingParams,
+        afeParams   = params.afeParams,
+        laneAsyncQueueParams = params.laneAsyncQueueParams
+      ))
+
   override lazy val module = new UciephyTestImpl
   class UciephyTestImpl extends Impl {
     val io = IO(new Bundle {})
@@ -504,12 +532,21 @@ trait CanHavePeripheryUciephyTest { this: BaseSubsystem =>
   private val portName = "uciephytest"
 
   private val pbus = locateTLBusWrapper(PBUS)
+  private val obus = locateTLBusWrapper(OBUS) //TODO: make parameterizable?
+  private val sbus = locateTLBusWrapper(SBUS)
 
   val uciephy = p(UciephyTestKey) match {
     case Some(params) => {
       val uciephy = LazyModule(new UciephyTestTL(params, pbus.beatBytes)(p))
       uciephy.clockNode := pbus.fixedClockNode
       pbus.coupleTo(portName) { uciephy.node := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
+      uciephy.uciTL.clockNode := sbus.fixedClockNode
+      obus.coupleTo(s"ucie_tl_man_port") { 
+          uciephy.uciTL.managerNode := TLWidthWidget(obus.beatBytes) := TLBuffer() := TLSourceShrinker(params.tlParams.sourceIDWidth) := TLFragmenter(obus.beatBytes, p(CacheBlockBytes)) := _ 
+      } //manager node because SBUS is making request?
+      sbus.coupleFrom(s"ucie_tl_cl_port") { _ := TLWidthWidget(sbus.beatBytes) := TLBuffer() := uciephy.uciTL.clientNode }
+      sbus.coupleTo(s"ucie_tl_ctrl_port") { uciephy.uciTL.regNode.node := TLWidthWidget(sbus.beatBytes) := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := _ }
+
       Some(uciephy)
     }
     case None => None
