@@ -75,8 +75,8 @@ class ClkMux extends BlackBox with HasBlackBoxInline {
 
 class RstSyncIO extends Bundle {
   val clk = Input(Bool())
-  val rstbAsync = Input(Reset())
-  val rstbSync = Output(Reset())
+  val rstbAsync = Input(Bool())
+  val rstbSync = Output(Bool())
 }
 
 class RstSync(sim: Boolean = true) extends BlackBox with HasBlackBoxInline {
