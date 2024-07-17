@@ -276,7 +276,7 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
     connectClockingCtl(txLane.io.clocking_ctl, lane)
   
     val rstSyncTxLane = Module(new RstSync(sim))
-    rstSyncTxLane.io.clk := txLane.io.divclk
+    rstSyncTxLane.io.clk := txLane.io.divclk.asBool
     rstSyncTxLane.io.rstbAsync := !reset.asBool
 
     val serializer = withClockAndReset(txLane.io.divclk, !rstSyncTxLane.io.rstbSync.asBool) { Module(new Ser32to16) }
@@ -302,7 +302,7 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
     rxLane.io.vref_ctl := io.vrefCtl(lane)
 
     val rstSyncRxLane = Module(new RstSync(sim))
-    rstSyncRxLane.io.clk := rxLane.io.divclk
+    rstSyncRxLane.io.clk := rxLane.io.divclk.asBool
     rstSyncRxLane.io.rstbAsync := !reset.asBool
 
     val deserializer = withClockAndReset(rxLane.io.divclk, !rstSyncRxLane.io.rstbSync.asBool) { Module(new Des16to32) }
