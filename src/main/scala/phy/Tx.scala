@@ -694,15 +694,15 @@ class TxLaneDll(sim: Boolean = false) extends RawModule {
   val io = IO(new TxLaneDllIO)
 
   if (sim) {
-    val ctr = withClockAndReset(io.injp.asClock, !io.resetb) { RegInit(0.U((log2Ceil(Phy.SerdesRatio) - 1).W)) }
+    val ctr = withClockAndReset(io.vinp.asClock, !io.resetb) { RegInit(0.U((log2Ceil(Phy.SerdesRatio) - 1).W)) }
     ctr := ctr + 1.U
 
-    val divClock = withClockAndReset(io.injp.asClock, !io.resetb) { RegInit(false.B) }
+    val divClock = withClockAndReset(io.vinp.asClock, !io.resetb) { RegInit(false.B) }
     when (ctr === 0.U) {
       divClock := !divClock
     }
 
-    val shiftReg = withClockAndReset(io.injp.asClock, !io.resetb) { RegInit(0.U(Phy.SerdesRatio.W)) }
+    val shiftReg = withClockAndReset(io.vinp.asClock, !io.resetb) { RegInit(0.U(Phy.SerdesRatio.W)) }
     shiftReg := shiftReg >> 1.U
     when (ctr === 0.U && !divClock) {
       shiftReg := io.din.asTypeOf(shiftReg)

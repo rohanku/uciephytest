@@ -18,8 +18,8 @@ class MainbandIO(numLanes: Int = 2) extends Bundle  {
 }
 
 class PhyToTestIO(numLanes: Int = 2) extends Bundle {
-  val tx = Flipped(DecoupledIO(MainbandIO(numLanes)))
-  val rx = DecoupledIO(MainbandIO(numLanes))
+  val tx = Flipped(DecoupledIO(MainbandIO(numLanes = numLanes)))
+  val rx = DecoupledIO(MainbandIO(numLanes = numLanes))
 }
 
 class RefClkRxIO extends Bundle {
@@ -29,7 +29,7 @@ class RefClkRxIO extends Bundle {
   val von = Output(Bool())
 }
 
-class RefClkRx extends BlackBox {
+class RefClkRx extends BlackBox with HasBlackBoxInline {
   val io = IO(new RefClkRxIO)
 
   override val desiredName = "refclkrx"
@@ -56,7 +56,7 @@ class ClkMuxIO extends Bundle {
   val outb = Output(Bool())
 }
 
-class ClkMux extends BlackBox {
+class ClkMux extends BlackBox with HasBlackBoxInline {
   val io = IO(new ClkMuxIO)
 
   override val desiredName = "ucie_clkmux"
@@ -123,11 +123,11 @@ class Ser32to16 extends Module {
 
   val shiftReg = RegInit(0.U(32.W))
   shiftReg := shiftReg >> 16.U
-  when (ctr === 0.U && !divClock) {
+  when (divClock) {
     shiftReg := io.din
   }
 
-  io.divclk := divClock.asClock
+  io.divClock := divClock.asClock
   io.dout := shiftReg(15, 0)
 }
 
@@ -147,7 +147,7 @@ class Des16to32 extends Module {
     RegNext(Reverse(shiftReg))
   }
 
-  io.divclk := divClock.asClock
+  io.divClock := divClock.asClock
   io.dout := outputReg
 }
 
@@ -244,7 +244,7 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
   val rstSyncTx = Module(new RstSync)
   rstSyncTx.io.rstbAsync := !reset.asBool
 
-  val txFifo = Module(new AsyncQueue(MainbandIO(numLanes), Phy.QueueParams))
+  val txFifo = Module(new AsyncQueue(MainbandIO(numLanes = numLanes), Phy.QueueParams))
   txFifo.io.enq.bits.data := io.test.tx.bits.data
   txFifo.io.enq.bits.valid := io.test.tx.bits.valid
   txFifo.io.enq.valid := io.test.tx.valid
@@ -257,7 +257,7 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
   val rstSyncRx = Module(new RstSync)
   rstSyncRx.io.rstbAsync := !reset.asBool
 
-  val rxFifo = Module(new AsyncQueue(MainbandIO(numLanes), Phy.QueueParams))
+  val rxFifo = Module(new AsyncQueue(MainbandIO(numLanes = numLanes), Phy.QueueParams))
   rxFifo.io.enq.valid := true.B
   rxFifo.io.enq_reset := !rstSyncRx.io.rstbAsync.asBool
   rxFifo.io.deq_clock := clock
@@ -314,8 +314,8 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
     deserializer.io.din := rxLane.io.dout
     // Use the first 16:32 deserializer's divided clock to clock the async FIFO and its reset synchronizer.
     if (lane == 0) {
-      rstSyncRx.io.clk := deserializer.io.divclk
-      rxFifo.io.enq_clock := deserializer.io.divclk
+      rstSyncRx.io.clk := deserializer.io.divClock
+      rxFifo.io.enq_clock := deserializer.io.divClock
     }
 
     if (lane < numLanes) {
