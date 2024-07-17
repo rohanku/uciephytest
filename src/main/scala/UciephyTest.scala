@@ -150,6 +150,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   val txReset = io.mmio.txFsmRst || reset.asBool
   val txState = withReset(txReset) { RegInit(TxTestState.idle) }
   val packetsEnqueued = withReset(txReset) { RegInit(0.U(bufferDepthPerLane.W)) }
+  val lfsr = withReset(txReset) { RegInit(0.U(bufferDepthPerLane.W)) }
 
   // RX registers
   val rxReset = io.mmio.rxFsmRst || reset.asBool
@@ -222,10 +223,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
 
   // RX logic
   
-  for (lane <- 0 until numLanes) {
-    io.phy.rxReceiveData(lane).ready := true.B
-  }
-  io.phy.rxReceiveValid.ready := true.B
+  io.phy.rx.ready := true.B
 
   // Dumb RX logic (only sets threshold to start recording)
   val recordingStarted = withReset(rxReset) { RegInit(false.B) }
@@ -241,7 +239,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   when (io.phy.rx.ready & io.phy.rx.valid) {
     // Store data in a register
     for (lane <- 0 until numLanes) {
-      prevDataBits(lane) := io.phy.rxReceiveData(lane).bits
+      prevDataBits(lane) := io.phy.rx.bits.data(lane)
     }
 
     val mask = Wire(UInt(Phy.DigitalBitsPerCycle.W))
