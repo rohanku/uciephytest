@@ -150,15 +150,28 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   val txReset = io.mmio.txFsmRst || reset.asBool
   val txState = withReset(txReset) { RegInit(TxTestState.idle) }
   val packetsEnqueued = withReset(txReset) { RegInit(0.U(bufferDepthPerLane.W)) }
-  val lfsrs = (0 until numLanes).map((i: Int) => {
+  val txLfsrs = (0 until numLanes).map((i: Int) => {
     val lfsr = Module(
       new FibonacciLFSR(
         Phy.DigitalBitsPerCycle,
-        taps = LFSR.tapsMaxPeriod.getOrElse(Phy.DigitalBitsPerCycle, LFSR.badWidth(width)).head,
+        taps = LFSR.tapsMaxPeriod.getOrElse(Phy.DigitalBitsPerCycle, LFSR.badWidth(Phy.DigitalBitsPerCycle)).head,
         step = Phy.DigitalBitsPerCycle,
       ),
     )
     lfsr.io.seed.bits := txLfsrSeed(i)
+    lfsr.io.seed.valid := txReset
+    lfsr.io.increment := false.B
+    lfsr
+  })
+  val rxLfsrs = (0 until numLanes).map((i: Int) => {
+    val lfsr = Module(
+      new FibonacciLFSR(
+        Phy.DigitalBitsPerCycle,
+        taps = LFSR.tapsMaxPeriod.getOrElse(Phy.DigitalBitsPerCycle, LFSR.badWidth(Phy.DigitalBitsPerCycle)).head,
+        step = Phy.DigitalBitsPerCycle,
+      ),
+    )
+    lfsr.io.seed.bits := rxLfsrSeed(i)
     lfsr.io.seed.valid := txReset
     lfsr.io.increment := false.B
     lfsr
@@ -219,8 +232,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
         }
         is (TxTestMode.lfsr) {
           for (lane <- 0 until numLanes) {
-            lfsrs(lane).io.increment := true.B
-            io.phy.tx.bits.data(lane) := lfsrs(lane).io.out
+            txLfsrs(lane).io.increment := true.B
+            io.phy.tx.bits.data(lane) := txLfsrs(lane).io.out
           }
           io.phy.tx.valid := true.B
         }
