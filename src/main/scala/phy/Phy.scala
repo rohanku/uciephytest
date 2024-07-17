@@ -127,7 +127,7 @@ class Ser32to16 extends Module {
     shiftReg := io.din
   }
 
-  io.divClock := divClock.asClock
+  io.divClock := divClock
   io.dout := shiftReg(15, 0)
 }
 
@@ -147,7 +147,7 @@ class Des16to32 extends Module {
     RegNext(Reverse(shiftReg))
   }
 
-  io.divClock := divClock.asClock
+  io.divClock := divClock
   io.dout := outputReg
 }
 
