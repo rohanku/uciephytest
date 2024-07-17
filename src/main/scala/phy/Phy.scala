@@ -285,7 +285,7 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
     // Use the first 32:16 serializer's divided clock to clock the async FIFO and its reset synchronizer.
     if (lane == 0) {
       rstSyncTx.io.clk := serializer.io.divClock
-      txFifo.io.deq_clock := serializer.io.divClock
+      txFifo.io.deq_clock := serializer.io.divClock.asClock
     }
 
     if (lane < numLanes) {
@@ -315,7 +315,7 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
     // Use the first 16:32 deserializer's divided clock to clock the async FIFO and its reset synchronizer.
     if (lane == 0) {
       rstSyncRx.io.clk := deserializer.io.divClock
-      rxFifo.io.enq_clock := deserializer.io.divClock
+      rxFifo.io.enq_clock := deserializer.io.divClock.asClock
     }
 
     if (lane < numLanes) {

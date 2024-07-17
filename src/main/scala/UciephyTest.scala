@@ -151,6 +151,18 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   val txState = withReset(txReset) { RegInit(TxTestState.idle) }
   val packetsEnqueued = withReset(txReset) { RegInit(0.U(bufferDepthPerLane.W)) }
   val lfsr = withReset(txReset) { RegInit(0.U(bufferDepthPerLane.W)) }
+  val LFSR = withReset(txReset) { Module(
+    new FibonacciLFSR(
+      23,
+      Set(23, 21, 18, 15, 7, 2, 1),
+      Set(23, 21, 16, 8, 5, 2),
+      Some(seed),
+      XOR,
+      width,
+      afeParams.mbSerializerRatio,
+      false,
+    ),
+  )}
 
   // RX registers
   val rxReset = io.mmio.rxFsmRst || reset.asBool
