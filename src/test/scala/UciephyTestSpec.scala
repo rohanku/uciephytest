@@ -8,7 +8,7 @@ class UciephyTestHarness(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extend
   val io = IO(new UciephyTestMMIO)
   val test = Module(new UciephyTest(bufferDepthPerLane, numLanes))
   io <> test.io.mmio
-  val phy = Module(new uciephytest.phy.Phy(numLanes))
+  val phy = Module(new uciephytest.phy.Phy(numLanes, sim = true))
   test.io.phy <> phy.io.test
   phy.io.top.refClkP := clock
   phy.io.top.refClkN := (!clock.asBool).asClock
@@ -30,7 +30,7 @@ class UciephyTestHarness(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extend
 class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "UCIe PHY tester"
   it should "work" in {
-    test(new UciephyTestHarness).withAnnotations(Seq(WriteVcdAnnotation)) { c =>
+    test(new UciephyTestHarness).withAnnotations(Seq(VcsBackendAnnotation, WriteVcdAnnotation)) { c =>
       c.clock.setTimeout(1000)
       // Set up chip
       c.reset.poke(true.B)

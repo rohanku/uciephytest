@@ -143,7 +143,7 @@ class UciephyTestIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Bun
   val phy = Flipped(new PhyToTestIO(numLanes))
 }
 
-class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Module {
+class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean = false) extends Module {
   val io = IO(new UciephyTestIO(bufferDepthPerLane, numLanes))
 
   // TX registers
