@@ -13,7 +13,7 @@ object Phy {
 }
 
 class MainbandIO(numLanes: Int = 2) extends Bundle  {
-  val data = Vec(numLanes + 1, UInt(Phy.DigitalBitsPerCycle.W))
+  val data = Vec(numLanes, UInt(Phy.DigitalBitsPerCycle.W))
   val valid = UInt(Phy.DigitalBitsPerCycle.W)
 }
 
