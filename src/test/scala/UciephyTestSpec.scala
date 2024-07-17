@@ -21,8 +21,7 @@ class UciephyTestHarness(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extend
   phy.io.driverPdCtl := 0.U.asTypeOf(phy.io.driverPdCtl)
   phy.io.driverEn := 0.U.asTypeOf(phy.io.driverEn)
   phy.io.clockingMiscCtl := 0.U.asTypeOf(phy.io.clockingMiscCtl)
-  phy.io.clockingEnCtl := 0.U.asTypeOf(phy.io.clockingEnCtl)
-  phy.io.clockingEnbCtl := 0.U.asTypeOf(phy.io.clockingEnbCtl)
+  phy.io.clockingPiCtl := 0.U.asTypeOf(phy.io.clockingPiCtl)
   phy.io.terminationCtl := 0.U.asTypeOf(phy.io.terminationCtl)
   phy.io.vrefCtl := 0.U.asTypeOf(phy.io.vrefCtl)
 }
