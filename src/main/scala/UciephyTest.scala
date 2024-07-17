@@ -2,6 +2,7 @@ package uciephytest
 
 import chisel3._
 import chisel3.util._
+import chisel3.util.random._
 import freechips.rocketchip.prci._
 import freechips.rocketchip.subsystem.{BaseSubsystem, PBUS}
 import org.chipsalliance.cde.config.{Parameters, Field, Config}
@@ -60,7 +61,6 @@ class UciephyTopIO(numLanes: Int = 2) extends Bundle {
 }
 
 class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Bundle {
-  // TODO: add additional control signals
   // TX CONTROL
   // =====================
   // The test mode of the TX.
@@ -150,19 +150,19 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   val txReset = io.mmio.txFsmRst || reset.asBool
   val txState = withReset(txReset) { RegInit(TxTestState.idle) }
   val packetsEnqueued = withReset(txReset) { RegInit(0.U(bufferDepthPerLane.W)) }
-  val lfsr = withReset(txReset) { RegInit(0.U(bufferDepthPerLane.W)) }
-  // val LFSR = withReset(txReset) { Module(
-  //   new FibonacciLFSR(
-  //     23,
-  //     Set(23, 21, 18, 15, 7, 2, 1),
-  //     Set(23, 21, 16, 8, 5, 2),
-  //     Some(seed),
-  //     XOR,
-  //     width,
-  //     afeParams.mbSerializerRatio,
-  //     false,
-  //   ),
-  // )}
+  val lfsrs = (0 until numLanes).map((i: Int) => {
+    val lfsr = Module(
+      new FibonacciLFSR(
+        Phy.DigitalBitsPerCycle,
+        taps = LFSR.tapsMaxPeriod.getOrElse(Phy.DigitalBitsPerCycle, LFSR.badWidth(width)).head,
+        step = Phy.DigitalBitsPerCycle,
+      ),
+    )
+    lfsr.io.seed.bits := txLfsrSeed(i)
+    lfsr.io.seed.valid := txReset
+    lfsr.io.increment := false.B
+    lfsr
+  })
 
   // RX registers
   val rxReset = io.mmio.rxFsmRst || reset.asBool
@@ -194,6 +194,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   io.phy.tx.bits.valid := 0.U
   io.phy.tx.valid := false.B
   io.phy.rx.ready := false.B
+  io.phy.txRst := txReset
+  io.phy.rxRst := rxReset
 
   // TX logic
   switch(txState) {
@@ -207,11 +209,22 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
       }
     }
     is(TxTestState.run) {
-      val dividedInputBuffer = inputBuffer.asTypeOf(Vec(numLanes, Vec((1 << bufferDepthPerLane) / Phy.DigitalBitsPerCycle, UInt(Phy.DigitalBitsPerCycle.W))))
-      for (lane <- 0 until numLanes) {
-        io.phy.tx.bits.data(lane) := dividedInputBuffer(lane)(packetsEnqueued)
+      switch (io.mmio.txTestMode) {
+        is (TxTestMode.manual) {
+          val dividedInputBuffer = inputBuffer.asTypeOf(Vec(numLanes, Vec((1 << bufferDepthPerLane) / Phy.DigitalBitsPerCycle, UInt(Phy.DigitalBitsPerCycle.W))))
+          for (lane <- 0 until numLanes) {
+            io.phy.tx.bits.data(lane) := dividedInputBuffer(lane)(packetsEnqueued)
+          }
+          io.phy.tx.valid := (packetsEnqueued << log2Ceil(Phy.DigitalBitsPerCycle)) < io.mmio.txBitsToSend
+        }
+        is (TxTestMode.lfsr) {
+          for (lane <- 0 until numLanes) {
+            lfsrs(lane).io.increment := true.B
+            io.phy.tx.bits.data(lane) := lfsrs(lane).io.out
+          }
+          io.phy.tx.valid := true.B
+        }
       }
-      io.phy.tx.valid := (packetsEnqueued << log2Ceil(Phy.DigitalBitsPerCycle)) < io.mmio.txBitsToSend
       switch(io.mmio.txValidFramingMode) {
         is (TxValidFramingMode.ucie) {
           io.phy.tx.bits.valid := VecInit((0 until Phy.DigitalBitsPerCycle/8).flatMap(_ => Seq.fill(4)(true.B) ++ Seq.fill(4)(false.B))).asUInt
