@@ -33,6 +33,14 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.clock.setTimeout(1000)
       // Set up chip
       c.reset.poke(true.B)
+
+      // Strobe reset
+      for (i <- 0 until 64) {
+        c.clock.step()
+      }
+
+      c.reset.poke(false.B)
+
       // Set up TX
       c.io.txDataChunkIn.initSource()
       c.io.txDataChunkIn.setSourceClock(c.clock)
@@ -49,7 +57,6 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       }
 
       // Check reset state
-      c.reset.poke(false.B)
       c.io.txFsmRst.poke(false.B)
       c.io.txTestState.expect(TxTestState.idle)
       c.io.txBitsSent.expect(0.U)
