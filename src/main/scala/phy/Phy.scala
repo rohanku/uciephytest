@@ -276,12 +276,8 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
     txLane.io.resetb := !reset.asBool
     connectDriverCtl(txLane.io.driver_ctl, lane)
     connectClockingCtl(txLane.io.clocking_ctl, lane)
-  
-    val rstSyncTxLane = Module(new RstSync(sim))
-    rstSyncTxLane.io.clk := txLane.io.divclk.asBool
-    rstSyncTxLane.io.rstbAsync := !reset.asBool
 
-    val serializer = withClockAndReset(txLane.io.divclk, !rstSyncTxLane.io.rstbSync.asBool) { Module(new Ser32to16) }
+    val serializer = withClockAndReset(txLane.io.divclk, reset.asAsyncReset) { Module(new Ser32to16) }
     serializer.io.din := { if (lane < numLanes) { txFifo.io.deq.bits.data(lane) } else { txFifo.io.deq.bits.valid } }
     txLane.io.din := serializer.io.dout.asTypeOf(txLane.io.din)
     // Use the first 32:16 serializer's divided clock to clock the async FIFO and its reset synchronizer.
@@ -303,11 +299,7 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
     rxLane.io.resetb := !reset.asBool
     rxLane.io.vref_ctl := io.vrefCtl(lane)
 
-    val rstSyncRxLane = Module(new RstSync(sim))
-    rstSyncRxLane.io.clk := rxLane.io.divclk.asBool
-    rstSyncRxLane.io.rstbAsync := !reset.asBool
-
-    val deserializer = withClockAndReset(rxLane.io.divclk, !rstSyncRxLane.io.rstbSync.asBool) { Module(new Des16to32) }
+    val deserializer = withClockAndReset(rxLane.io.divclk, reset.asAsyncReset) { Module(new Des16to32) }
     if (lane < numLanes) { 
       rxFifo.io.enq.bits.data(lane) := deserializer.io.dout
     } else { 
