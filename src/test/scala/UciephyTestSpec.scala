@@ -191,6 +191,12 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.rxValidStartThreshold.poke(4.U)
       c.io.rxFsmRst.poke(true.B)
 
+      // Set seeds.
+      for (lane <- 0 until 2) {
+        c.io.txLfsrSeed(lane).poke(1.U)
+        c.io.rxLfsrSeed(lane).poke(1.U)
+      }
+
       // Strobe reset
       for (i <- 0 until 64) {
         c.clock.step()
@@ -202,12 +208,6 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.txBitsSent.expect(0.U)
       c.io.rxBitsReceived.expect(0.U)
       c.io.rxFsmRst.poke(false.B)
-
-      // Set seeds.
-      for (lane <- 0 until 2) {
-        c.io.txLfsrSeed(lane).poke(1.U)
-        c.io.rxLfsrSeed(lane).poke(1.U)
-      }
 
       // Start transmitting data
       c.io.txExecute.poke(true.B)
@@ -228,16 +228,18 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       // Try a second transmission where the LFSR seeds to not match up
       c.io.txValidFramingMode.poke(TxValidFramingMode.simple)
       c.io.txFsmRst.poke(true.B)
-      c.clock.step()
-      c.io.txFsmRst.poke(false.B)
-      c.io.txTestState.expect(TxTestState.idle)
-      c.io.txBitsSent.expect(0.U)
 
       // Set seeds.
       c.io.txLfsrSeed(0).poke(3.U)
       c.io.rxLfsrSeed(0).poke(3.U)
       c.io.txLfsrSeed(1).poke(1.U)
       c.io.rxLfsrSeed(1).poke(3.U)
+
+      c.clock.step()
+
+      c.io.txFsmRst.poke(false.B)
+      c.io.txTestState.expect(TxTestState.idle)
+      c.io.txBitsSent.expect(0.U)
 
       // Set up RX
       c.io.rxValidStartThreshold.poke(31.U)
