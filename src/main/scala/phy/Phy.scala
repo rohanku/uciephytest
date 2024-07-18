@@ -143,7 +143,7 @@ class Des16to32 extends Module {
   divClock := !divClock
 
   val shiftReg = RegInit(0.U(32.W))
-  shiftReg := shiftReg << 16.U | io.din
+  shiftReg := shiftReg << 16.U | Reverse(io.din)
 
   val outputReg = withClock(divClock.asClock) {
     RegNext(Reverse(shiftReg))
