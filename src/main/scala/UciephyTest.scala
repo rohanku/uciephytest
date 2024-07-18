@@ -68,7 +68,7 @@ class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends B
   // The valid framing mode of the TX.
   val txValidFramingMode = Input(TxValidFramingMode())
   // Seed of the TX LFSR.
-  val txLfsrSeed = Input(Vec(numLanes, UInt(Phy.SerdesRatio.W)))
+  val txLfsrSeed = Input(Vec(numLanes, UInt(Phy.DigitalBitsPerCycle.W)))
   // Repeats the TX manual transmission indefinitely. Useful for sending a long custom pattern
   // and verifying the `rxSignature`.
   val txManualRepeat = Input(Bool())
@@ -158,7 +158,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
         step = Phy.DigitalBitsPerCycle,
       ),
     )
-    lfsr.io.seed.bits := io.mmio.txLfsrSeed(i)
+    lfsr.io.seed.bits := io.mmio.txLfsrSeed(i).asTypeOf(lfsr.io.seed.bits)
     lfsr.io.seed.valid := txReset
     lfsr.io.increment := false.B
     lfsr
@@ -171,7 +171,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
         step = Phy.DigitalBitsPerCycle,
       ),
     )
-    lfsr.io.seed.bits := io.mmio.rxLfsrSeed(i)
+    lfsr.io.seed.bits := io.mmio.rxLfsrSeed(i).asTypeOf(lfsr.io.seed.bits)
     lfsr.io.seed.valid := txReset
     lfsr.io.increment := false.B
     lfsr
