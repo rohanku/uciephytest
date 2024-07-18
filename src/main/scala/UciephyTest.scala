@@ -254,7 +254,9 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
             packetsEnqueued := packetsEnqueued + 1.U
           }
           is (TxTestMode.lfsr) {
-            txLfsrs(lane).io.increment := true.B
+            for (lane <- 0 until numLanes) {
+              txLfsrs(lane).io.increment := true.B
+            }
           }
         }
       }
