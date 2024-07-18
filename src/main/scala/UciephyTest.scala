@@ -234,7 +234,6 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
         }
         is (TxTestMode.lfsr) {
           for (lane <- 0 until numLanes) {
-            txLfsrs(lane).io.increment := true.B
             io.phy.tx.bits.data(lane) := txLfsrs(lane).io.out.asUInt(31, 0).asTypeOf(io.phy.tx.bits.data(lane))
           }
           io.phy.tx.valid := true.B
@@ -250,7 +249,14 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
       }
       
       when (io.phy.tx.valid && io.phy.tx.ready) {
-        packetsEnqueued := packetsEnqueued + 1.U
+        switch (io.mmio.txTestMode) {
+          is (TxTestMode.manual) {
+            packetsEnqueued := packetsEnqueued + 1.U
+          }
+          is (TxTestMode.lfsr) {
+            txLfsrs(lane).io.increment := true.B
+          }
+        }
       }
 
       when (!io.phy.tx.valid) {
