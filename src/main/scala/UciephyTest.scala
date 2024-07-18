@@ -154,7 +154,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
     val lfsr = Module(
       new FibonacciLFSR(
         Phy.DigitalBitsPerCycle,
-        taps = LFSR.tapsMaxPeriod.getOrElse(Phy.DigitalBitsPerCycle, LFSR.badWidth(Phy.DigitalBitsPerCycle)).head,
+        taps = LFSR.tapsMaxPeriod.get(Phy.DigitalBitsPerCycle).get.head,
         step = Phy.DigitalBitsPerCycle,
       ),
     )
@@ -167,7 +167,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
     val lfsr = Module(
       new FibonacciLFSR(
         Phy.DigitalBitsPerCycle,
-        taps = LFSR.tapsMaxPeriod.getOrElse(Phy.DigitalBitsPerCycle, LFSR.badWidth(Phy.DigitalBitsPerCycle)).head,
+        taps = LFSR.tapsMaxPeriod.getOrElse(Phy.DigitalBitsPerCycle).get.head,
         step = Phy.DigitalBitsPerCycle,
       ),
     )
