@@ -28,7 +28,7 @@ class UciephyTestHarness(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extend
 
 class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "UCIe PHY tester"
-  it should "work" in {
+  it should "work in manual test mode" in {
     test(new UciephyTestHarness).withAnnotations(Seq(VcsBackendAnnotation, WriteFsdbAnnotation)) { c =>
       c.clock.setTimeout(1000)
       // Set up chip
@@ -145,6 +145,121 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       }
       c.io.txTestState.expect(TxTestState.done)
       c.io.txBitsSent.expect(96.U)
+
+      // Validate received data
+      c.io.rxDataLane.poke(0.U)
+      c.io.rxDataOffset.poke(0.U)
+      c.clock.step()
+      c.io.rxDataChunk.expect("h1234_5678_9abc_def0".U)
+      c.io.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
+      c.io.rxDataOffset.poke(1.U)
+      c.clock.step()
+      assert((c.io.rxDataChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("cafef00d", 16))
+      assert((c.io.rxValidChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("ffffffff", 16))
+      c.io.rxDataLane.poke(1.U)
+      c.io.rxDataOffset.poke(0.U)
+      c.clock.step()
+      c.io.rxDataChunk.expect("h0fed_cba9_8765_4321".U)
+      c.io.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
+      c.io.rxDataOffset.poke(1.U)
+      c.clock.step()
+      assert((c.io.rxDataChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("deeddea1", 16))
+      assert((c.io.rxValidChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("ffffffff", 16))
+    }
+  }
+
+  it should "work in lfsr test mode" in {
+    test(new UciephyTestHarness).withAnnotations(Seq(VcsBackendAnnotation, WriteFsdbAnnotation)) { c =>
+      c.clock.setTimeout(1000)
+      // Set up chip
+      c.reset.poke(true.B)
+
+      // Strobe reset
+      for (i <- 0 until 64) {
+        c.clock.step()
+      }
+
+      c.reset.poke(false.B)
+
+      // Set up TX
+      c.io.txDataChunkIn.initSource()
+      c.io.txDataChunkIn.setSourceClock(c.clock)
+      c.io.txTestMode.poke(TxTestMode.lfsr)
+      c.io.txValidFramingMode.poke(TxValidFramingMode.ucie)
+      c.io.txFsmRst.poke(true.B)
+      // Set up RX
+      c.io.rxValidStartThreshold.poke(4.U)
+      c.io.rxFsmRst.poke(true.B)
+
+      // Strobe reset
+      for (i <- 0 until 64) {
+        c.clock.step()
+      }
+
+      // Check reset state
+      c.io.txFsmRst.poke(false.B)
+      c.io.txTestState.expect(TxTestState.idle)
+      c.io.txBitsSent.expect(0.U)
+      c.io.rxBitsReceived.expect(0.U)
+      c.io.rxFsmRst.poke(false.B)
+
+      // Set seeds.
+      for (lane <- 0 until 2) {
+        c.io.txLfsrSeed(lane).poke(1.U)
+        c.io.rxLfsrSeed(lane).poke(1.U)
+      }
+
+      // Start transmitting data
+      c.io.txExecute.poke(true.B)
+      c.clock.step()
+      c.io.txExecute.poke(false.B)
+      c.io.txTestState.expect(TxTestState.run)
+
+      // Wait until 256 bits are received
+      while (c.io.rxBitsReceived.peek().litValue < 256) {
+        c.clock.step()
+      }
+
+      // Validate no bit errors
+      for (lane <- 0 until 2) {
+        c.io.rxBitErrors(lane).expect(0.U)
+      }
+
+      // Try a second transmission where the LFSR seeds to not match up
+      c.io.txValidFramingMode.poke(TxValidFramingMode.simple)
+      c.io.txFsmRst.poke(true.B)
+      c.clock.step()
+      c.io.txFsmRst.poke(false.B)
+      c.io.txTestState.expect(TxTestState.idle)
+      c.io.txBitsSent.expect(0.U)
+
+      // Set seeds.
+      c.io.txLfsrSeed(0).poke(3.U)
+      c.io.rxLfsrSeed(0).poke(3.U)
+      c.io.txLfsrSeed(1).poke(1.U)
+      c.io.rxLfsrSeed(1).poke(3.U)
+
+      // Set up RX
+      c.io.rxValidStartThreshold.poke(31.U)
+      c.io.rxFsmRst.poke(true.B)
+      c.clock.step()
+      c.io.rxBitsReceived.expect(0.U)
+      c.io.rxFsmRst.poke(false.B)
+      c.clock.step()
+
+      // Start transmitting data
+      c.io.txExecute.poke(true.B)
+      c.clock.step()
+      c.io.txExecute.poke(false.B)
+      c.io.txTestState.expect(TxTestState.run)
+
+      // Wait until all bits are received
+      while (c.io.rxBitsReceived.peek().litValue < 256) {
+        c.clock.step()
+      }
+      c.io.rxBitErrors(0).expect(0.U)
+      assert(c.io.rxBitErrors(1).peek().litValue > 0)
+      
 
       // Validate received data
       c.io.rxDataLane.poke(0.U)

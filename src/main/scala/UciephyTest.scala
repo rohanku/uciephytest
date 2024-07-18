@@ -68,7 +68,7 @@ class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends B
   // The valid framing mode of the TX.
   val txValidFramingMode = Input(TxValidFramingMode())
   // Seed of the TX LFSR.
-  val txLfsrSeed = Input(Vec(numLanes, UInt(Phy.DigitalBitsPerCycle.W)))
+  val txLfsrSeed = Input(Vec(numLanes, UInt((2 * Phy.DigitalBitsPerCycle).W)))
   // Repeats the TX manual transmission indefinitely. Useful for sending a long custom pattern
   // and verifying the `rxSignature`.
   val txManualRepeat = Input(Bool())
@@ -100,7 +100,7 @@ class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends B
   // RX CONTROL
   // ====================
   // Seed of the RX LFSR used for detecting bit errors. Should be the same as the TX seed of the transmitting chiplet.
-  val rxLfsrSeed = Input(Vec(numLanes, UInt(Phy.SerdesRatio.W)))
+  val rxLfsrSeed = Input(Vec(numLanes, UInt((2 * Phy.DigitalBitsPerCycle).W)))
   // The number of bit periods that valid must be high for the transmission to be considered valid. By default,
   // this is 4 since UCIe specifies asserting valid for 4 bit periods then de-asserting valid for 4 bit periods
   // during transmission. If the valid transmission is buggy, can set this to 1 such that data is received as long
@@ -116,9 +116,9 @@ class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends B
   val rxFsmRst = Input(Bool())
   // The number of bits received since the last FSM reset. Only the first 2^bufferDepthPerLane bits received 
   // per lane are stored in the output buffer.
-  val rxBitsReceived = Output(UInt(bufferDepthPerLane.W))
-  // The number of bit errors since the last FSM reset. Only applicable in `TxTestMode.lsfr`.
-  val rxBitErrors = Output(UInt(bufferDepthPerLane.W))
+  val rxBitsReceived = Output(UInt((bufferDepthPerLane + 1).W))
+  // The number of bit errors per lane since the last FSM reset. Only applicable in `TxTestMode.lsfr`.
+  val rxBitErrors = Output(Vec(numLanes, UInt((bufferDepthPerLane + 1).W)))
   // A MISR derived from the bits received since the last FSM reset.
   val rxSignature = Output(UInt(32.W))
   // Data chunk lane in output buffer.
@@ -153,8 +153,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   val txLfsrs = (0 until numLanes).map((i: Int) => {
     val lfsr = Module(
       new FibonacciLFSR(
-        Phy.DigitalBitsPerCycle,
-        taps = LFSR.tapsMaxPeriod.get(Phy.DigitalBitsPerCycle).get.head,
+        2 * Phy.DigitalBitsPerCycle,
+        taps = LFSR.tapsMaxPeriod.get(2 * Phy.DigitalBitsPerCycle).get.head,
         step = Phy.DigitalBitsPerCycle,
       ),
     )
@@ -166,8 +166,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   val rxLfsrs = (0 until numLanes).map((i: Int) => {
     val lfsr = Module(
       new FibonacciLFSR(
-        Phy.DigitalBitsPerCycle,
-        taps = LFSR.tapsMaxPeriod.get(Phy.DigitalBitsPerCycle).get.head,
+        2 * Phy.DigitalBitsPerCycle,
+        taps = LFSR.tapsMaxPeriod.get(2 * Phy.DigitalBitsPerCycle).get.head,
         step = Phy.DigitalBitsPerCycle,
       ),
     )
@@ -180,7 +180,9 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   // RX registers
   val rxReset = io.mmio.rxFsmRst || reset.asBool
   val rxBitsReceived = withReset(rxReset) { RegInit(0.U((bufferDepthPerLane + 1).W)) }
-  val rxBitErrors = withReset(rxReset) { RegInit(0.U((bufferDepthPerLane + 1).W)) }
+  val rxBitErrors = withReset(rxReset) { RegInit(VecInit(Seq.fill(numLanes)(0.U((bufferDepthPerLane + 1).W)))) }
+  val rxPrevLfsrs = withReset(rxReset) { RegInit(VecInit(Seq.fill(numLanes)(0.U((bufferDepthPerLane + 1).W)))) }
+  
   val rxSignature = withReset(rxReset) { RegInit(0.U(32.W)) }
 
   val totalChunks = numLanes * (1 << (bufferDepthPerLane - 6))
@@ -233,7 +235,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
         is (TxTestMode.lfsr) {
           for (lane <- 0 until numLanes) {
             txLfsrs(lane).io.increment := true.B
-            io.phy.tx.bits.data(lane) := txLfsrs(lane).io.out.asTypeOf(io.phy.tx.bits.data(lane))
+            io.phy.tx.bits.data(lane) := txLfsrs(lane).io.out.asUInt(31, 0).asTypeOf(io.phy.tx.bits.data(lane))
           }
           io.phy.tx.valid := true.B
         }
@@ -324,6 +326,12 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
         keep := Cat(outputDataBuffer(lane)(rxBlock1), outputDataBuffer(lane)(rxBlock0))
         val newData = Wire(UInt(128.W))
         newData := (prev & prevMask) | (data & dataMask) | (keep & keepMask)
+
+        // Compare data against LFSR and increment LFSR.
+        rxLfsrs(lane).io.increment := true.B
+        val errors = PopCount((rxLfsrs(lane).io.out.asUInt & (prevMask | dataMask)) ^ ((prev & prevMask) | (data & dataMask)))
+        rxBitErrors(lane) := rxBitErrors(lane) + errors
+        
         outputDataBuffer(lane)(rxBlock0) := newData(63, 0)
         outputDataBuffer(lane)(rxBlock1) := newData(127, 64)
       }
@@ -349,6 +357,15 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
           keep := Cat(outputDataBuffer(lane)(rxBlock1), outputDataBuffer(lane)(rxBlock0))
           val newData = Wire(UInt(128.W))
           newData := (data & dataMask) | (keep & keepMask)
+
+          // Compare data against LFSR and increment LFSR.
+          val lfsrOffset = rxBitsReceivedOffset % Phy.DigitalBitsPerCycle.U
+          rxLfsrs(lane).io.increment := (Phy.DigitalBitsPerCycle.U - startIdx +& rxBitsReceivedOffset) >= 32.U
+          val lfsrData = ((data & dataMask) >> rxBitsReceivedOffset) << lfsrOffset
+          val lfsrMask = (dataMask >> rxBitsReceivedOffset) << lfsrOffset
+          val errors = PopCount((rxLfsrs(lane).io.out.asUInt & lfsrMask) ^ lfsrData)
+          rxBitErrors(lane) := rxBitErrors(lane) + errors
+
           outputDataBuffer(lane)(rxBlock0) := newData(63, 0)
           outputDataBuffer(lane)(rxBlock1) := newData(127, 64)
         }
@@ -358,6 +375,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
         keep := Cat(outputValidBuffer(rxBlock1), outputValidBuffer(rxBlock0))
         val newData = Wire(UInt(128.W))
         newData := (data & dataMask) | (keep & keepMask)
+
         outputValidBuffer(rxBlock0) := newData(63, 0)
         outputValidBuffer(rxBlock1) := newData(127, 64)
         rxBitsReceived := rxBitsReceived +& Phy.DigitalBitsPerCycle.U - startIdx
@@ -389,7 +407,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       // MMIO registers.
       val txTestMode = RegInit(0.U(1.W))
       val txValidFramingMode = RegInit(0.U(1.W))
-      val txLfsrSeed = RegInit(VecInit(Seq.fill(params.numLanes)(0.U(Phy.SerdesRatio.W))))
+      val txLfsrSeed = RegInit(VecInit(Seq.fill(params.numLanes)(1.U(Phy.SerdesRatio.W))))
       val txManualRepeat = RegInit(0.U(1.W))
       val txFsmRst = Wire(DecoupledIO(UInt(1.W)))
       val txExecute = Wire(DecoupledIO(UInt(1.W)))
@@ -397,7 +415,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val txDataLane = RegInit(0.U(log2Ceil(params.numLanes).W))
       val txDataOffset = RegInit(0.U((params.bufferDepthPerLane - 6).W))
       val txPermute = RegInit(VecInit((0 until Phy.SerdesRatio).map(_.U(log2Ceil(Phy.SerdesRatio).W))))
-      val rxLfsrSeed = RegInit(VecInit(Seq.fill(params.numLanes)(0.U(Phy.SerdesRatio.W))))
+      val rxLfsrSeed = RegInit(VecInit(Seq.fill(params.numLanes)(1.U(Phy.SerdesRatio.W))))
       val rxValidStartThreshold = RegInit(4.U(log2Ceil(Phy.DigitalBitsPerCycle).W))
       val rxValidStopThreshold = RegInit(4.U(log2Ceil(Phy.DigitalBitsPerCycle).W))
       val rxFsmRst = Wire(DecoupledIO(UInt(1.W)))
@@ -482,12 +500,13 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         RegField.r(2, test.io.mmio.txTestState.asUInt),
       ) ++ (0 until params.numLanes).map((i: Int) => {
           toRegField(rxLfsrSeed(i))
+      }) ++ (0 until params.numLanes).map((i: Int) => {
+        RegField.r(params.bufferDepthPerLane + 1, test.io.mmio.rxBitErrors(i))
       }) ++ Seq(
         toRegField(rxValidStartThreshold),
         toRegField(rxValidStartThreshold),
         RegField.w(1, rxFsmRst),
         RegField.r(params.bufferDepthPerLane, test.io.mmio.rxBitsReceived),
-        RegField.r(params.bufferDepthPerLane, test.io.mmio.rxBitErrors),
         RegField.r(32, test.io.mmio.rxSignature),
         toRegField(rxDataLane),
         toRegField(rxDataOffset),
