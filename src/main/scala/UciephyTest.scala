@@ -158,7 +158,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
         step = Phy.DigitalBitsPerCycle,
       ),
     )
-    lfsr.io.seed.bits := txLfsrSeed(i)
+    lfsr.io.seed.bits := io.mmio.txLfsrSeed(i)
     lfsr.io.seed.valid := txReset
     lfsr.io.increment := false.B
     lfsr
@@ -167,11 +167,11 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
     val lfsr = Module(
       new FibonacciLFSR(
         Phy.DigitalBitsPerCycle,
-        taps = LFSR.tapsMaxPeriod.getOrElse(Phy.DigitalBitsPerCycle).get.head,
+        taps = LFSR.tapsMaxPeriod.get(Phy.DigitalBitsPerCycle).get.head,
         step = Phy.DigitalBitsPerCycle,
       ),
     )
-    lfsr.io.seed.bits := rxLfsrSeed(i)
+    lfsr.io.seed.bits := io.mmio.rxLfsrSeed(i)
     lfsr.io.seed.valid := txReset
     lfsr.io.increment := false.B
     lfsr
