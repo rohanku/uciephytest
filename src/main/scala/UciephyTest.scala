@@ -27,7 +27,11 @@ case class UciephyTestParams(
   rdiParams: RdiParams = RdiParams(width = 64, sbWidth = 32),
   sbParams: SidebandParams = SidebandParams(),
   linkTrainingParams: LinkTrainingParams = LinkTrainingParams(),
-  afeParams: AfeParams = AfeParams(),
+  afeParams: AfeParams = AfeParams(sbSerializerRatio = 1,
+                                    sbWidth = 1,
+                                    mbSerializerRatio = 16,
+                                    mbLanes = 16,
+                                    STANDALONE = false),
   laneAsyncQueueParams: AsyncQueueParams = AsyncQueueParams()
 )
 
@@ -148,6 +152,8 @@ class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends B
   val rxValidChunk = Output(UInt(64.W))
   // Permutation of data read from the deserializer, in case deserializer timing is off.
   val rxPermute = Input(Vec(Phy.SerdesRatio, UInt(log2Ceil(Phy.SerdesRatio).W)))
+  // Use the full UCIe digital stack.
+  val ucieStack = Input(Bool())
 }
 
 class UciephyTestIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Bundle {
@@ -417,6 +423,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val clockingMiscCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(26.W))))
       val terminationCtl = RegInit(VecInit(Seq.fill(params.numLanes + 3)(~0.U(6.W))))
       val vrefCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(64.W))))
+      val ucieStack = RegInit(false.B)
 
       txFsmRst.ready := true.B
       txExecute.ready := true.B
@@ -439,10 +446,18 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       test.io.mmio.rxDataLane := rxDataLane
       test.io.mmio.rxDataOffset := rxDataOffset
       test.io.mmio.rxPermute := rxPermute
+      test.io.mmio.ucieStack := ucieStack
 
       // PHY
       val phy = Module(new Phy(params.numLanes))
-      phy.io.test <> test.io.phy
+      when (ucieStack) { 
+        phy.io.test.txTransmitData := uciTL.module.io.phyAfe.get.txData
+        uciTL.module.io.phyAfe.get.rxData := phy.io.test.rxReceiveData
+        // TODO: Rohan, this needs the sideband connections also
+        // TODO: you also need to match the interfaces
+      }.otherwise {
+        phy.io.test <> test.io.phy
+      }
       topIO.out(0)._1 <> phy.io.top
 
       phy.io.driverPuCtl := driverPuCtl
@@ -520,7 +535,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
           Seq(
             toRegField(vrefCtl(i)),
           )
-      })
+      }) ++ Seq(toRegField(ucieStack))
 
       node.regmap(mmioRegs.zipWithIndex.map({ case (f, i) => i * 8 -> Seq(f) }): _*)
     }
