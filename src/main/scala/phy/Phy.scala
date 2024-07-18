@@ -279,7 +279,7 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
   
     val rstSyncTxLane = Module(new RstSync(sim))
     rstSyncTxLane.io.clk := txLane.io.divclk.asBool
-    rstSyncTxLane.io.rstbAsync := !io.test.txRst.asBool
+    rstSyncTxLane.io.rstbAsync := !reset.asBool
 
     val serializer = withClockAndReset(txLane.io.divclk, !rstSyncTxLane.io.rstbSync.asBool) { Module(new Ser32to16) }
     serializer.io.din := { if (lane < numLanes) { txFifo.io.deq.bits.data(lane) } else { txFifo.io.deq.bits.valid } }
@@ -305,7 +305,7 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
 
     val rstSyncRxLane = Module(new RstSync(sim))
     rstSyncRxLane.io.clk := rxLane.io.divclk.asBool
-    rstSyncRxLane.io.rstbAsync := !io.test.rxRst.asBool
+    rstSyncRxLane.io.rstbAsync := !reset.asBool
 
     val deserializer = withClockAndReset(rxLane.io.divclk, !rstSyncRxLane.io.rstbSync.asBool) { Module(new Des16to32) }
     if (lane < numLanes) { 
