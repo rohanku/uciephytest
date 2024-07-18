@@ -337,7 +337,10 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
 
         // Compare data against LFSR and increment LFSR.
         rxLfsrs(lane).io.increment := true.B
-        val errors = PopCount((rxLfsrs(lane).io.out.asUInt & (prevMask | dataMask)) ^ ((prev & prevMask) | (data & dataMask)))
+        val maskedLfsr = rxLfsrs(lane).io.out.asUInt & (prevMask | dataMask)
+        val maskedData = (prev & prevMask) | (data & dataMask)
+        val errorXor = maskedLfsr ^ maskedData
+        val errors = PopCount(errorXor)
         rxBitErrors(lane) := rxBitErrors(lane) + errors
         
         outputDataBuffer(lane)(rxBlock0) := newData(63, 0)
@@ -371,7 +374,9 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
           rxLfsrs(lane).io.increment := (Phy.DigitalBitsPerCycle.U - startIdx +& rxBitsReceivedOffset) >= 32.U
           val lfsrData = ((data & dataMask) >> rxBitsReceivedOffset) << lfsrOffset
           val lfsrMask = (dataMask >> rxBitsReceivedOffset) << lfsrOffset
-          val errors = PopCount((rxLfsrs(lane).io.out.asUInt & lfsrMask) ^ lfsrData)
+          val maskedLfsr = rxLfsrs(lane).io.out.asUInt & lfsrMask
+          val errorXor = lfsrData ^ maskedLfsr
+          val errors = PopCount(errorXor)
           rxBitErrors(lane) := rxBitErrors(lane) + errors
 
           outputDataBuffer(lane)(rxBlock0) := newData(63, 0)
