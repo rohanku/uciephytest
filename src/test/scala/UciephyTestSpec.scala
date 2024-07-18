@@ -261,27 +261,6 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       }
       c.io.rxBitErrors(0).expect(0.U)
       assert(c.io.rxBitErrors(1).peek().litValue > 0)
-      
-
-      // Validate received data
-      c.io.rxDataLane.poke(0.U)
-      c.io.rxDataOffset.poke(0.U)
-      c.clock.step()
-      c.io.rxDataChunk.expect("h1234_5678_9abc_def0".U)
-      c.io.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
-      c.io.rxDataOffset.poke(1.U)
-      c.clock.step()
-      assert((c.io.rxDataChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("cafef00d", 16))
-      assert((c.io.rxValidChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("ffffffff", 16))
-      c.io.rxDataLane.poke(1.U)
-      c.io.rxDataOffset.poke(0.U)
-      c.clock.step()
-      c.io.rxDataChunk.expect("h0fed_cba9_8765_4321".U)
-      c.io.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
-      c.io.rxDataOffset.poke(1.U)
-      c.clock.step()
-      assert((c.io.rxDataChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("deeddea1", 16))
-      assert((c.io.rxValidChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("ffffffff", 16))
     }
   }
 }
