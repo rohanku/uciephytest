@@ -233,7 +233,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
         is (TxTestMode.lfsr) {
           for (lane <- 0 until numLanes) {
             txLfsrs(lane).io.increment := true.B
-            io.phy.tx.bits.data(lane) := txLfsrs(lane).io.out
+            io.phy.tx.bits.data(lane) := txLfsrs(lane).io.out.asTypeOf(io.phy.tx.bits.data(lane))
           }
           io.phy.tx.valid := true.B
         }
