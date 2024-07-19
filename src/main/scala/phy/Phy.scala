@@ -107,7 +107,7 @@ class RstSync(sim: Boolean = true) extends BlackBox with HasBlackBoxInline {
       | b15fqn003hn1n04x5 xinst0(.clk(clk), .d(1'b1), .o(rstb_int0), .rb(rstbAsync));
       | b15lyn083hn1n04x5 xinst1(.clkb(clk), .d(rstb_int0), .o(rstb_int1), .rb(rstbAsync));
       | b15lyn003hn1n16x5 xinst2(.clk(clk), .d(rstb_int1), .o(rstb_int2), .rb(rstbAsync));
-      | b15bfn000an1n80x5 xinst3(.a(rstb_int2), .o(rstbSync));
+      | b15bfn000an1n80a5 xinst3(.a(rstb_int2), .o(rstbSync));
       |endmodule
       """.stripMargin)
   }
