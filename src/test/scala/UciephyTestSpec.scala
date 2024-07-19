@@ -3,6 +3,7 @@ package uciephytest
 import chisel3._
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
+import chisel3.experimental.VecLiterals._
 
 class UciephyTestHarness(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Module {
   val io = IO(new Bundle {
@@ -48,9 +49,9 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       // Set up TX
       c.io.mmio.txDataChunkIn.initSource()
       c.io.mmio.txDataChunkIn.setSourceClock(c.clock)
-      c.io.shufflerCtl.poke(VecInit(Seq.fill(3)(
-        VecInit((0 until 16).map(i => i.U(4.W)))
-      )))
+      c.io.shufflerCtl.poke(Vec.Lit(Seq.fill(3)(
+        Vec.Lit((0 until 16).map(i => i.U(4.W)):_*)
+      ):_*))
       c.io.mmio.txValidFramingMode.poke(TxValidFramingMode.ucie)
       c.io.mmio.txBitsToSend.poke(64.U)
       c.io.mmio.txFsmRst.poke(true.B)
@@ -191,9 +192,9 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       // Set up TX
       c.io.mmio.txDataChunkIn.initSource()
       c.io.mmio.txDataChunkIn.setSourceClock(c.clock)
-      c.io.shufflerCtl.poke(VecInit(Seq.fill(3)(
-        VecInit((0 until 16).map(i => i.U(4.W)))
-      )))
+      c.io.shufflerCtl.poke(Vec.Lit(Seq.fill(3)(
+        Vec.Lit((0 until 16).map(i => i.U(4.W)):_*)
+      ):_*))
       c.io.mmio.txTestMode.poke(TxTestMode.lfsr)
       c.io.mmio.txValidFramingMode.poke(TxValidFramingMode.ucie)
       c.io.mmio.txFsmRst.poke(true.B)
@@ -289,13 +290,13 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
 
       // Set up TX
       c.io.mmio.txDataChunkIn.initSource()
-      c.io.shufflerCtl.poke(VecInit((0 until 3).map(lane =>
+      c.io.shufflerCtl.poke(Vec.Lit((0 until 3).map(lane =>
         if (lane < 2) {
-          VecInit((0 until 16).map(i => (16 - i).U(4.W)))
+          Vec.Lit((0 until 16).map(i => (16 - i).U(4.W)):_*)
         } else {
-          VecInit((0 until 16).map(i => i.U(4.W)))
+          Vec.Lit((0 until 16).map(i => i.U(4.W)):_*)
         }
-      )))
+      ):_*))
       c.io.mmio.txDataChunkIn.setSourceClock(c.clock)
       c.io.mmio.txValidFramingMode.poke(TxValidFramingMode.ucie)
       c.io.mmio.txBitsToSend.poke(64.U)
