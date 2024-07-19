@@ -292,7 +292,7 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.mmio.txDataChunkIn.initSource()
       c.io.shufflerCtl.poke(Vec.Lit((0 until 3).map(lane =>
         if (lane < 2) {
-          Vec.Lit((0 until 16).map(i => (16 - i).U(4.W)):_*)
+          Vec.Lit((0 until 16).map(i => (15 - i).U(4.W)):_*)
         } else {
           Vec.Lit((0 until 16).map(i => i.U(4.W)):_*)
         }
