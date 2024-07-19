@@ -31,20 +31,12 @@ class RefClkRxIO extends Bundle {
   val von = Output(Bool())
 }
 
-class RefClkRx extends BlackBox with HasBlackBoxInline {
+class RefClkRx extends BlackBox with HasBlackBoxResource {
   val io = IO(new RefClkRxIO)
 
   override val desiredName = "refclkrx"
 
-  setInline("refclkrx.v",
-    """module refclkrx(
-    | input vip, vin,
-    | output vop, von
-    |);
-    | assign vop = vip;
-    | assign von = vin;
-    |endmodule
-    """.stripMargin)
+  addResource("/vsrc/refclkrx.v")
 }
 
 class ClkMuxIO extends Bundle {
@@ -58,21 +50,12 @@ class ClkMuxIO extends Bundle {
   val outb = Output(Bool())
 }
 
-class ClkMux extends BlackBox with HasBlackBoxInline {
+class ClkMux extends BlackBox with HasBlackBoxResource {
   val io = IO(new ClkMuxIO)
 
   override val desiredName = "ucie_clkmux"
 
-  setInline("ucie_clkmux.v",
-    """module ucie_clkmux(
-    | input in0, in1,
-    | input mux0_en_0, mux0_en_1,
-    | input mux1_en_0, mux1_en_1,
-    | output out, outb
-    |);
-    | assign out = mux0_en_0 ? in0 : in1;
-    |endmodule
-    """.stripMargin)
+  addResource("/vsrc/ucie_clkmux.v")
 }
 
 class RstSyncIO extends Bundle {

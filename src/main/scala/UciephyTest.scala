@@ -230,10 +230,9 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
       val notDone = (packetsEnqueued << log2Ceil(Phy.DigitalBitsPerCycle)) < io.mmio.txBitsToSend
       switch (io.mmio.txTestMode) {
         is (TxTestMode.manual) {
-          val dividedInputBuffer = inputBuffer.asTypeOf(Vec(numLanes, Vec((1 << bufferDepthPerLane) / Phy.DigitalBitsPerCycle, UInt(Phy.DigitalBitsPerCycle.W))))
           for (lane <- 0 until numLanes) {
-            val bufferData = inputBuffer.read((lane << (bufferDepthPerLane - 6)) | (packetsEnqueued >> 1))
-            io.phy.tx.bits.data(lane) := bufferData.asTypeOf(Vec(2, UInt(32.W)))(packetsEnqueued % 2)
+            val bufferData = inputBuffer.read((lane << (bufferDepthPerLane - 6)).U | (packetsEnqueued >> 1))
+            io.phy.tx.bits.data(lane) := bufferData.asTypeOf(Vec(2, UInt(32.W)))(packetsEnqueued % 2.U)
           }
           txValid := notDone
         }
@@ -266,7 +265,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
         }
       }
 
-      when (!notDone) {
+      when (!notDone && !io.phy.tx.valid) {
         txState := TxTestState.done
       }
     }
