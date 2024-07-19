@@ -10,7 +10,7 @@ class UciephyTestHarness(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extend
     val shufflerCtl = Input(Vec(numLanes + 1, Vec(16, UInt(4.W))))
   })
   val test = Module(new UciephyTest(bufferDepthPerLane, numLanes))
-  io <> test.io.mmio
+  io.mmio <> test.io.mmio
   val phy = Module(new uciephytest.phy.Phy(numLanes, sim = true))
   test.io.phy <> phy.io.test
   phy.io.top.refClkP := clock
