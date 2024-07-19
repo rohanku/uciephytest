@@ -440,6 +440,9 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val driverEn = RegInit(VecInit(Seq.fill(params.numLanes + 5)(false.B)))
       val clockingPiCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(52.W))))
       val clockingMiscCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(26.W))))
+      val shufflerCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(
+        VecInit((0 until 16).map(i => i.U(4.W))).asUInt
+      )))
       val terminationCtl = RegInit(VecInit(Seq.fill(params.numLanes + 3)(~0.U(6.W))))
       val vrefCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(64.W))))
 
@@ -476,6 +479,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       phy.io.clockingPiCtl := clockingPiCtl
       phy.io.clockingMiscCtl := clockingMiscCtl
       phy.io.terminationCtl := terminationCtl
+      phy.io.shufflerCtl := shufflerCtl.asTypeOf(phy.io.shufflerCtl)
       phy.io.vrefCtl := vrefCtl
 
       val toRegField = (r: UInt) => {
@@ -537,6 +541,10 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
           Seq(
             toRegField(clockingPiCtl(i)),
             toRegField(clockingMiscCtl(i)),
+          )
+      }) ++ (0 until params.numLanes + 1).flatMap((i: Int) => {
+          Seq(
+            toRegField(shufflerCtl(i)),
           )
       }) ++ (0 until params.numLanes + 3).flatMap((i: Int) => {
           Seq(

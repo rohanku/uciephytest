@@ -113,6 +113,18 @@ class RstSync(sim: Boolean = true) extends BlackBox with HasBlackBoxInline {
   }
 }
 
+class Shuffler16 extends RawModule {
+  val io = IO(new Bundle {
+    val din = Input(UInt(16.W))
+    val dout = Output(UInt(16.W))
+    val permutation = Input(Vec(16, UInt(4.W)))
+  })
+
+  io.dout := VecInit((0 until 16).map(i =>
+    io.din(io.permutation(i))
+  )).asUInt
+}
+
 class Ser32to16 extends Module {
   val io = IO(new Bundle {
     val din = Input(UInt(32.W))
@@ -167,6 +179,8 @@ class PhyIO(numLanes: Int = 2) extends Bundle {
   val clockingPiCtl = Input(Vec(numLanes + 1, UInt(52.W)))
   // Misc clocking control per lane (`numLanes` data lanes, 1 valid lane). 
   val clockingMiscCtl = Input(Vec(numLanes + 1, UInt(26.W)))
+  /// Control for TX shuffler.
+  val shufflerCtl = Input(Vec(numLanes + 1, Vec(16, UInt(4.W))))
 
   // RX CONTROL
   // =====================
@@ -283,7 +297,10 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
     } .otherwise {
       serializer.io.din := 0.U
     }
-    txLane.io.din := serializer.io.dout.asTypeOf(txLane.io.din)
+    val shuffler = Module(new Shuffler16)
+    shuffler.io.din := serializer.io.dout
+    shuffler.io.permutation := io.shufflerCtl(lane).asTypeOf(shuffler.io.permutation)
+    txLane.io.din := shuffler.io.dout.asTypeOf(txLane.io.din)
     // Use the first 32:16 serializer's divided clock to clock the async FIFO and its reset synchronizer.
     if (lane == 0) {
       rstSyncTx.io.clk := serializer.io.divClock

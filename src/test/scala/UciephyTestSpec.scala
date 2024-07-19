@@ -24,6 +24,9 @@ class UciephyTestHarness(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extend
   phy.io.clockingPiCtl := 0.U.asTypeOf(phy.io.clockingPiCtl)
   phy.io.terminationCtl := 0.U.asTypeOf(phy.io.terminationCtl)
   phy.io.vrefCtl := 0.U.asTypeOf(phy.io.vrefCtl)
+  phy.io.shufflerCtl := VecInit(Seq.fill(numLanes + 1)(
+        VecInit((0 until 16).map(i => i.U(4.W)))
+      ))
 }
 
 class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
