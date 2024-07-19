@@ -5,7 +5,10 @@ import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 
 class UciephyTestHarness(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Module {
-  val io = IO(new UciephyTestMMIO)
+  val io = IO(new Bundle {
+    val mmio = new UciephyTestMMIO
+    val shufflerCtl = Input(Vec(numLanes + 1, Vec(16, UInt(4.W))))
+  })
   val test = Module(new UciephyTest(bufferDepthPerLane, numLanes))
   io <> test.io.mmio
   val phy = Module(new uciephytest.phy.Phy(numLanes, sim = true))
@@ -24,9 +27,7 @@ class UciephyTestHarness(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extend
   phy.io.clockingPiCtl := 0.U.asTypeOf(phy.io.clockingPiCtl)
   phy.io.terminationCtl := 0.U.asTypeOf(phy.io.terminationCtl)
   phy.io.vrefCtl := 0.U.asTypeOf(phy.io.vrefCtl)
-  phy.io.shufflerCtl := VecInit(Seq.fill(numLanes + 1)(
-        VecInit((0 until 16).map(i => i.U(4.W)))
-      ))
+  phy.io.shufflerCtl := io.shufflerCtl
 }
 
 class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
@@ -45,14 +46,17 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.reset.poke(false.B)
 
       // Set up TX
-      c.io.txDataChunkIn.initSource()
-      c.io.txDataChunkIn.setSourceClock(c.clock)
-      c.io.txValidFramingMode.poke(TxValidFramingMode.ucie)
-      c.io.txBitsToSend.poke(64.U)
-      c.io.txFsmRst.poke(true.B)
+      c.io.mmio.txDataChunkIn.initSource()
+      c.io.mmio.txDataChunkIn.setSourceClock(c.clock)
+      c.io.shufflerCtl.poke(VecInit(Seq.fill(numLanes + 1)(
+        VecInit((0 until 16).map(i => i.U(4.W)))
+      )))
+      c.io.mmio.txValidFramingMode.poke(TxValidFramingMode.ucie)
+      c.io.mmio.txBitsToSend.poke(64.U)
+      c.io.mmio.txFsmRst.poke(true.B)
       // Set up RX
-      c.io.rxValidStartThreshold.poke(4.U)
-      c.io.rxFsmRst.poke(true.B)
+      c.io.mmio.rxValidStartThreshold.poke(4.U)
+      c.io.mmio.rxFsmRst.poke(true.B)
 
       // Strobe reset
       for (i <- 0 until 64) {
@@ -60,114 +64,114 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       }
 
       // Check reset state
-      c.io.txFsmRst.poke(false.B)
-      c.io.txTestState.expect(TxTestState.idle)
-      c.io.txBitsSent.expect(0.U)
-      c.io.rxBitsReceived.expect(0.U)
-      c.io.rxFsmRst.poke(false.B)
+      c.io.mmio.txFsmRst.poke(false.B)
+      c.io.mmio.txTestState.expect(TxTestState.idle)
+      c.io.mmio.txBitsSent.expect(0.U)
+      c.io.mmio.rxBitsReceived.expect(0.U)
+      c.io.mmio.rxFsmRst.poke(false.B)
 
       // Test TX data entry
-      c.io.txDataLane.poke(0.U)
-      c.io.txDataOffset.poke(0.U)
-      c.io.txDataChunkIn.enqueueNow("h1234_5678_9abc_def0".U)
+      c.io.mmio.txDataLane.poke(0.U)
+      c.io.mmio.txDataOffset.poke(0.U)
+      c.io.mmio.txDataChunkIn.enqueueNow("h1234_5678_9abc_def0".U)
       c.clock.step()
-      c.io.txDataChunkOut.expect("h1234_5678_9abc_def0".U)
-      c.io.txDataLane.poke(1.U)
-      c.io.txDataChunkIn.enqueueNow("h0fed_cba9_8765_4321".U)
+      c.io.mmio.txDataChunkOut.expect("h1234_5678_9abc_def0".U)
+      c.io.mmio.txDataLane.poke(1.U)
+      c.io.mmio.txDataChunkIn.enqueueNow("h0fed_cba9_8765_4321".U)
       c.clock.step()
-      c.io.txDataChunkOut.expect("h0fed_cba9_8765_4321".U)
-      c.io.txTestState.expect(TxTestState.idle)
+      c.io.mmio.txDataChunkOut.expect("h0fed_cba9_8765_4321".U)
+      c.io.mmio.txTestState.expect(TxTestState.idle)
 
       // Start transmitting data
-      c.io.txExecute.poke(true.B)
+      c.io.mmio.txExecute.poke(true.B)
       c.clock.step()
-      c.io.txExecute.poke(false.B)
-      c.io.txTestState.expect(TxTestState.run)
+      c.io.mmio.txExecute.poke(false.B)
+      c.io.mmio.txTestState.expect(TxTestState.run)
 
       // Wait until all bits are received
-      while (c.io.rxBitsReceived.peek().litValue < 64) {
+      while (c.io.mmio.rxBitsReceived.peek().litValue < 64) {
         c.clock.step()
       }
-      c.io.txTestState.expect(TxTestState.done)
-      c.io.txBitsSent.expect(64.U)
+      c.io.mmio.txTestState.expect(TxTestState.done)
+      c.io.mmio.txBitsSent.expect(64.U)
 
       // Validate received data
-      c.io.rxDataLane.poke(0.U)
-      c.io.rxDataOffset.poke(0.U)
+      c.io.mmio.rxDataLane.poke(0.U)
+      c.io.mmio.rxDataOffset.poke(0.U)
       c.clock.step()
-      c.io.rxDataChunk.expect("h1234_5678_9abc_def0".U)
-      c.io.rxValidChunk.expect("h0f0f_0f0f_0f0f_0f0f".U)
-      c.io.rxDataLane.poke(1.U)
+      c.io.mmio.rxDataChunk.expect("h1234_5678_9abc_def0".U)
+      c.io.mmio.rxValidChunk.expect("h0f0f_0f0f_0f0f_0f0f".U)
+      c.io.mmio.rxDataLane.poke(1.U)
       c.clock.step()
-      c.io.rxDataChunk.expect("h0fed_cba9_8765_4321".U)
-      c.io.rxValidChunk.expect("h0f0f_0f0f_0f0f_0f0f".U)
+      c.io.mmio.rxDataChunk.expect("h0fed_cba9_8765_4321".U)
+      c.io.mmio.rxValidChunk.expect("h0f0f_0f0f_0f0f_0f0f".U)
 
       // Try a second transmission with different parameters.
-      c.io.txValidFramingMode.poke(TxValidFramingMode.simple)
-      c.io.txBitsToSend.poke(96.U)
-      c.io.txFsmRst.poke(true.B)
+      c.io.mmio.txValidFramingMode.poke(TxValidFramingMode.simple)
+      c.io.mmio.txBitsToSend.poke(96.U)
+      c.io.mmio.txFsmRst.poke(true.B)
       c.clock.step()
-      c.io.txFsmRst.poke(false.B)
-      c.io.txTestState.expect(TxTestState.idle)
-      c.io.txBitsSent.expect(0.U)
+      c.io.mmio.txFsmRst.poke(false.B)
+      c.io.mmio.txTestState.expect(TxTestState.idle)
+      c.io.mmio.txBitsSent.expect(0.U)
 
       // Test TX data entry
-      c.io.txDataLane.poke(0.U)
-      c.io.txDataOffset.poke(0.U)
-      c.io.txDataChunkIn.enqueueNow("h1234_5678_9abc_def0".U)
+      c.io.mmio.txDataLane.poke(0.U)
+      c.io.mmio.txDataOffset.poke(0.U)
+      c.io.mmio.txDataChunkIn.enqueueNow("h1234_5678_9abc_def0".U)
       c.clock.step()
-      c.io.txDataOffset.poke(1.U)
-      c.io.txDataChunkIn.enqueueNow("hdead_beef_cafe_f00d".U)
+      c.io.mmio.txDataOffset.poke(1.U)
+      c.io.mmio.txDataChunkIn.enqueueNow("hdead_beef_cafe_f00d".U)
       c.clock.step()
-      c.io.txDataLane.poke(1.U)
-      c.io.txDataOffset.poke(0.U)
-      c.io.txDataChunkIn.enqueueNow("h0fed_cba9_8765_4321".U)
+      c.io.mmio.txDataLane.poke(1.U)
+      c.io.mmio.txDataOffset.poke(0.U)
+      c.io.mmio.txDataChunkIn.enqueueNow("h0fed_cba9_8765_4321".U)
       c.clock.step()
-      c.io.txDataOffset.poke(1.U)
-      c.io.txDataChunkIn.enqueueNow("hd00d_bead_deed_dea1".U)
+      c.io.mmio.txDataOffset.poke(1.U)
+      c.io.mmio.txDataChunkIn.enqueueNow("hd00d_bead_deed_dea1".U)
       c.clock.step()
-      c.io.txTestState.expect(TxTestState.idle)
+      c.io.mmio.txTestState.expect(TxTestState.idle)
 
       // Set up RX
-      c.io.rxValidStartThreshold.poke(31.U)
-      c.io.rxFsmRst.poke(true.B)
+      c.io.mmio.rxValidStartThreshold.poke(31.U)
+      c.io.mmio.rxFsmRst.poke(true.B)
       c.clock.step()
-      c.io.rxBitsReceived.expect(0.U)
-      c.io.rxFsmRst.poke(false.B)
+      c.io.mmio.rxBitsReceived.expect(0.U)
+      c.io.mmio.rxFsmRst.poke(false.B)
       c.clock.step()
 
       // Start transmitting data
-      c.io.txExecute.poke(true.B)
+      c.io.mmio.txExecute.poke(true.B)
       c.clock.step()
-      c.io.txExecute.poke(false.B)
-      c.io.txTestState.expect(TxTestState.run)
+      c.io.mmio.txExecute.poke(false.B)
+      c.io.mmio.txTestState.expect(TxTestState.run)
 
       // Wait until all bits are received
-      while (c.io.rxBitsReceived.peek().litValue < 96) {
+      while (c.io.mmio.rxBitsReceived.peek().litValue < 96) {
         c.clock.step()
       }
-      c.io.txTestState.expect(TxTestState.done)
-      c.io.txBitsSent.expect(96.U)
+      c.io.mmio.txTestState.expect(TxTestState.done)
+      c.io.mmio.txBitsSent.expect(96.U)
 
       // Validate received data
-      c.io.rxDataLane.poke(0.U)
-      c.io.rxDataOffset.poke(0.U)
+      c.io.mmio.rxDataLane.poke(0.U)
+      c.io.mmio.rxDataOffset.poke(0.U)
       c.clock.step()
-      c.io.rxDataChunk.expect("h1234_5678_9abc_def0".U)
-      c.io.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
-      c.io.rxDataOffset.poke(1.U)
+      c.io.mmio.rxDataChunk.expect("h1234_5678_9abc_def0".U)
+      c.io.mmio.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
+      c.io.mmio.rxDataOffset.poke(1.U)
       c.clock.step()
-      assert((c.io.rxDataChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("cafef00d", 16))
-      assert((c.io.rxValidChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("ffffffff", 16))
-      c.io.rxDataLane.poke(1.U)
-      c.io.rxDataOffset.poke(0.U)
+      assert((c.io.mmio.rxDataChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("cafef00d", 16))
+      assert((c.io.mmio.rxValidChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("ffffffff", 16))
+      c.io.mmio.rxDataLane.poke(1.U)
+      c.io.mmio.rxDataOffset.poke(0.U)
       c.clock.step()
-      c.io.rxDataChunk.expect("h0fed_cba9_8765_4321".U)
-      c.io.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
-      c.io.rxDataOffset.poke(1.U)
+      c.io.mmio.rxDataChunk.expect("h0fed_cba9_8765_4321".U)
+      c.io.mmio.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
+      c.io.mmio.rxDataOffset.poke(1.U)
       c.clock.step()
-      assert((c.io.rxDataChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("deeddea1", 16))
-      assert((c.io.rxValidChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("ffffffff", 16))
+      assert((c.io.mmio.rxDataChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("deeddea1", 16))
+      assert((c.io.mmio.rxValidChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("ffffffff", 16))
     }
   }
 
@@ -185,19 +189,22 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.reset.poke(false.B)
 
       // Set up TX
-      c.io.txDataChunkIn.initSource()
-      c.io.txDataChunkIn.setSourceClock(c.clock)
-      c.io.txTestMode.poke(TxTestMode.lfsr)
-      c.io.txValidFramingMode.poke(TxValidFramingMode.ucie)
-      c.io.txFsmRst.poke(true.B)
+      c.io.mmio.txDataChunkIn.initSource()
+      c.io.mmio.txDataChunkIn.setSourceClock(c.clock)
+      c.io.shufflerCtl.poke(VecInit(Seq.fill(numLanes + 1)(
+        VecInit((0 until 16).map(i => i.U(4.W)))
+      )))
+      c.io.mmio.txTestMode.poke(TxTestMode.lfsr)
+      c.io.mmio.txValidFramingMode.poke(TxValidFramingMode.ucie)
+      c.io.mmio.txFsmRst.poke(true.B)
       // Set up RX
-      c.io.rxValidStartThreshold.poke(4.U)
-      c.io.rxFsmRst.poke(true.B)
+      c.io.mmio.rxValidStartThreshold.poke(4.U)
+      c.io.mmio.rxFsmRst.poke(true.B)
 
       // Set seeds.
       for (lane <- 0 until 2) {
-        c.io.txLfsrSeed(lane).poke(1.U)
-        c.io.rxLfsrSeed(lane).poke(1.U)
+        c.io.mmio.txLfsrSeed(lane).poke(1.U)
+        c.io.mmio.rxLfsrSeed(lane).poke(1.U)
       }
 
       // Strobe reset
@@ -206,64 +213,144 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       }
 
       // Check reset state
-      c.io.txFsmRst.poke(false.B)
-      c.io.txTestState.expect(TxTestState.idle)
-      c.io.txBitsSent.expect(0.U)
-      c.io.rxBitsReceived.expect(0.U)
-      c.io.rxFsmRst.poke(false.B)
+      c.io.mmio.txFsmRst.poke(false.B)
+      c.io.mmio.txTestState.expect(TxTestState.idle)
+      c.io.mmio.txBitsSent.expect(0.U)
+      c.io.mmio.rxBitsReceived.expect(0.U)
+      c.io.mmio.rxFsmRst.poke(false.B)
 
       // Start transmitting data
-      c.io.txExecute.poke(true.B)
+      c.io.mmio.txExecute.poke(true.B)
       c.clock.step()
-      c.io.txExecute.poke(false.B)
-      c.io.txTestState.expect(TxTestState.run)
+      c.io.mmio.txExecute.poke(false.B)
+      c.io.mmio.txTestState.expect(TxTestState.run)
 
       // Wait until 256 bits are received
-      while (c.io.rxBitsReceived.peek().litValue < 256) {
+      while (c.io.mmio.rxBitsReceived.peek().litValue < 256) {
         c.clock.step()
       }
 
       // Validate no bit errors
       for (lane <- 0 until 2) {
-        c.io.rxBitErrors(lane).expect(0.U)
+        c.io.mmio.rxBitErrors(lane).expect(0.U)
       }
 
       // Try a second transmission where the LFSR seeds to not match up
-      c.io.txValidFramingMode.poke(TxValidFramingMode.simple)
-      c.io.txFsmRst.poke(true.B)
+      c.io.mmio.txValidFramingMode.poke(TxValidFramingMode.simple)
+      c.io.mmio.txFsmRst.poke(true.B)
 
       // Set seeds.
-      c.io.txLfsrSeed(0).poke(3.U)
-      c.io.rxLfsrSeed(0).poke(3.U)
-      c.io.txLfsrSeed(1).poke(1.U)
-      c.io.rxLfsrSeed(1).poke(3.U)
+      c.io.mmio.txLfsrSeed(0).poke(3.U)
+      c.io.mmio.rxLfsrSeed(0).poke(3.U)
+      c.io.mmio.txLfsrSeed(1).poke(1.U)
+      c.io.mmio.rxLfsrSeed(1).poke(3.U)
 
       c.clock.step()
 
-      c.io.txFsmRst.poke(false.B)
-      c.io.txTestState.expect(TxTestState.idle)
-      c.io.txBitsSent.expect(0.U)
+      c.io.mmio.txFsmRst.poke(false.B)
+      c.io.mmio.txTestState.expect(TxTestState.idle)
+      c.io.mmio.txBitsSent.expect(0.U)
 
       // Set up RX
-      c.io.rxValidStartThreshold.poke(31.U)
-      c.io.rxFsmRst.poke(true.B)
+      c.io.mmio.rxValidStartThreshold.poke(31.U)
+      c.io.mmio.rxFsmRst.poke(true.B)
       c.clock.step()
-      c.io.rxBitsReceived.expect(0.U)
-      c.io.rxFsmRst.poke(false.B)
+      c.io.mmio.rxBitsReceived.expect(0.U)
+      c.io.mmio.rxFsmRst.poke(false.B)
       c.clock.step()
 
       // Start transmitting data
-      c.io.txExecute.poke(true.B)
+      c.io.mmio.txExecute.poke(true.B)
       c.clock.step()
-      c.io.txExecute.poke(false.B)
-      c.io.txTestState.expect(TxTestState.run)
+      c.io.mmio.txExecute.poke(false.B)
+      c.io.mmio.txTestState.expect(TxTestState.run)
 
       // Wait until all bits are received
-      while (c.io.rxBitsReceived.peek().litValue < 256) {
+      while (c.io.mmio.rxBitsReceived.peek().litValue < 256) {
         c.clock.step()
       }
-      c.io.rxBitErrors(0).expect(0.U)
-      assert(c.io.rxBitErrors(1).peek().litValue > 0)
+      c.io.mmio.rxBitErrors(0).expect(0.U)
+      assert(c.io.mmio.rxBitErrors(1).peek().litValue > 0)
+    }
+  }
+
+  it should "support configurable data shuffling" in {
+    test(new UciephyTestHarness).withAnnotations(Seq(VcsBackendAnnotation, WriteFsdbAnnotation)) { c =>
+      c.clock.setTimeout(1000)
+      // Set up chip
+      c.reset.poke(true.B)
+
+      // Strobe reset
+      for (i <- 0 until 64) {
+        c.clock.step()
+      }
+
+      c.reset.poke(false.B)
+
+      // Set up TX
+      c.io.mmio.txDataChunkIn.initSource()
+      c.io.shufflerCtl.poke(VecInit((0 until numLanes + 1).map(lane =>
+        if (lane < numLanes) {
+          VecInit((0 until 16).map(i => (16 - i).U(4.W)))
+        } else {
+          VecInit((0 until 16).map(i => i.U(4.W)))
+        }
+      )))
+      c.io.mmio.txDataChunkIn.setSourceClock(c.clock)
+      c.io.mmio.txValidFramingMode.poke(TxValidFramingMode.ucie)
+      c.io.mmio.txBitsToSend.poke(64.U)
+      c.io.mmio.txFsmRst.poke(true.B)
+      // Set up RX
+      c.io.mmio.rxValidStartThreshold.poke(4.U)
+      c.io.mmio.rxFsmRst.poke(true.B)
+
+      // Strobe reset
+      for (i <- 0 until 64) {
+        c.clock.step()
+      }
+
+      // Check reset state
+      c.io.mmio.txFsmRst.poke(false.B)
+      c.io.mmio.txTestState.expect(TxTestState.idle)
+      c.io.mmio.txBitsSent.expect(0.U)
+      c.io.mmio.rxBitsReceived.expect(0.U)
+      c.io.mmio.rxFsmRst.poke(false.B)
+
+      // Test TX data entry
+      c.io.mmio.txDataLane.poke(0.U)
+      c.io.mmio.txDataOffset.poke(0.U)
+      c.io.mmio.txDataChunkIn.enqueueNow("h1234_5678_9abc_def0".U)
+      c.clock.step()
+      c.io.mmio.txDataChunkOut.expect("h1234_5678_9abc_def0".U)
+      c.io.mmio.txDataLane.poke(1.U)
+      c.io.mmio.txDataChunkIn.enqueueNow("h0fed_cba9_8765_4321".U)
+      c.clock.step()
+      c.io.mmio.txDataChunkOut.expect("h0fed_cba9_8765_4321".U)
+      c.io.mmio.txTestState.expect(TxTestState.idle)
+
+      // Start transmitting data
+      c.io.mmio.txExecute.poke(true.B)
+      c.clock.step()
+      c.io.mmio.txExecute.poke(false.B)
+      c.io.mmio.txTestState.expect(TxTestState.run)
+
+      // Wait until all bits are received
+      while (c.io.mmio.rxBitsReceived.peek().litValue < 64) {
+        c.clock.step()
+      }
+      c.io.mmio.txTestState.expect(TxTestState.done)
+      c.io.mmio.txBitsSent.expect(64.U)
+
+      // Validate received data
+      c.io.mmio.rxDataLane.poke(0.U)
+      c.io.mmio.rxDataOffset.poke(0.U)
+      c.clock.step()
+      c.io.mmio.rxDataChunk.expect("h2c48_1e6a_3d59_0f7b".U)
+      c.io.mmio.rxValidChunk.expect("h0f0f_0f0f_0f0f_0f0f".U)
+      c.io.mmio.rxDataLane.poke(1.U)
+      c.clock.step()
+      c.io.mmio.rxDataChunk.expect("hb7f0_95d3_a6e1_84c2".U)
+      c.io.mmio.rxValidChunk.expect("h0f0f_0f0f_0f0f_0f0f".U)
     }
   }
 }
