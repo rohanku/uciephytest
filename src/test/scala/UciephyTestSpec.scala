@@ -48,7 +48,7 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       // Set up TX
       c.io.mmio.txDataChunkIn.initSource()
       c.io.mmio.txDataChunkIn.setSourceClock(c.clock)
-      c.io.shufflerCtl.poke(VecInit(Seq.fill(numLanes + 1)(
+      c.io.shufflerCtl.poke(VecInit(Seq.fill(3)(
         VecInit((0 until 16).map(i => i.U(4.W)))
       )))
       c.io.mmio.txValidFramingMode.poke(TxValidFramingMode.ucie)
@@ -191,7 +191,7 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       // Set up TX
       c.io.mmio.txDataChunkIn.initSource()
       c.io.mmio.txDataChunkIn.setSourceClock(c.clock)
-      c.io.shufflerCtl.poke(VecInit(Seq.fill(numLanes + 1)(
+      c.io.shufflerCtl.poke(VecInit(Seq.fill(3)(
         VecInit((0 until 16).map(i => i.U(4.W)))
       )))
       c.io.mmio.txTestMode.poke(TxTestMode.lfsr)
@@ -289,8 +289,8 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
 
       // Set up TX
       c.io.mmio.txDataChunkIn.initSource()
-      c.io.shufflerCtl.poke(VecInit((0 until numLanes + 1).map(lane =>
-        if (lane < numLanes) {
+      c.io.shufflerCtl.poke(VecInit((0 until 3).map(lane =>
+        if (lane < 2) {
           VecInit((0 until 16).map(i => (16 - i).U(4.W)))
         } else {
           VecInit((0 until 16).map(i => i.U(4.W)))
