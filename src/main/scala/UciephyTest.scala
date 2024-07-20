@@ -242,12 +242,14 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
           io.phy.tx.valid := true.B
         }
       }
-      switch(io.mmio.txValidFramingMode) {
-        is (TxValidFramingMode.ucie) {
-          io.phy.tx.bits.valid := VecInit((0 until Phy.DigitalBitsPerCycle/8).flatMap(_ => Seq.fill(4)(true.B) ++ Seq.fill(4)(false.B))).asUInt
-        }
-        is (TxValidFramingMode.simple) {
-          io.phy.tx.bits.valid := VecInit(Seq.fill(Phy.DigitalBitsPerCycle)(true.B)).asUInt
+      when (io.phy.tx.valid) {
+        switch(io.mmio.txValidFramingMode) {
+          is (TxValidFramingMode.ucie) {
+            io.phy.tx.bits.valid := VecInit((0 until Phy.DigitalBitsPerCycle/8).flatMap(_ => Seq.fill(4)(true.B) ++ Seq.fill(4)(false.B))).asUInt
+          }
+          is (TxValidFramingMode.simple) {
+            io.phy.tx.bits.valid := VecInit(Seq.fill(Phy.DigitalBitsPerCycle)(true.B)).asUInt
+          }
         }
       }
       
