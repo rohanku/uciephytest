@@ -164,7 +164,6 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
     lfsr
   })
   val txValid = withReset(txReset) { RegInit(false.B) }
-  io.phy.tx.valid := txValid
 
   // RX registers
   val rxReset = io.mmio.rxFsmRst || reset.asBool
@@ -210,8 +209,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
     io.phy.tx.bits.data(lane) := 0.U
   }
   io.phy.tx.bits.valid := 0.U
-  io.phy.tx.valid := false.B
   io.phy.rx.ready := false.B
+  io.phy.tx.valid := txValid
   io.phy.txRst := txReset
   io.phy.rxRst := rxReset
 
