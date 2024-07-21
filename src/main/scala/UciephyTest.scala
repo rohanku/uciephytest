@@ -208,8 +208,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   val rxValidChunk = Reg(UInt(64.W))
   rxValidChunk := rxValidChunk
   when (io.mmio.rxDataLane === outputBufferAddr) {
-    rxDataChunk := Cat(outputRdwrPort(io.mmio.rxDataLane << 1.U), outputRdwrPort((io.mmio.rxDataLane << 1.U) | 1.U))
-    rxValidChunk := Cat(outputRdwrPort(2*numLanes), outputRdwrPort(2*numLanes + 1))
+    rxDataChunk := Cat(outputRdwrPort((io.mmio.rxDataLane << 1.U) | 1.U), outputRdwrPort(io.mmio.rxDataLane << 1.U))
+    rxValidChunk := Cat(outputRdwrPort(2*numLanes + 1), outputRdwrPort(2*numLanes))
   }
   io.mmio.rxDataChunk := rxDataChunk
   io.mmio.rxValidChunk := rxValidChunk
