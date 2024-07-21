@@ -90,7 +90,7 @@ class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends B
   val txDataOffset = Input(UInt((bufferDepthPerLane - 6).W))
   // 64-bit data chunk to write.
   val txDataChunkIn = Flipped(DecoupledIO(UInt(64.W)))
-  // Data chunk at the given chunk offset for inspecting the data to be sent.
+  // Data chunk at the given chunk offset for inspecting the data to be sent. Only available in idle/done mode.
   val txDataChunkOut = Output(UInt(64.W))
   // Permutation of data fed into the serializer, in case serializer timing is off.
   val txPermute = Input(Vec(Phy.SerdesRatio, UInt(log2Ceil(Phy.SerdesRatio).W)))
@@ -190,13 +190,14 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   val addrBits = log2Ceil(totalChunks)
 
   val inputBuffer = SyncReadMem(numLanes << (bufferDepthPerLane - 6), UInt(64.W))
-  val inputBufferAddr = (io.mmio.txDataLane << (bufferDepthPerLane - 6)) | io.mmio.txDataOffset
+  val inputBufferAddr = Wire(UInt(log2Ceil(numLanes << (bufferDepthPerLane - 6)).W))
+  val rdwrPort = inputBuffer(inputBufferAddr)
   val outputDataBuffer = Reg(Vec(numLanes, Vec(1 << (bufferDepthPerLane - 6), UInt(64.W))))
   val outputValidBuffer = Reg(Vec(1 << (bufferDepthPerLane - 6), UInt(64.W)))
 
   io.mmio.txBitsSent := packetsEnqueued << log2Ceil(Phy.DigitalBitsPerCycle)
   io.mmio.txDataChunkIn.ready := txState === TxTestState.idle
-  io.mmio.txDataChunkOut := inputBuffer.read(inputBufferAddr)
+  io.mmio.txDataChunkOut := rdwrPort
   io.mmio.txTestState := txState
 
   io.mmio.rxBitsReceived := rxBitsReceived
@@ -217,8 +218,9 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   // TX logic
   switch(txState) {
     is(TxTestState.idle) {
+      inputBufferAddr := (io.mmio.txDataLane << (bufferDepthPerLane - 6)) | io.mmio.txDataOffset
       when (io.mmio.txDataChunkIn.valid) {
-        inputBuffer.write(inputBufferAddr, io.mmio.txDataChunkIn.bits)
+        rdwrPort := io.mmio.txDataChunkIn.bits
       }
 
       when (io.mmio.txExecute) {
@@ -226,11 +228,12 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
       }
     }
     is(TxTestState.run) {
-      val notDone = (packetsEnqueued << log2Ceil(Phy.DigitalBitsPerCycle)) < io.mmio.txBitsToSend
+      val notDone = ((packetsEnqueued + 1.U) << log2Ceil(Phy.DigitalBitsPerCycle)) < io.mmio.txBitsToSend
+      inputBufferAddr := ((lane << (bufferDepthPerLane - 6)).U | (packetsEnqueued >> 1)) + packetsEnqueued % 2.U
       switch (io.mmio.txTestMode) {
         is (TxTestMode.manual) {
           for (lane <- 0 until numLanes) {
-            val bufferData = inputBuffer.read((lane << (bufferDepthPerLane - 6)).U | (packetsEnqueued >> 1))
+            val bufferData = rdwrPort
             io.phy.tx.bits.data(lane) := bufferData.asTypeOf(Vec(2, UInt(32.W)))(packetsEnqueued % 2.U)
           }
           txValid := notDone
