@@ -384,7 +384,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
     } .otherwise {
       when (recordingStarted || startRecording) {
         val newRxBitsReceived = rxBitsReceived +& Phy.DigitalBitsPerCycle.U - startIdx
-        val shouldWrite = rxBlock < (1 << (bufferDepthPerLane - 6)).U && rxBitsReceived % 32.U +& Phy.DigitalBitsPerCycle - startIdx >= 32.U
+        val shouldWrite = rxBlock < (1 << (bufferDepthPerLane - 6)).U && rxBitsReceived % 32.U +& Phy.DigitalBitsPerCycle.U - startIdx >= 32.U
         when(shouldWrite) {
           outputBufferAddr := rxBlock
         }
