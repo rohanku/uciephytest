@@ -194,7 +194,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
 
   io.mmio.txBitsSent := packetsEnqueued << log2Ceil(Phy.DigitalBitsPerCycle)
   io.mmio.txDataChunkIn.ready := txState === TxTestState.idle
-  io.mmio.txDataChunkOut := rdwrPort
+  io.mmio.txDataChunkOut := rdwrPort(io.mmio.txDataLane)
   io.mmio.txTestState := txState
 
   io.mmio.rxBitsReceived := rxBitsReceived
