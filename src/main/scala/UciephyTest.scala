@@ -299,8 +299,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   startRecording := false.B
   startIdx := 0.U
 
-  val runningData = RegInit(VecInit(Seq.fill(numLanes)(0.U(64.W))))
-  val runningValid = RegInit(0.U(64.W))
+  val runningData = withReset(rxReset) { RegInit(VecInit(Seq.fill(numLanes)(0.U(64.W)))) }
+  val runningValid = withReset(rxReset) { RegInit(0.U(64.W)) } 
   runningData := runningData
   runningValid := runningValid
 
