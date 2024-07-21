@@ -188,6 +188,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
 
   val inputBuffer = SyncReadMem(1 << (bufferDepthPerLane - 6), Vec(numLanes, UInt(64.W)))
   val inputBufferAddr = Wire(UInt(log2Ceil(1 << (bufferDepthPerLane - 6)).W))
+  inputBufferAddr := io.mmio.txDataOffset
   val rdwrPort = inputBuffer(inputBufferAddr)
   val outputDataBuffer = Reg(Vec(numLanes, Vec(1 << (bufferDepthPerLane - 6), UInt(64.W))))
   val outputValidBuffer = Reg(Vec(1 << (bufferDepthPerLane - 6), UInt(64.W)))
@@ -215,7 +216,6 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   // TX logic
   switch(txState) {
     is(TxTestState.idle) {
-      inputBufferAddr := io.mmio.txDataOffset
       when (io.mmio.txDataChunkIn.valid) {
         rdwrPort(io.mmio.txDataLane) := io.mmio.txDataChunkIn.bits
       }
