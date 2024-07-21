@@ -205,10 +205,15 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   io.mmio.rxSignature := rxSignature
   val rxDataChunk = Reg(UInt(64.W))
   rxDataChunk := rxDataChunk
+  val rxValidChunk = Reg(UInt(64.W))
+  rxValidChunk := rxValidChunk
   when (io.mmio.rxDataLane === outputBufferAddr) {
-    io.mmio.rxDataChunk := Cat(outputRdwrPort(io.mmio.rxDataLane << 1.U), outputRdwrPort((io.mmio.rxDataLane << 1.U) + 1.U))
-    io.mmio.rxValidChunk := Cat(outputRdwrPort(2*numLanes), outputRdwrPort(2*numLanes + 1))
+    rxDataChunk := Cat(outputRdwrPort(io.mmio.rxDataLane << 1.U), outputRdwrPort((io.mmio.rxDataLane << 1.U) + 1.U))
+    rxValidChunk := Cat(outputRdwrPort(2*numLanes), outputRdwrPort(2*numLanes + 1))
   }
+  io.mmio.rxDataChunk := rxDataChunk
+  io.mmio.rxValidChunk := rxValidChunk
+
 
   for (lane <- 0 until numLanes) {
     io.phy.tx.bits.data(lane) := 0.U
