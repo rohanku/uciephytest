@@ -208,7 +208,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   val rxValidChunk = Reg(UInt(64.W))
   rxValidChunk := rxValidChunk
   when (io.mmio.rxDataLane === outputBufferAddr) {
-    rxDataChunk := Cat(outputRdwrPort(io.mmio.rxDataLane << 1.U), outputRdwrPort((io.mmio.rxDataLane << 1.U) + 1.U))
+    rxDataChunk := Cat(outputRdwrPort(io.mmio.rxDataLane << 1.U), outputRdwrPort((io.mmio.rxDataLane << 1.U) | 1.U))
     rxValidChunk := Cat(outputRdwrPort(2*numLanes), outputRdwrPort(2*numLanes + 1))
   }
   io.mmio.rxDataChunk := rxDataChunk
@@ -299,6 +299,11 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   startRecording := false.B
   startIdx := 0.U
 
+  val runningData = RegInit(VecInit(Seq.fill(numLanes)(0.U(64.W))))
+  val runningValid = RegInit(0.U(64.W))
+  runningData := runningData
+  runningValid := runningValid
+
   // Check valid streak after each packet is dequeued.
   when (io.phy.rx.ready & io.phy.rx.valid) {
     // Store data in a register
@@ -331,8 +336,6 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
     val rxBitsReceivedOffset = rxBitsReceived % 32.U
     val rxBlock = rxBitsReceived >> 6.U
     val rxBlockOffset = rxBitsReceived(5)
-    val runningData = RegInit(VecInit(Seq.fill(numLanes)(0.U(64.W))))
-    val runningValid = RegInit(0.U(64.W))
     // Insert new values into the register buffers at the appropriate offset.
     when (!recordingStarted && !startRecording) {
       // Store latest data at the beginning of the `runningData` register.
@@ -346,9 +349,9 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
       // we write the first 32 bits to the output SRAM.
       val numExtraBits = Phy.DigitalBitsPerCycle.U - validHighStreak
       val dataOffset = validHighStreak
-      val prevMask = Wire(UInt(128.W))
+      val prevMask = Wire(UInt(64.W))
       prevMask := ((1.U << validHighStreak) - 1.U)
-      val dataMask = Wire(UInt(128.W))
+      val dataMask = Wire(UInt(64.W))
       dataMask := ((1.U << Phy.DigitalBitsPerCycle.U) - 1.U) << dataOffset
 
       outputBufferAddr := 0.U
