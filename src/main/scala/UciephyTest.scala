@@ -186,11 +186,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   
   val rxSignature = withReset(rxReset) { RegInit(0.U(32.W)) }
 
-  val totalChunks = numLanes * (1 << (bufferDepthPerLane - 6))
-  val addrBits = log2Ceil(totalChunks)
-
-  val inputBuffer = SyncReadMem(numLanes << (bufferDepthPerLane - 6), UInt(64.W))
-  val inputBufferAddr = Wire(UInt(log2Ceil(numLanes << (bufferDepthPerLane - 6)).W))
+  val inputBuffer = SyncReadMem(1 << (bufferDepthPerLane - 6), Vec(numLanes, UInt(64.W)))
+  val inputBufferAddr = Wire(UInt(log2Ceil(1 << (bufferDepthPerLane - 6)).W))
   val rdwrPort = inputBuffer(inputBufferAddr)
   val outputDataBuffer = Reg(Vec(numLanes, Vec(1 << (bufferDepthPerLane - 6), UInt(64.W))))
   val outputValidBuffer = Reg(Vec(1 << (bufferDepthPerLane - 6), UInt(64.W)))
@@ -218,9 +215,9 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   // TX logic
   switch(txState) {
     is(TxTestState.idle) {
-      inputBufferAddr := (io.mmio.txDataLane << (bufferDepthPerLane - 6)) | io.mmio.txDataOffset
+      inputBufferAddr := io.mmio.txDataOffset
       when (io.mmio.txDataChunkIn.valid) {
-        rdwrPort := io.mmio.txDataChunkIn.bits
+        rdwrPort(io.mmio.txDataLane) := io.mmio.txDataChunkIn.bits
       }
 
       when (io.mmio.txExecute) {
@@ -229,11 +226,11 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
     }
     is(TxTestState.run) {
       val notDone = ((packetsEnqueued + 1.U) << log2Ceil(Phy.DigitalBitsPerCycle)) < io.mmio.txBitsToSend
-      inputBufferAddr := ((lane << (bufferDepthPerLane - 6)).U | (packetsEnqueued >> 1)) + packetsEnqueued % 2.U
+      inputBufferAddr := (packetsEnqueued >> 1) + packetsEnqueued % 2.U
       switch (io.mmio.txTestMode) {
         is (TxTestMode.manual) {
           for (lane <- 0 until numLanes) {
-            val bufferData = rdwrPort
+            val bufferData = rdwrPort(lane)
             io.phy.tx.bits.data(lane) := bufferData.asTypeOf(Vec(2, UInt(32.W)))(packetsEnqueued % 2.U)
           }
           txValid := notDone
