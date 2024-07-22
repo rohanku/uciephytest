@@ -385,7 +385,7 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       for (i <- 0 until 4) {
         c.clock.step()
       }
-      c.io.mmio.rxDataChunk.expect("3d59_0f7b".U)
+      c.io.mmio.rxDataChunk.expect("h3d59_0f7b".U)
       c.io.mmio.rxValidChunk.expect("h0f0f_0f0f".U)
       c.io.mmio.rxDataOffset.poke(1.U)
       for (i <- 0 until 4) {
