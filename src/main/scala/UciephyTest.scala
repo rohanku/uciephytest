@@ -393,8 +393,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
         val keepMask = Wire(UInt(64.W))
         keepMask := ~dataMask
         val toWrite = Wire(Vec(numLanes + 1, UInt(32.W)))
-        toWrite := 0.U
         for (lane <- 0 until numLanes) {
+          toWrite(lane) := 0.U
           val data = Wire(UInt(64.W))
           data := (io.phy.rx.bits.data(lane) << rxBitsReceivedOffset) >> startIdx
           val newData = Wire(UInt(64.W))
@@ -420,6 +420,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
         val newData = Wire(UInt(64.W))
         newData := (data & dataMask) | (runningValid & keepMask)
         runningValid := newData
+        toWrite(numLanes) := 0.U
         when(shouldWrite) {
           toWrite(numLanes) := newData(31, 0)
           runningValid := newData >> 32.U
