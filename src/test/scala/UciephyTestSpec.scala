@@ -177,27 +177,39 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       for (i <- 0 until 4) {
         c.clock.step()
       }
-      c.io.mmio.rxDataChunk.expect("h1234_5678_9abc_def0".U)
-      c.io.mmio.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
+      c.io.mmio.rxDataChunk.expect("h9abc_def0".U)
+      c.io.mmio.rxValidChunk.expect("hffff_ffff".U)
       c.io.mmio.rxDataOffset.poke(1.U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
-      assert((c.io.mmio.rxDataChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("cafef00d", 16))
-      assert((c.io.mmio.rxValidChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("ffffffff", 16))
+      c.io.mmio.rxDataChunk.expect("h1234_5678".U)
+      c.io.mmio.rxValidChunk.expect("hffff_ffff".U)
+      c.io.mmio.rxDataOffset.poke(2.U)
+      for (i <- 0 until 4) {
+        c.clock.step()
+      }
+      c.io.mmio.rxDataChunk.expect("hcafef00d".U)
+      c.io.mmio.rxValidChunk.expect("hffff_ffff".U)
       c.io.mmio.rxDataLane.poke(1.U)
       c.io.mmio.rxDataOffset.poke(0.U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
-      c.io.mmio.rxDataChunk.expect("h0fed_cba9_8765_4321".U)
-      c.io.mmio.rxValidChunk.expect("hffff_ffff_ffff_ffff".U)
+      c.io.mmio.rxDataChunk.expect("h8765_4321".U)
+      c.io.mmio.rxValidChunk.expect("hffff_ffff".U)
       c.io.mmio.rxDataOffset.poke(1.U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
-      assert((c.io.mmio.rxDataChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("deeddea1", 16))
-      assert((c.io.mmio.rxValidChunk.peek().litValue & BigInt("ffffffff", 16)) == BigInt("ffffffff", 16))
+      c.io.mmio.rxDataChunk.expect("h0fed_cba9".U)
+      c.io.mmio.rxValidChunk.expect("hffff_ffff".U)
+      c.io.mmio.rxDataOffset.poke(2.U)
+      for (i <- 0 until 4) {
+        c.clock.step()
+      }
+      c.io.mmio.rxDataChunk.expect("hdeeddea1".U)
+      c.io.mmio.rxValidChunk.expect("hffff_ffff".U)
     }
   }
 
@@ -373,14 +385,27 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       for (i <- 0 until 4) {
         c.clock.step()
       }
-      c.io.mmio.rxDataChunk.expect("h2c48_1e6a_3d59_0f7b".U)
-      c.io.mmio.rxValidChunk.expect("h0f0f_0f0f_0f0f_0f0f".U)
-      c.io.mmio.rxDataLane.poke(1.U)
+      c.io.mmio.rxDataChunk.expect("3d59_0f7b".U)
+      c.io.mmio.rxValidChunk.expect("h0f0f_0f0f".U)
+      c.io.mmio.rxDataOffset.poke(1.U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
-      c.io.mmio.rxDataChunk.expect("hb7f0_95d3_a6e1_84c2".U)
-      c.io.mmio.rxValidChunk.expect("h0f0f_0f0f_0f0f_0f0f".U)
+      c.io.mmio.rxDataChunk.expect("h2c48_1e6a".U)
+      c.io.mmio.rxValidChunk.expect("h0f0f_0f0f".U)
+      c.io.mmio.rxDataLane.poke(1.U)
+      c.io.mmio.rxDataOffset.poke(0.U)
+      for (i <- 0 until 4) {
+        c.clock.step()
+      }
+      c.io.mmio.rxDataChunk.expect("ha6e1_84c2".U)
+      c.io.mmio.rxValidChunk.expect("h0f0f_0f0f".U)
+      c.io.mmio.rxDataOffset.poke(1.U)
+      for (i <- 0 until 4) {
+        c.clock.step()
+      }
+      c.io.mmio.rxDataChunk.expect("hb7f0_95d3".U)
+      c.io.mmio.rxValidChunk.expect("h0f0f_0f0f".U)
     }
   }
 }
