@@ -258,7 +258,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
             for (lane <- 0 until numLanes) {
               io.phy.tx.bits.data(lane) := inputRdPorts(lane >> 2).asTypeOf(Vec(4, UInt(32.W)))(lane % 4)
             }
-            io.phy.tx.valid := true.B
+            io.phy.tx.valid := (packetsEnqueued << log2Ceil(Phy.DigitalBitsPerCycle)) < io.mmio.txBitsToSend
           } .otherwise {
             inputBufferAddr := 0.U
             loadedFirstChunk := true.B
