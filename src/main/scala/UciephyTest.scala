@@ -252,7 +252,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
           when (loadedFirstChunk) {
             when (!io.phy.tx.ready) {
               inputBufferAddr := packetsEnqueued + 1.U
-            } .otherwie {
+            } .otherwise {
               inputBufferAddr := packetsEnqueued
             }
             for (lane <- 0 until numLanes) {
