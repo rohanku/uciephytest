@@ -191,18 +191,20 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   val inputBuffer = (0 until numInputSrams).map(i => SyncReadMem(1 << (bufferDepthPerLane - 5), UInt(128.W)))
   val inputBufferAddr = Wire(UInt(log2Ceil(1 << (bufferDepthPerLane - 6)).W))
   inputBufferAddr := io.mmio.txDataOffset
-  val inputRdwrPorts = (0 until numInputSrams).map(i => inputBuffer(i)(inputBufferAddr))
+  val inputRdPorts = (0 until numInputSrams).map(i => inputBuffer(i)(inputBufferAddr))
+  val inputWrPorts = (0 until numInputSrams).map(i => inputBuffer(i)(inputBufferAddr))
   val outputBuffer = (0 until numOutputSrams).map(i => SyncReadMem(1 << (bufferDepthPerLane - 5),  UInt(128.W)))
   val outputBufferAddr = Wire(UInt(log2Ceil(1 << (bufferDepthPerLane - 5)).W))
   outputBufferAddr := io.mmio.rxDataOffset
-  val outputRdwrPorts = (0 until numOutputSrams).map(i => outputBuffer(i)(outputBufferAddr))
+  val outputRdPorts = (0 until numOutputSrams).map(i => outputBuffer(i)(outputBufferAddr))
+  val outputWrPorts = (0 until numOutputSrams).map(i => outputBuffer(i)(outputBufferAddr))
 
   io.mmio.txBitsSent := packetsEnqueued << log2Ceil(Phy.DigitalBitsPerCycle)
   io.mmio.txDataChunkIn.ready := txState === TxTestState.idle
   io.mmio.txDataChunkOut := 0.U
   for (i <- 0 until numInputSrams) {
     when (i.U === io.mmio.txDataLaneGroup) {
-      io.mmio.txDataChunkOut := inputRdwrPorts(i)
+      io.mmio.txDataChunkOut := inputRdPorts(i)
     }
   }
   io.mmio.txTestState := txState
@@ -218,10 +220,10 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
     rxDataChunk := 0.U
     for (i <- 0 until numOutputSrams) {
       when (i.U === io.mmio.rxDataLane >> 2.U) {
-        outputRdwrPorts(i).asTypeOf(Vec(4, UInt(32.W)))(io.mmio.rxDataLane % 4.U)
+        rxDataChunk := outputRdPorts(i).asTypeOf(Vec(4, UInt(32.W)))(io.mmio.rxDataLane % 4.U)
       }
     }
-    rxValidChunk := outputRdwrPorts(numLanes >> 2).asTypeOf(Vec(4, UInt(32.W)))(numLanes % 4)
+    rxValidChunk := outputRdPorts(numLanes >> 2).asTypeOf(Vec(4, UInt(32.W)))(numLanes % 4)
   }
   io.mmio.rxDataChunk := rxDataChunk
   io.mmio.rxValidChunk := rxValidChunk
@@ -242,7 +244,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
       when (io.mmio.txDataChunkIn.valid) {
         for (i <- 0 until numInputSrams) {
           when (i.U === io.mmio.txDataLaneGroup) {
-              inputRdwrPorts(i) := io.mmio.txDataChunkIn.bits
+              inputWrPorts(i) := io.mmio.txDataChunkIn.bits
           }
         }
       }
@@ -257,7 +259,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
       switch (io.mmio.txTestMode) {
         is (TxTestMode.manual) {
           for (lane <- 0 until numLanes) {
-            io.phy.tx.bits.data(lane) := inputRdwrPorts(lane >> 2).asTypeOf(Vec(4, UInt(32.W)))(lane % 4)
+            io.phy.tx.bits.data(lane) := inputRdPorts(lane >> 2).asTypeOf(Vec(4, UInt(32.W)))(lane % 4)
           }
           txValid := notDone
         }
@@ -401,7 +403,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
       newData := prevMask | (data & dataMask)
       toWrite(numLanes >> 2)(numLanes % 4) := newData(31, 0)
       for (i <- 0 until numOutputSrams) {
-        outputRdwrPorts(i) := toWrite(i).asTypeOf(outputRdwrPorts(i))
+        outputWrPorts(i) := toWrite(i).asTypeOf(outputWrPorts(i))
       }
       runningValid := newData >> 32.U
       rxBitsReceived := rxBitsReceived +& Phy.DigitalBitsPerCycle.U +& validHighStreak
@@ -452,7 +454,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
           toWrite(numLanes >> 2)(numLanes % 4) := newData(31, 0)
           runningValid := newData >> 32.U
           for (i <- 0 until numOutputSrams) {
-            outputRdwrPorts(i) := toWrite(i).asTypeOf(outputRdwrPorts(i))
+            outputWrPorts(i) := toWrite(i).asTypeOf(outputWrPorts(i))
           }
         }
 
