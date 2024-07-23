@@ -192,11 +192,11 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   val inputBufferAddr = Wire(UInt(log2Ceil(1 << (bufferDepthPerLane - 6)).W))
   inputBufferAddr := io.mmio.txDataOffset
   val inputRdPorts = (0 until numInputSrams).map(i => inputBuffer(i)(inputBufferAddr))
-  val inputWrPorts = (0 until numInputSrams).map(i => inputBuffer(i)(inputBufferAddr))
+  val inputWrPorts = (0 until numInputSrams).map(i => inputBuffer(i)(io.mmio.txDataOffset))
   val outputBuffer = (0 until numOutputSrams).map(i => SyncReadMem(1 << (bufferDepthPerLane - 5),  UInt(128.W)))
   val outputBufferAddr = Wire(UInt(log2Ceil(1 << (bufferDepthPerLane - 5)).W))
   outputBufferAddr := io.mmio.rxDataOffset
-  val outputRdPorts = (0 until numOutputSrams).map(i => outputBuffer(i)(outputBufferAddr))
+  val outputRdPorts = (0 until numOutputSrams).map(i => outputBuffer(i)(io.mmio.rxDataOffset))
   val outputWrPorts = (0 until numOutputSrams).map(i => outputBuffer(i)(outputBufferAddr))
 
   io.mmio.txBitsSent := packetsEnqueued << log2Ceil(Phy.DigitalBitsPerCycle)
@@ -212,21 +212,13 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   io.mmio.rxBitsReceived := rxBitsReceived
   io.mmio.rxBitErrors := rxBitErrors
   io.mmio.rxSignature := rxSignature
-  val rxDataChunk = Reg(UInt(32.W))
-  rxDataChunk := rxDataChunk
-  val rxValidChunk = Reg(UInt(32.W))
-  rxValidChunk := rxValidChunk
-  when (io.mmio.rxDataOffset === outputBufferAddr) {
-    rxDataChunk := 0.U
-    for (i <- 0 until numOutputSrams) {
-      when (i.U === io.mmio.rxDataLane >> 2.U) {
-        rxDataChunk := outputRdPorts(i).asTypeOf(Vec(4, UInt(32.W)))(io.mmio.rxDataLane % 4.U)
-      }
+  io.mmio.rxDataChunk := 0.U
+  for (i <- 0 until numOutputSrams) {
+    when (i.U === io.mmio.rxDataLane >> 2.U) {
+      io.mmio.rxDataChunk := outputRdPorts(i).asTypeOf(Vec(4, UInt(32.W)))(io.mmio.rxDataLane % 4.U)
     }
-    rxValidChunk := outputRdPorts(numLanes >> 2).asTypeOf(Vec(4, UInt(32.W)))(numLanes % 4)
   }
-  io.mmio.rxDataChunk := rxDataChunk
-  io.mmio.rxValidChunk := rxValidChunk
+  io.mmio.rxValidChunk := outputRdPorts(numLanes >> 2).asTypeOf(Vec(4, UInt(32.W)))(numLanes % 4)
 
 
   for (lane <- 0 until numLanes) {
