@@ -250,7 +250,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
       switch (io.mmio.txTestMode) {
         is (TxTestMode.manual) {
           when (loadedFirstChunk) {
-            when (!io.phy.tx.ready) {
+            when (io.phy.tx.ready) {
               inputBufferAddr := packetsEnqueued + 1.U
             } .otherwise {
               inputBufferAddr := packetsEnqueued
