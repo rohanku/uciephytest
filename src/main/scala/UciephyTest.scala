@@ -163,7 +163,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
     lfsr.io.increment := false.B
     lfsr
   })
-  val txValid = withReset(txReset) { RegInit(false.B) }
+  val loadedFirstChunk = withReset(txReset) { RegInit(false.B) }
+  val nextChunk = withReset(txReset) { RegInit(0.U(32.W)) }
 
   // RX registers
   val rxReset = io.mmio.rxFsmRst || reset.asBool
@@ -226,7 +227,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   }
   io.phy.tx.bits.valid := 0.U
   io.phy.rx.ready := false.B
-  io.phy.tx.valid := txValid
+  io.phy.tx.valid := false.B
   io.phy.txRst := txReset
   io.phy.rxRst := rxReset
 
@@ -246,14 +247,22 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
       }
     }
     is(TxTestState.run) {
-      val notDone = ((packetsEnqueued + 1.U) << log2Ceil(Phy.DigitalBitsPerCycle)) < io.mmio.txBitsToSend
-      inputBufferAddr := packetsEnqueued
       switch (io.mmio.txTestMode) {
         is (TxTestMode.manual) {
-          for (lane <- 0 until numLanes) {
-            io.phy.tx.bits.data(lane) := inputRdPorts(lane >> 2).asTypeOf(Vec(4, UInt(32.W)))(lane % 4)
+          when (loadedFirstChunk) {
+            when (!io.phy.tx.ready) {
+              inputBufferAddr := packetsEnqueued + 1.U
+            } .otherwie {
+              inputBufferAddr := packetsEnqueued
+            }
+            for (lane <- 0 until numLanes) {
+              io.phy.tx.bits.data(lane) := inputRdPorts(lane >> 2).asTypeOf(Vec(4, UInt(32.W)))(lane % 4)
+            }
+            io.phy.tx.valid := true.B
+          } .otherwise {
+            inputBufferAddr := 0.U
+            loadedFirstChunk := true.B
           }
-          txValid := notDone
         }
         is (TxTestMode.lfsr) {
           for (lane <- 0 until numLanes) {
@@ -286,7 +295,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
         }
       }
 
-      when (!notDone && !io.phy.tx.valid) {
+      when (loadedFirstChunk && !io.phy.tx.valid) {
         txState := TxTestState.done
       }
     }
@@ -401,7 +410,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
       rxBitsReceived := rxBitsReceived +& Phy.DigitalBitsPerCycle.U +& validHighStreak
     } .otherwise {
       when (recordingStarted || startRecording) {
-        val shouldWrite = rxBlock < (1 << (bufferDepthPerLane - 6)).U && rxBitsReceivedOffset +& Phy.DigitalBitsPerCycle.U - startIdx >= 32.U
+        val shouldWrite = rxBlock < (1 << (bufferDepthPerLane - 5)).U && rxBitsReceivedOffset +& Phy.DigitalBitsPerCycle.U - startIdx >= 32.U
         when(shouldWrite) {
           outputBufferAddr := rxBlock
         }
