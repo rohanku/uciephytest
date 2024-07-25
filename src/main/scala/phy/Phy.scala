@@ -271,7 +271,7 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
   val ESD_sbRxData = Module(new Esd)
   ESD_sbRxClk.io.term := io.top.sbRxClk.asBool
   ESD_sbRxData.io.term := io.top.sbRxData.asBool
-  io.sideband.rxClk := io.top.sbRxClk
+  io.sideband.rxClk := io.top.sbRxClk.asBool
   io.sideband.rxData := io.top.sbRxData
 
   // Set up clocking
