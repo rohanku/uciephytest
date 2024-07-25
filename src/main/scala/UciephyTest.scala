@@ -571,9 +571,12 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       // PHY
       val phy = Module(new Phy(params.numLanes))
       when (ucieStack) { 
-        phy.io.test.txTransmitData := uciTL.module.io.phyAfe.get.txData
-        uciTL.module.io.phyAfe.get.rxData := phy.io.test.rxReceiveData
-        // TODO: Rohan, this needs the sideband connections also
+        phy.io.test.tx <> uciTL.module.io.phyAfe.get.txData.asTypeOf(phy.io.test.tx)
+        uciTL.module.io.phyAfe.get.rxData <> phy.io.test.rx.asTypeOf(uciTL.module.io.phyAfe.get.rxData)
+        phy.io.sideband.txClk := uciTL.module.io.txSbAfe.clk
+        phy.io.sideband.txData := uciTL.module.io.txSbAfe.data
+        uciTL.module.io.rxSbAfe.clk := phy.io.sideband.rxClk
+        uciTL.module.io.rxSbAfe.data := phy.io.sideband.rxData
         // TODO: you also need to match the interfaces
       }.otherwise {
         phy.io.test <> test.io.phy
