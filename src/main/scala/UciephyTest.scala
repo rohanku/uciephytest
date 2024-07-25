@@ -57,6 +57,10 @@ class UciephyTopIO(numLanes: Int = 2) extends Bundle {
   val rxValid = Input(Bool())
   val rxClkP = Input(Clock())
   val rxClkN = Input(Clock())
+  val sbTxClk = Output(Clock())
+  val sbTxData = Output(Bool())
+  val sbRxClk = Output(Clock())
+  val sbRxData = Output(Bool())
   val pllIref = Input(Bool())
 }
 
@@ -465,14 +469,6 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   }
 }
 
-class Esd extends BlackBox {
-  val io = IO(new Bundle {
-    val term = Input(Bool())
-  })
-
-  override val desiredName = "ucie_esd"
-}
-
 class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Parameters) extends ClockSinkDomain(ClockSinkParameters())(p) {
   val device = new SimpleDevice("uciephytest", Seq("ucbbar,uciephytest")) 
   val node = TLRegisterNode(Seq(AddressSet(params.address, 4096-1)), device, "reg/control", beatBytes=beatBytes)
@@ -558,11 +554,6 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
           true.B
         }), None)
       }
-
-      val ESD_clk_ref_p = Module(new Esd)
-      val ESD_clk_ref_n = Module(new Esd)
-      ESD_clk_ref_p.io.term := phy.io.top.refClkP.asBool
-      ESD_clk_ref_n.io.term := phy.io.top.refClkN.asBool
 
       var mmioRegs = Seq(
         toRegField(txTestMode),

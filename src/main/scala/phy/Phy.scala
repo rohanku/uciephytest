@@ -24,6 +24,13 @@ class PhyToTestIO(numLanes: Int = 2) extends Bundle {
   val rxRst = Input(Bool())
 }
 
+class SidebandIO extends Bundle {
+  val txClk = Input(Bool())
+  val txData = Input(Bool())
+  val rxClk = Output(Bool())
+  val rxData = Output(Bool())
+}
+
 class RefClkRxIO extends Bundle {
   val vip = Input(Bool())
   val vin = Input(Bool())
@@ -117,6 +124,23 @@ class RstSync(sim: Boolean = true) extends BlackBox with HasBlackBoxInline {
   }
 }
 
+class Esd(sim: Boolean = false) extends BlackBox with HasBlackBoxInline {
+  val io = IO(new Bundle {
+    val term = Input(Bool())
+  })
+
+  override val desiredName = "ucie_esd"
+
+  if (sim) {
+    setInline("ucie_esd.v",
+      """module ucie_esd(
+      | input term
+      |);
+      |endmodule
+      """.stripMargin)
+  }
+}
+
 class Shuffler16 extends RawModule {
   val io = IO(new Bundle {
     val din = Input(UInt(16.W))
@@ -197,6 +221,10 @@ class PhyIO(numLanes: Int = 2) extends Bundle {
   // =====================
   val test = new PhyToTestIO(numLanes)
 
+  // SIDEBAND INTERFACE
+  // =====================
+  val sideband = new SidebandIO
+
   // TOP INTERFACE
   // =====================
   val top = new uciephytest.UciephyTopIO(numLanes)
@@ -224,6 +252,26 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
     clocking_ctl.misc := io.clockingMiscCtl(lane).asTypeOf(clocking_ctl.misc)
   }
 
+  // Set up sideband
+  val sbTxClk = Module(new TxDriver(sim))
+  sbTxClk.io.din := io.sideband.txClk
+  io.top.sbTxClk := sbTxClk.io.dout.asClock
+  sbTxClk.io.driver_ctl.pu_ctl := 63.U
+  sbTxClk.io.driver_ctl.pd_ctl := 63.U
+  sbTxClk.io.driver_ctl.en := true.B
+  sbTxClk.io.driver_ctl.en_b := false.B
+  val sbTxData = Module(new TxDriver(sim))
+  sbTxData.io.din := io.sideband.txData
+  io.top.sbTxData := sbTxData.io.dout
+  sbTxClk.io.driver_ctl.pu_ctl := 63.U
+  sbTxClk.io.driver_ctl.pd_ctl := 63.U
+  sbTxClk.io.driver_ctl.en := true.B
+  sbTxClk.io.driver_ctl.en_b := false.B
+  val ESD_sbRxClk = Module(new Esd)
+  val ESD_sbRxData = Module(new Esd)
+  ESD_sbRxClk.io.term := io.top.refClkP.asBool
+  ESD_sbRxClk.io.term := io.top.refClkN.asBool
+
   // Set up clocking
   val rxClkP = Module(new RxClk(sim))
   rxClkP.io.clkin := io.top.rxClkP.asBool
@@ -234,6 +282,10 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
   val refClkRx = Module(new RefClkRx(sim))
   refClkRx.io.vip := io.top.refClkP.asBool
   refClkRx.io.vin := io.top.refClkN.asBool
+  val ESD_refClkP = Module(new Esd)
+  val ESD_refClkN = Module(new Esd)
+  ESD_refClkP.io.term := io.top.refClkP.asBool
+  ESD_refClkN.io.term := io.top.refClkN.asBool
   val clkMuxP = Module(new ClkMux(sim))
   clkMuxP.io.in0 := refClkRx.io.vop
   clkMuxP.io.in1 := false.B
