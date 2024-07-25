@@ -36,15 +36,17 @@ class RefClkRx(sim: Boolean = false) extends BlackBox with HasBlackBoxInline {
 
   override val desiredName = "refclkrx"
 
-  setInline("refclkrx.v",
-    """module refclkrx(
-    | input vip, vin,
-    | output vop, von
-    |);
-    | assign vop = vip;
-    | assign von = vin;
-    |endmodule
-    """.stripMargin)
+  if (sim) {
+    setInline("refclkrx.v",
+      """module refclkrx(
+      | input vip, vin,
+      | output vop, von
+      |);
+      | assign vop = vip;
+      | assign von = vin;
+      |endmodule
+      """.stripMargin)
+  }
 }
 
 class ClkMuxIO extends Bundle {
