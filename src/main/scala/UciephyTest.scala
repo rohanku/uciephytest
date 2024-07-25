@@ -78,8 +78,8 @@ class UciephyTopIO(numLanes: Int = 2) extends Bundle {
   val rxClkN = Input(Clock())
   val sbTxClk = Output(Clock())
   val sbTxData = Output(Bool())
-  val sbRxClk = Output(Clock())
-  val sbRxData = Output(Bool())
+  val sbRxClk = Input(Clock())
+  val sbRxData = Input(Bool())
   val pllIref = Input(Bool())
 }
 
@@ -582,6 +582,9 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         phy.io.test <> test.io.phy
       }
       topIO.out(0)._1 <> phy.io.top
+      // Tie sideband to 0 for simple test
+      phy.io.sideband.txClk := false.B
+      phy.io.sideband.txData := false.B
 
       phy.io.driverPuCtl := driverPuCtl
       phy.io.driverPdCtl := driverPdCtl

@@ -263,14 +263,16 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
   val sbTxData = Module(new TxDriver(sim))
   sbTxData.io.din := io.sideband.txData
   io.top.sbTxData := sbTxData.io.dout
-  sbTxClk.io.driver_ctl.pu_ctl := 63.U
-  sbTxClk.io.driver_ctl.pd_ctl := 63.U
-  sbTxClk.io.driver_ctl.en := true.B
-  sbTxClk.io.driver_ctl.en_b := false.B
+  sbTxData.io.driver_ctl.pu_ctl := 63.U
+  sbTxData.io.driver_ctl.pd_ctl := 63.U
+  sbTxData.io.driver_ctl.en := true.B
+  sbTxData.io.driver_ctl.en_b := false.B
   val ESD_sbRxClk = Module(new Esd)
   val ESD_sbRxData = Module(new Esd)
-  ESD_sbRxClk.io.term := io.top.refClkP.asBool
-  ESD_sbRxClk.io.term := io.top.refClkN.asBool
+  ESD_sbRxClk.io.term := io.top.sbRxClk.asBool
+  ESD_sbRxData.io.term := io.top.sbRxData.asBool
+  io.sideband.rxClk := io.top.sbRxClk.asBool
+  io.sideband.rxData := io.top.sbRxData
 
   // Set up clocking
   val rxClkP = Module(new RxClk(sim))
