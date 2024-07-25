@@ -537,7 +537,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       phy.io.test <> test.io.phy
       topIO.out(0)._1 <> phy.io.top
       // Tie sideband to 0 for simple test
-      phy.io.sideband.txClk := false.B.asClock
+      phy.io.sideband.txClk := false.B
       phy.io.sideband.txData := false.B
 
       phy.io.driverPuCtl := driverPuCtl
