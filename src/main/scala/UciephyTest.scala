@@ -59,8 +59,8 @@ class UciephyTopIO(numLanes: Int = 2) extends Bundle {
   val rxClkN = Input(Clock())
   val sbTxClk = Output(Clock())
   val sbTxData = Output(Bool())
-  val sbRxClk = Output(Clock())
-  val sbRxData = Output(Bool())
+  val sbRxClk = Input(Clock())
+  val sbRxData = Input(Bool())
   val pllIref = Input(Bool())
 }
 
