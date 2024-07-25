@@ -226,4 +226,7 @@ class MiscClockingControlIO extends Bundle {
   val clkn_pen = Input(Bits(5.W))
   val clkn_nen = Input(Bits(5.W))
   val delay = Input(Bits(6.W))
+  val dll_en = Input(Bool())
+  val mode68 = Input(Bool())
+  val ocl = Input(Bool())
 }

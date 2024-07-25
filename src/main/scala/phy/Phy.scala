@@ -345,7 +345,7 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
     val txLane = Module(new TxLaneDll(sim))
     txLane.io.vinp := txClkP_wire
     txLane.io.vinn := txClkN_wire
-    txLane.io.resetb := !reset.asBool
+    txLane.io.reset := reset.asBool
     connectDriverCtl(txLane.io.driver_ctl, lane)
     connectClockingCtl(txLane.io.clocking_ctl, lane)
 

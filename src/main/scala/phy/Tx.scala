@@ -685,7 +685,7 @@ class TxLaneDllIO extends Bundle {
   val din = new TxDinIO
   val dout = Output(Bool())
   val divclk = Output(Clock())
-  val resetb = Input(Bool())
+  val reset = Input(Bool())
   val driver_ctl = new DriverControlIO
   val clocking_ctl = new ClockingControlDllIO
 }
@@ -717,7 +717,8 @@ class TxLaneDll(sim: Boolean = false) extends RawModule {
     val verilogBlackBox = Module(new VerilogTxLaneDll)
     verilogBlackBox.io.vinp := io.vinp
     verilogBlackBox.io.vinn := io.vinn
-    verilogBlackBox.io.resetb := io.resetb
+    verilogBlackBox.io.datapath_resetb := !io.reset
+    verilogBlackBox.io.dll_reset := io.reset
     verilogBlackBox.io.din_0 :=  io.din.din_0
     verilogBlackBox.io.din_1 :=  io.din.din_1
     verilogBlackBox.io.din_2 :=  io.din.din_2
@@ -924,6 +925,9 @@ class TxLaneDll(sim: Boolean = false) extends RawModule {
     verilogBlackBox.io.delayb_3 := delayb(3)
     verilogBlackBox.io.delayb_4 := delayb(4)
     verilogBlackBox.io.delayb_5 := delayb(5)
+    verilogBlackBox.io.dll_en := io.clocking_ctl.misc.dll_en
+    verilogBlackBox.io.mode68 := io.clocking_ctl.misc.mode68
+    verilogBlackBox.io.ocl := io.clocking_ctl.misc.ocl
   }
 }
 
