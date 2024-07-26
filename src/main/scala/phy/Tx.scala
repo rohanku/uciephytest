@@ -952,7 +952,8 @@ class VerilogTxLaneDllIO extends Bundle {
   val din_15 = Input(Bool())
   val dout = Output(Bool())
   val divclk = Output(Clock())
-  val resetb = Input(Bool())
+  val datapath_resetb = Input(Bool())
+  val dll_reset = Input(Bool())
   val pu_ctl_0 = Input(Bool())
   val pu_ctl_1 = Input(Bool())
   val pu_ctl_2 = Input(Bool())
@@ -1135,6 +1136,9 @@ class VerilogTxLaneDllIO extends Bundle {
   val delayb_3 = Input(Bool())
   val delayb_4 = Input(Bool())
   val delayb_5 = Input(Bool())
+  val dll_en = Input(Bool())
+  val mode68 = Input(Bool())
+  val ocl = Input(Bool())
 }
 
 class VerilogTxLaneDll extends BlackBox {
