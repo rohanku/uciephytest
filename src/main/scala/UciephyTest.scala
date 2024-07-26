@@ -13,7 +13,7 @@ import uciephytest.phy.{Phy, PhyToTestIO}
 
 case class UciephyTestParams(
   address: BigInt = 0x4000,
-  bufferDepthPerLane: Int = 10,
+  bufferDepthPerLane: Int = 13,
   numLanes: Int = 2,
 )
 
