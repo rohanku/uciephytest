@@ -572,12 +572,20 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val phy = Module(new Phy(params.numLanes))
       when (ucieStack) { 
         phy.io.test.tx <> uciTL.module.io.phyAfe.get.txData.asTypeOf(phy.io.test.tx)
+        uciTL.module.io.phyAfe.get.txData.ready := true.B
+        phy.io.test.txRst := test.io.phy.txRst
         uciTL.module.io.phyAfe.get.rxData <> phy.io.test.rx.asTypeOf(uciTL.module.io.phyAfe.get.rxData)
+        phy.io.test.rx.ready := true.B
+        phy.io.test.rxRst := test.io.phy.rxRst
         phy.io.sideband.txClk := uciTL.module.io.txSbAfe.clk
         phy.io.sideband.txData := uciTL.module.io.txSbAfe.data
         uciTL.module.io.rxSbAfe.clk := phy.io.sideband.rxClk
         uciTL.module.io.rxSbAfe.data := phy.io.sideband.rxData
         // TODO: you also need to match the interfaces
+        test.io.phy.tx.ready := 0.U
+        test.io.phy.rx.valid := 0.U
+        test.io.phy.rx.bits.valid := 0.U
+        test.io.phy.rx.bits.data := 0.U.asTypeOf(test.io.phy.rx.bits.data)
       }.otherwise {
         phy.io.test <> test.io.phy
         uciTL.module.io.phyAfe.get.txData.ready := 0.U
