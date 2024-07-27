@@ -580,6 +580,11 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         // TODO: you also need to match the interfaces
       }.otherwise {
         phy.io.test <> test.io.phy
+        uciTL.module.io.phyAfe.get.txData.ready := 0.U
+        uciTL.module.io.phyAfe.get.rxData.valid := 0.U
+        uciTL.module.io.phyAfe.get.rxData.bits := 0.U.asTypeOf(uciTL.module.io.phyAfe.get.rxData.bits)
+        uciTL.module.io.rxSbAfe.clk := 0.U
+        uciTL.module.io.rxSbAfe.data := 0.U.asTypeOf(uciTL.module.io.rxSbAfe.data)
       }
       topIO.out(0)._1 <> phy.io.top
       // Tie sideband to 0 for simple test
