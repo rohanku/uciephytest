@@ -20,7 +20,7 @@ import edu.berkeley.cs.ucie.digital.logphy.{LinkTrainingParams}
 
 case class UciephyTestParams(
   address: BigInt = 0x4000,
-  bufferDepthPerLane: Int = 10,
+  bufferDepthPerLane: Int = 13,
   numLanes: Int = 2,
   protoParams: ProtocolLayerParams = ProtocolLayerParams(),
   tlParams: TileLinkParams = TileLinkParams(address = 0x0000, addressRange = ((2L << 32)-1), configAddress = 0x7000, inwardQueueDepth = 2, outwardQueueDepth = 2),
