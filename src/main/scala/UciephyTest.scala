@@ -326,6 +326,10 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   runningData := runningData
   runningValid := runningValid
 
+  // Fix timing issues by pipelining computation
+  val rxValidStartThresholdMask = RegInit(0.U(Phy.DigitalBitsPerCycle.W))
+  rxValidStartThresholdMask := (1.U << io.mmio.rxValidStartThreshold) - 1.U
+
   // Check valid streak after each packet is dequeued.
   when (io.phy.rx.ready & io.phy.rx.valid) {
     // Store data in a register
@@ -333,11 +337,9 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
       prevDataBits(lane) := io.phy.rx.bits.data(lane)
     }
 
-    val mask = Wire(UInt(Phy.DigitalBitsPerCycle.W))
-    mask := (1.U << io.mmio.rxValidStartThreshold) - 1.U
     // Find correct start index if recording hasn't started already.
     for (i <- Phy.DigitalBitsPerCycle - 1 to 0 by -1) {
-      val shouldStartRecording = ((io.phy.rx.bits.valid >> i.U) & mask) === mask
+      val shouldStartRecording = ((io.phy.rx.bits.valid >> i.U) & rxValidStartThresholdMask) === rxValidStartThresholdMask
       when(!recordingStarted && shouldStartRecording) {
         startRecording := true.B
         startIdx := i.U
