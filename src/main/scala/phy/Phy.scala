@@ -141,6 +141,23 @@ class Esd(sim: Boolean = false) extends BlackBox with HasBlackBoxInline {
   }
 }
 
+class EsdRoutable(sim: Boolean = false) extends BlackBox with HasBlackBoxInline {
+  val io = IO(new Bundle {
+    val term = Input(Bool())
+  })
+
+  override val desiredName = "ucie_esd_routable"
+
+  if (sim) {
+    setInline("ucie_esd_routable.v",
+      """module ucie_esd_routable(
+      | input term
+      |);
+      |endmodule
+      """.stripMargin)
+  }
+}
+
 class Shuffler16 extends RawModule {
   val io = IO(new Bundle {
     val din = Input(UInt(16.W))
@@ -206,7 +223,7 @@ class PhyIO(numLanes: Int = 2) extends Bundle {
   // Misc clocking control per lane (`numLanes` data lanes, 1 valid lane). 
   val clockingPiCtl = Input(Vec(numLanes + 1, UInt(52.W)))
   // Misc clocking control per lane (`numLanes` data lanes, 1 valid lane). 
-  val clockingMiscCtl = Input(Vec(numLanes + 1, UInt(29.W)))
+  val clockingMiscCtl = Input(Vec(numLanes + 1, UInt(28.W)))
   /// Control for TX shuffler.
   val shufflerCtl = Input(Vec(numLanes + 1, Vec(16, UInt(4.W))))
 
@@ -267,8 +284,8 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
   sbTxData.io.driver_ctl.pd_ctl := 63.U
   sbTxData.io.driver_ctl.en := true.B
   sbTxData.io.driver_ctl.en_b := false.B
-  val ESD_sbRxClk = Module(new Esd)
-  val ESD_sbRxData = Module(new Esd)
+  val ESD_sbRxClk = Module(new EsdRoutable)
+  val ESD_sbRxData = Module(new EsdRoutable)
   ESD_sbRxClk.io.term := io.top.sbRxClk.asBool
   ESD_sbRxData.io.term := io.top.sbRxData.asBool
   io.sideband.rxClk := io.top.sbRxClk.asBool
