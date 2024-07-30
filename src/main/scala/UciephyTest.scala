@@ -694,7 +694,7 @@ trait CanHavePeripheryUciephyTest { this: BaseSubsystem =>
     case Some(params) => {
       val uciephy = LazyModule(new UciephyTestTL(params, pbus.beatBytes)(p))
       uciephy.clockNode := pbus.fixedClockNode
-      pbus.coupleTo(portName) { uciephy.node := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
+      pbus.coupleTo(portName) { uciephy.node := TLBuffer() := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := _ }
       uciephy.uciTL.clockNode := sbus.fixedClockNode
       obus.coupleTo(s"ucie_tl_man_port") { 
           uciephy.uciTL.managerNode := TLWidthWidget(obus.beatBytes) := TLBuffer() := TLSourceShrinker(params.tlParams.sourceIDWidth) := TLFragmenter(obus.beatBytes, p(CacheBlockBytes)) := _ 
