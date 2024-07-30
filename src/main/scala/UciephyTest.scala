@@ -505,7 +505,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val driverPdCtl = RegInit(VecInit(Seq.fill(params.numLanes + 5)(0.U(6.W))))
       val driverEn = RegInit(VecInit(Seq.fill(params.numLanes + 5)(false.B)))
       val clockingPiCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(52.W))))
-      val clockingMiscCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(26.W))))
+      val clockingMiscCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(28.W))))
       val shufflerCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(
         VecInit((0 until 16).map(i => i.U(4.W))).asUInt
       )))

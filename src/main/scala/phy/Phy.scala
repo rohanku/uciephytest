@@ -223,7 +223,7 @@ class PhyIO(numLanes: Int = 2) extends Bundle {
   // Misc clocking control per lane (`numLanes` data lanes, 1 valid lane). 
   val clockingPiCtl = Input(Vec(numLanes + 1, UInt(52.W)))
   // Misc clocking control per lane (`numLanes` data lanes, 1 valid lane). 
-  val clockingMiscCtl = Input(Vec(numLanes + 1, UInt(29.W)))
+  val clockingMiscCtl = Input(Vec(numLanes + 1, UInt(28.W)))
   /// Control for TX shuffler.
   val shufflerCtl = Input(Vec(numLanes + 1, Vec(16, UInt(4.W))))
 
