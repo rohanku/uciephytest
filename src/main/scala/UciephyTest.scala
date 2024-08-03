@@ -696,13 +696,13 @@ trait CanHavePeripheryUciephyTest { this: BaseSubsystem =>
     case Some(params) => {
       val uciephy = LazyModule(new UciephyTestTL(params, pbus.beatBytes)(p))
       uciephy.clockNode := pbus.fixedClockNode
-      pbus.coupleTo(portName) { uciephy.node := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := TLBuffer() := _ }
+      pbus.coupleTo(portName) { uciephy.node := TLBuffer() := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := TLBuffer() := _ }
       uciephy.uciTL.clockNode := sbus.fixedClockNode
       obus.coupleTo(s"ucie_tl_man_port") { 
-          uciephy.uciTL.managerNode := TLWidthWidget(obus.beatBytes) := TLBuffer() := TLSourceShrinker(params.tlParams.sourceIDWidth) := TLFragmenter(obus.beatBytes, p(CacheBlockBytes)) := _ 
+          uciephy.uciTL.managerNode := TLWidthWidget(obus.beatBytes) := TLBuffer() := TLSourceShrinker(params.tlParams.sourceIDWidth) := TLFragmenter(obus.beatBytes, p(CacheBlockBytes)) := TLBuffer() := _ 
       } //manager node because SBUS is making request?
-      sbus.coupleFrom(s"ucie_tl_cl_port") { _ := TLWidthWidget(sbus.beatBytes) := TLBuffer() := uciephy.uciTL.clientNode }
-      sbus.coupleTo(s"ucie_tl_ctrl_port") { uciephy.uciTL.regNode.node := TLWidthWidget(sbus.beatBytes) := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := _ }
+      sbus.coupleFrom(s"ucie_tl_cl_port") { _ := TLBuffer() := TLWidthWidget(sbus.beatBytes) := TLBuffer() := uciephy.uciTL.clientNode }
+      sbus.coupleTo(s"ucie_tl_ctrl_port") { uciephy.uciTL.regNode.node := TLWidthWidget(sbus.beatBytes) := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := TLBuffer() := _ }
 
       Some(uciephy)
     }
