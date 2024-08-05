@@ -20,7 +20,11 @@ class UciephyTestHarness(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extend
   phy.io.top.rxClkN := phy.io.top.txClkN
   phy.io.top.rxData := phy.io.top.txData
   phy.io.top.rxValid := phy.io.top.txValid
+  phy.io.top.sbRxData := phy.io.top.sbTxData
+  phy.io.top.sbRxClk := phy.io.top.sbTxClk
   phy.io.top.pllIref := false.B
+  phy.io.sideband.txData := false.B
+  phy.io.sideband.txClk := false.B
   phy.io.driverPuCtl := 0.U.asTypeOf(phy.io.driverPuCtl)
   phy.io.driverPdCtl := 0.U.asTypeOf(phy.io.driverPdCtl)
   phy.io.driverEn := 0.U.asTypeOf(phy.io.driverEn)

@@ -284,8 +284,8 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
   sbTxData.io.driver_ctl.pd_ctl := 63.U
   sbTxData.io.driver_ctl.en := true.B
   sbTxData.io.driver_ctl.en_b := false.B
-  val ESD_sbRxClk = Module(new EsdRoutable)
-  val ESD_sbRxData = Module(new EsdRoutable)
+  val ESD_sbRxClk = Module(new EsdRoutable(sim))
+  val ESD_sbRxData = Module(new EsdRoutable(sim))
   ESD_sbRxClk.io.term := io.top.sbRxClk.asBool
   ESD_sbRxData.io.term := io.top.sbRxData.asBool
   io.sideband.rxClk := io.top.sbRxClk.asBool
@@ -301,8 +301,8 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
   val refClkRx = Module(new RefClkRx(sim))
   refClkRx.io.vip := io.top.refClkP.asBool
   refClkRx.io.vin := io.top.refClkN.asBool
-  val ESD_refClkP = Module(new Esd)
-  val ESD_refClkN = Module(new Esd)
+  val ESD_refClkP = Module(new Esd(sim))
+  val ESD_refClkN = Module(new Esd(sim))
   ESD_refClkP.io.term := io.top.refClkP.asBool
   ESD_refClkN.io.term := io.top.refClkN.asBool
   val clkMuxP = Module(new ClkMux(sim))
