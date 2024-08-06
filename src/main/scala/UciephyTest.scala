@@ -550,7 +550,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val rxValidStartThreshold = RegInit(4.U(log2Ceil(Phy.DigitalBitsPerCycle).W))
       val rxValidStopThreshold = RegInit(4.U(log2Ceil(Phy.DigitalBitsPerCycle).W))
       val rxFsmRst = Wire(DecoupledIO(UInt(1.W)))
-      val rxPauseCounters = Wire(UInt(1.W))
+      val rxPauseCounters = RegInit(0.U(1.W))
       val rxDataLane = RegInit(0.U(log2Ceil(params.numLanes).W))
       val rxDataOffset = RegInit(0.U((params.bufferDepthPerLane - 5).W))
       val rxPermute = RegInit(VecInit((0 until Phy.SerdesRatio).map(_.U(log2Ceil(Phy.SerdesRatio).W))))
