@@ -226,6 +226,9 @@ class PhyIO(numLanes: Int = 2) extends Bundle {
   val clockingMiscCtl = Input(Vec(numLanes + 1, UInt(28.W)))
   /// Control for TX shuffler.
   val shufflerCtl = Input(Vec(numLanes + 1, Vec(16, UInt(4.W))))
+  /// DLL code output.
+  val dllCode = Output(Vec(numLanes + 1, UInt(5.W)))
+  val dllCodeb = Output(Vec(numLanes + 1, UInt(5.W)))
 
   // RX CONTROL
   // =====================
@@ -365,6 +368,8 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
     txLane.io.reset := reset.asBool
     connectDriverCtl(txLane.io.driver_ctl, lane)
     connectClockingCtl(txLane.io.clocking_ctl, lane)
+    io.dllCode(lane) := txLane.io.dll_code
+    io.dllCodeb(lane) := txLane.io.dll_codeb
 
     val serializer = withClockAndReset(txLane.io.divclk, reset.asAsyncReset) { Module(new Ser32to16) }
     when (txFifo.io.deq.valid) {

@@ -564,6 +564,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       )))
       val terminationCtl = RegInit(VecInit(Seq.fill(params.numLanes + 3)(~0.U(6.W))))
       val vrefCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(64.W))))
+      val dllCode = Wire(Vec(params.numLanes + 1, UInt(10.W)))
       val ucieStack = RegInit(false.B)
 
       txFsmRst.ready := true.B
@@ -629,6 +630,9 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       phy.io.terminationCtl := terminationCtl
       phy.io.shufflerCtl := shufflerCtl.asTypeOf(phy.io.shufflerCtl)
       phy.io.vrefCtl := vrefCtl
+      for (lane <- 0 to params.numLanes) {
+        dllCode(lane) := Cat(phy.io.dllCode(lane), phy.io.dllCodeb(lane))
+      }
 
       val toRegField = (r: UInt) => {
         RegField(r.getWidth, r, RegWriteFn((valid, data) => {
@@ -685,6 +689,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
           Seq(
             toRegField(clockingPiCtl(i)),
             toRegField(clockingMiscCtl(i)),
+            RegField.r(10, dllCode(i))
           )
       }) ++ (0 until params.numLanes + 1).flatMap((i: Int) => {
           Seq(

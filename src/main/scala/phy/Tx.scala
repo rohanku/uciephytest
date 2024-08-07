@@ -688,6 +688,8 @@ class TxLaneDllIO extends Bundle {
   val reset = Input(Bool())
   val driver_ctl = new DriverControlIO
   val clocking_ctl = new ClockingControlDllIO
+  val dll_code = Output(UInt(5.W))
+  val dll_codeb = Output(UInt(5.W))
 }
 
 class TxLaneDll(sim: Boolean = false) extends RawModule {
@@ -713,6 +715,8 @@ class TxLaneDll(sim: Boolean = false) extends RawModule {
 
     io.driver_ctl <> 0.U.asTypeOf(io.driver_ctl)
     io.clocking_ctl <> 0.U.asTypeOf(io.clocking_ctl)
+    io.dll_code := 0.U
+    io.dll_codeb := ~(0.U(5.W))
   } else {
     val verilogBlackBox = Module(new VerilogTxLaneDll)
     verilogBlackBox.io.vinp := io.vinp
@@ -923,6 +927,16 @@ class TxLaneDll(sim: Boolean = false) extends RawModule {
     verilogBlackBox.io.delayb_2 := delayb(2)
     verilogBlackBox.io.delayb_3 := delayb(3)
     verilogBlackBox.io.delayb_4 := delayb(4)
+    io.dll_code(0) := verilogBlackBox.io.dll_code_0
+    io.dll_code(1) := verilogBlackBox.io.dll_code_1
+    io.dll_code(2) := verilogBlackBox.io.dll_code_2
+    io.dll_code(3) := verilogBlackBox.io.dll_code_3
+    io.dll_code(4) := verilogBlackBox.io.dll_code_4
+    io.dll_codeb(0) := verilogBlackBox.io.dll_codeb_0
+    io.dll_codeb(1) := verilogBlackBox.io.dll_codeb_1
+    io.dll_codeb(2) := verilogBlackBox.io.dll_codeb_2
+    io.dll_codeb(3) := verilogBlackBox.io.dll_codeb_3
+    io.dll_codeb(4) := verilogBlackBox.io.dll_codeb_4
     verilogBlackBox.io.dll_en := io.clocking_ctl.misc.dll_en
     verilogBlackBox.io.mode68 := io.clocking_ctl.misc.mode68
     verilogBlackBox.io.ocl := io.clocking_ctl.misc.ocl
@@ -1132,6 +1146,40 @@ class VerilogTxLaneDllIO extends Bundle {
   val delayb_2 = Input(Bool())
   val delayb_3 = Input(Bool())
   val delayb_4 = Input(Bool())
+  val dll_code_0 = Output(Bool())
+  val dll_code_1 = Output(Bool())
+  val dll_code_2 = Output(Bool())
+  val dll_code_3 = Output(Bool())
+  val dll_code_4 = Output(Bool())
+  val dll_codeb_0 = Output(Bool())
+  val dll_codeb_1 = Output(Bool())
+  val dll_codeb_2 = Output(Bool())
+  val dll_codeb_3 = Output(Bool())
+  val dll_codeb_4 = Output(Bool())
+  val dll_pi_in_0 = Output(Bool())
+  val dll_pi_in_1 = Output(Bool())
+  val dll_pi_in_2 = Output(Bool())
+  val dll_pi_in_3 = Output(Bool())
+  val dll_pi_in_4 = Output(Bool())
+  val dll_pi_in_5 = Output(Bool())
+  val dll_pi_in_6 = Output(Bool())
+  val dll_pi_in_7 = Output(Bool())
+  val pi_in_buf_0 = Output(Bool())
+  val pi_in_buf_1 = Output(Bool())
+  val pi_in_buf_2 = Output(Bool())
+  val pi_in_buf_3 = Output(Bool())
+  val pi_in_buf_4 = Output(Bool())
+  val pi_in_buf_5 = Output(Bool())
+  val pi_in_buf_6 = Output(Bool())
+  val pi_in_buf_7 = Output(Bool())
+  val pi_band_sel_0 = Output(Bool())
+  val pi_band_sel_1 = Output(Bool())
+  val pi_band_selb_0 = Output(Bool())
+  val pi_band_selb_1 = Output(Bool())
+  val pi_ph_sel_0 = Output(Bool())
+  val pi_ph_sel_1 = Output(Bool())
+  val pi_ph_selb_0 = Output(Bool())
+  val pi_ph_selb_1 = Output(Bool())
   val dll_en = Input(Bool())
   val mode68 = Input(Bool())
   val ocl = Input(Bool())
