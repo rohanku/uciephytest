@@ -927,16 +927,20 @@ class TxLaneDll(sim: Boolean = false) extends RawModule {
     verilogBlackBox.io.delayb_2 := delayb(2)
     verilogBlackBox.io.delayb_3 := delayb(3)
     verilogBlackBox.io.delayb_4 := delayb(4)
-    io.dll_code(0) := verilogBlackBox.io.dll_code_0
-    io.dll_code(1) := verilogBlackBox.io.dll_code_1
-    io.dll_code(2) := verilogBlackBox.io.dll_code_2
-    io.dll_code(3) := verilogBlackBox.io.dll_code_3
-    io.dll_code(4) := verilogBlackBox.io.dll_code_4
-    io.dll_codeb(0) := verilogBlackBox.io.dll_codeb_0
-    io.dll_codeb(1) := verilogBlackBox.io.dll_codeb_1
-    io.dll_codeb(2) := verilogBlackBox.io.dll_codeb_2
-    io.dll_codeb(3) := verilogBlackBox.io.dll_codeb_3
-    io.dll_codeb(4) := verilogBlackBox.io.dll_codeb_4
+    io.dll_code := VecInit(Seq(
+      verilogBlackBox.io.dll_code_0,
+      verilogBlackBox.io.dll_code_1,
+      verilogBlackBox.io.dll_code_2,
+      verilogBlackBox.io.dll_code_3,
+      verilogBlackBox.io.dll_code_4
+    )).asUInt
+    io.dll_codeb := VecInit(Seq(
+      verilogBlackBox.io.dll_codeb_0,
+      verilogBlackBox.io.dll_codeb_1,
+      verilogBlackBox.io.dll_codeb_2,
+      verilogBlackBox.io.dll_codeb_3,
+      verilogBlackBox.io.dll_codeb_4
+    )).asUInt
     verilogBlackBox.io.dll_en := io.clocking_ctl.misc.dll_en
     verilogBlackBox.io.mode68 := io.clocking_ctl.misc.mode68
     verilogBlackBox.io.ocl := io.clocking_ctl.misc.ocl
