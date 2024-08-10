@@ -759,8 +759,9 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       }) ++ Seq(
         RegField.w(2, pattern),
         RegField.w(32, patternUICount),
-        RegField.w(1, triggerNew),
-        RegField.w(1, triggerExit))
+        triggerNew.io.regField(RegFieldDesc("triggerNew", "training triggered")),
+        triggerExit.io.regField(RegFieldDesc("triggerExit", "training exited"))
+      )
 
       node.regmap(mmioRegs.zipWithIndex.map({ case (f, i) => i * 8 -> Seq(f) }): _*)
     }
