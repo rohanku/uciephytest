@@ -7,7 +7,7 @@ import freechips.rocketchip.prci._
 import freechips.rocketchip.subsystem.{BaseSubsystem, PBUS, SBUS, CacheBlockBytes}
 import org.chipsalliance.cde.config.{Parameters, Field, Config}
 import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.regmapper.{HasRegMap, RegField, RegWriteFn}
+import freechips.rocketchip.regmapper.{HasRegMap, RegField, RegWriteFn, RegReadFn, RegFieldDesc}
 import freechips.rocketchip.tilelink._
 import uciephytest.phy.{Phy, PhyToTestIO}
 import freechips.rocketchip.util.{AsyncQueueParams}
@@ -16,7 +16,7 @@ import edu.berkeley.cs.ucie.digital.tilelink._
 import edu.berkeley.cs.ucie.digital.interfaces.{FdiParams, RdiParams, AfeParams}
 import edu.berkeley.cs.ucie.digital.protocol.{ProtocolLayerParams}
 import edu.berkeley.cs.ucie.digital.sideband.{SidebandParams}
-import edu.berkeley.cs.ucie.digital.logphy.{LinkTrainingParams}
+import edu.berkeley.cs.ucie.digital.logphy.{LinkTrainingParams, TransmitPattern}
 
 case class UciephyTestParams(
   address: BigInt = 0x4000,
@@ -81,6 +81,40 @@ class UciephyTopIO(numLanes: Int = 2) extends Bundle {
   val sbRxClk = Input(Clock())
   val sbRxData = Input(Bool())
   val pllIref = Input(Bool())
+}
+
+class RegisterRWIO[T <: Data](gen: T) extends Bundle {
+  val write = Flipped(Decoupled(gen))
+  val read = Output(gen)
+
+  def regWrite: RegWriteFn = RegWriteFn((valid, data) => {
+    write.valid := valid
+    write.bits := data.asTypeOf(gen)
+    write.ready
+  })
+
+  def regRead: RegReadFn = RegReadFn(read.asUInt)
+
+  def getDataWidth = gen.getWidth
+
+  def regField(desc: RegFieldDesc): RegField = {
+    RegField(gen.getWidth, regRead, regWrite, desc)
+  }
+}
+
+class RegisterRW[T <: Data](val init: T, name: String) {
+  val reg: T = RegInit(init).suggestName(name)
+
+  def io = new RegisterRWIO(chiselTypeOf(init))
+
+  def connect(io: RegisterRWIO[T]): Unit = {
+    io.write.deq()
+    when(io.write.fire) {
+      reg := io.write.bits
+    }
+
+    io.read := reg
+  }
 }
 
 class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Bundle {
@@ -158,8 +192,6 @@ class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends B
   val rxValidChunk = Output(UInt(32.W))
   // Permutation of data read from the deserializer, in case deserializer timing is off.
   val rxPermute = Input(Vec(Phy.SerdesRatio, UInt(log2Ceil(Phy.SerdesRatio).W)))
-  // Use the full UCIe digital stack.
-  val ucieStack = Input(Bool())
 }
 
 class UciephyTestIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Bundle {
@@ -261,7 +293,6 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
     }
   }
   io.mmio.rxValidChunk := outputRdPorts(numLanes >> 2).asTypeOf(Vec(4, UInt(32.W)))(numLanes % 4)
-
 
   for (lane <- 0 until numLanes) {
     io.phy.tx.bits.data(lane) := 0.U
@@ -565,7 +596,15 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val terminationCtl = RegInit(VecInit(Seq.fill(params.numLanes + 3)(~0.U(6.W))))
       val vrefCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(64.W))))
       val dllCode = Wire(Vec(params.numLanes + 1, UInt(10.W)))
+      // UCIe logphy related
       val ucieStack = RegInit(false.B)
+      val maxPatternCountWidth = log2Ceil(params.linkTrainingParams.maxPatternCount + 1)
+      val pattern = RegInit(0.U(2.W))
+      val patternUICount = RegInit(0.U(maxPatternCountWidth.W))
+      val triggerNew = new RegisterRW(Bool(), "triggerNew") //RegInit(false.B)
+      val triggerExit = new RegisterRW(Bool(), "triggerExit") //RegInit(false.B)
+      val outputValid = RegInit(false.B)
+      val errorCounts = RegInit(VecInit(Seq.fill(params.afeParams.mbLanes)(0.U(maxPatternCountWidth.W))))
 
       txFsmRst.ready := true.B
       txExecute.ready := true.B
@@ -589,7 +628,6 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       test.io.mmio.rxDataLane := rxDataLane
       test.io.mmio.rxDataOffset := rxDataOffset
       test.io.mmio.rxPermute := rxPermute
-      test.io.mmio.ucieStack := ucieStack
 
       // PHY
       val phy = Module(new Phy(params.numLanes))
@@ -617,6 +655,16 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         uciTL.module.io.rxSbAfe.clk := 0.U
         uciTL.module.io.rxSbAfe.data := 0.U.asTypeOf(uciTL.module.io.rxSbAfe.data)
       }
+
+      uciTL.module.io.train.get.pattern := pattern.asTypeOf(TransmitPattern())
+      uciTL.module.io.train.get.patternUICount := patternUICount
+      //uciTL.module.io.train.get.triggerNew := triggerNew
+      //uciTL.module.io.train.get.triggerExit := triggerExit
+      triggerNew.connect(uciTL.module.io.train.get.triggerNew)
+      triggerExit.connect(uciTL.module.io.train.get.triggerExit)
+      outputValid := uciTL.module.io.train.get.outputValid
+      errorCounts := uciTL.module.io.train.get.errorCounts
+
       topIO.out(0)._1 <> phy.io.top
       // Tie sideband to 0 for simple test
       phy.io.sideband.txClk := false.B
@@ -703,7 +751,16 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
           Seq(
             toRegField(vrefCtl(i)),
           )
-      }) ++ Seq(toRegField(ucieStack))
+      }) ++ Seq(
+        RegField.w(1, ucieStack),
+        RegField.r(1, outputValid)
+      ) ++ (0 until params.numLanes).map((i: Int) => {
+        RegField.r(maxPatternCountWidth, errorCounts(i))
+      }) ++ Seq(
+        RegField.w(2, pattern),
+        RegField.w(32, patternUICount),
+        RegField.w(1, triggerNew),
+        RegField.w(1, triggerExit))
 
       node.regmap(mmioRegs.zipWithIndex.map({ case (f, i) => i * 8 -> Seq(f) }): _*)
     }
