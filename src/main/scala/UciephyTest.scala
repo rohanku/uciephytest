@@ -601,8 +601,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val maxPatternCountWidth = log2Ceil(params.linkTrainingParams.maxPatternCount + 1)
       val pattern = RegInit(0.U(2.W))
       val patternUICount = RegInit(0.U(maxPatternCountWidth.W))
-      val triggerNew = new RegisterRW(Bool(), "triggerNew") //RegInit(false.B)
-      val triggerExit = new RegisterRW(Bool(), "triggerExit") //RegInit(false.B)
+      //val triggerNew = new RegisterRW(Bool(), "triggerNew") //RegInit(false.B)
+      //val triggerExit = new RegisterRW(Bool(), "triggerExit") //RegInit(false.B)
       val outputValid = RegInit(false.B)
       val errorCounts = RegInit(VecInit(Seq.fill(params.afeParams.mbLanes)(0.U(maxPatternCountWidth.W))))
 
@@ -667,10 +667,10 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
 
       uciTL.module.io.train.get.pattern := pattern.asTypeOf(TransmitPattern())
       uciTL.module.io.train.get.patternUICount := patternUICount
-      //uciTL.module.io.train.get.triggerNew := triggerNew
-      //uciTL.module.io.train.get.triggerExit := triggerExit
-      triggerNew.connect(uciTL.module.io.train.get.triggerNew)
-      triggerExit.connect(uciTL.module.io.train.get.triggerExit)
+      uciTL.module.io.train.get.triggerNew := false.B
+      uciTL.module.io.train.get.triggerExit := false.B
+      //triggerNew.connect(uciTL.module.io.train.get.triggerNew)
+      //triggerExit.connect(uciTL.module.io.train.get.triggerExit)
       outputValid := uciTL.module.io.train.get.outputValid
       errorCounts := uciTL.module.io.train.get.errorCounts
 
@@ -768,8 +768,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       }) ++ Seq(
         RegField.w(2, pattern),
         RegField.w(32, patternUICount),
-        triggerNew.io.regField(RegFieldDesc("triggerNew", "training triggered")),
-        triggerExit.io.regField(RegFieldDesc("triggerExit", "training exited"))
+        //triggerNew.io.regField(RegFieldDesc("triggerNew", "training triggered")),
+        //triggerExit.io.regField(RegFieldDesc("triggerExit", "training exited"))
       )
 
       node.regmap(mmioRegs.zipWithIndex.map({ case (f, i) => i * 8 -> Seq(f) }): _*)
