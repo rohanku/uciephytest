@@ -632,26 +632,35 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       // PHY
       val phy = Module(new Phy(params.numLanes))
       when (ucieStack) { 
-        phy.io.test.tx <> uciTL.module.io.phyAfe.get.txData.asTypeOf(phy.io.test.tx)
-        uciTL.module.io.phyAfe.get.txData.ready := true.B
-        phy.io.test.txRst := test.io.phy.txRst
-        uciTL.module.io.phyAfe.get.rxData <> phy.io.test.rx.asTypeOf(uciTL.module.io.phyAfe.get.rxData)
-        phy.io.test.rx.ready := true.B
-        phy.io.test.rxRst := test.io.phy.rxRst
+
+        phy.io.test.tx <> uciTL.module.io.phyAfe.get.tx.map(f => {
+          val x = Wire(chiselTypeOf(phy.io.test.tx.bits))
+          x.data := f.data
+          x.valid := f.valid.asUInt
+          x
+        })
+
+        phy.io.test.rx.map(f => {
+          val x = Wire(chiselTypeOf(uciTL.module.io.phyAfe.get.rx.bits))
+          x.data := f.data
+          x.valid := f.valid.asTypeOf(x.valid)
+          x
+        }) <> uciTL.module.io.phyAfe.get.rx
+        
+        phy.io.test.txRst <> uciTL.module.io.phyAfe.get.txRst
+        phy.io.test.rxRst <> uciTL.module.io.phyAfe.get.rxRst
+
         phy.io.sideband.txClk := uciTL.module.io.txSbAfe.clk
         phy.io.sideband.txData := uciTL.module.io.txSbAfe.data
         uciTL.module.io.rxSbAfe.clk := phy.io.sideband.rxClk
         uciTL.module.io.rxSbAfe.data := phy.io.sideband.rxData
-        // TODO: you also need to match the interfaces
-        test.io.phy.tx.ready := 0.U
-        test.io.phy.rx.valid := 0.U
-        test.io.phy.rx.bits.valid := 0.U
-        test.io.phy.rx.bits.data := 0.U.asTypeOf(test.io.phy.rx.bits.data)
+
+        test.io.phy.tx.nodeq()
+        test.io.phy.rx.noenq()
       }.otherwise {
         phy.io.test <> test.io.phy
-        uciTL.module.io.phyAfe.get.txData.ready := 0.U
-        uciTL.module.io.phyAfe.get.rxData.valid := 0.U
-        uciTL.module.io.phyAfe.get.rxData.bits := 0.U.asTypeOf(uciTL.module.io.phyAfe.get.rxData.bits)
+        uciTL.module.io.phyAfe.get.tx.nodeq()
+        uciTL.module.io.phyAfe.get.rx.noenq()
         uciTL.module.io.rxSbAfe.clk := 0.U
         uciTL.module.io.rxSbAfe.data := 0.U.asTypeOf(uciTL.module.io.rxSbAfe.data)
       }
