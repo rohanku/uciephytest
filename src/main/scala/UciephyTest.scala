@@ -595,18 +595,19 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val phy = Module(new Phy(params.numLanes))
       when (ucieStack) { 
 
-        phy.io.test.tx <> uciTL.module.io.phyAfe.get.tx.map(f => 
+        phy.io.test.tx <> uciTL.module.io.phyAfe.get.tx.map(f => {
           val x = Wire(chiselTypeOf(phy.io.test.tx))
           x.data := f.data
           x.valid := f.valid.asUInt
           x
-        )
-        phy.io.test.rx.map(f => 
+        })
+
+        phy.io.test.rx.map(f => {
           val x = Wire(chiselTypeOf(uciTL.module.io.phyAfe.get.rx))
           x.data := f.data
           x.valid := f.valid.asTypeOf(x.valid)
           x
-        ) <> uciTL.module.io.phyAfe.get.rx
+        }) <> uciTL.module.io.phyAfe.get.rx
         
         phy.io.test.txRst <> uciTL.module.io.phyAfe.get.txRst
         phy.io.test.rxRst <> uciTL.module.io.phyAfe.get.rxRst
