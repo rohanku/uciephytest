@@ -621,9 +621,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         test.io.phy.rx.noenq()
       }.otherwise {
         phy.io.test <> test.io.phy
-        uciTL.module.io.phyAfe.get.txData.ready := 0.U
-        uciTL.module.io.phyAfe.get.rxData.valid := 0.U
-        uciTL.module.io.phyAfe.get.rxData.bits := 0.U.asTypeOf(uciTL.module.io.phyAfe.get.rxData.bits)
+        uciTL.module.io.phyAfe.get.tx.nodeq()
+        uciTL.module.io.phyAfe.get.rx.noenq()
         uciTL.module.io.rxSbAfe.clk := 0.U
         uciTL.module.io.rxSbAfe.data := 0.U.asTypeOf(uciTL.module.io.rxSbAfe.data)
       }
