@@ -666,11 +666,6 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         }), None)
       }
 
-      val regIO = Wire(new Bundle {
-        val triggerNew = triggerNew.io
-        val triggerExit = triggerExit.io
-      })
-
       var mmioRegs = Seq(
         toRegField(txTestMode),
         toRegField(txValidFramingMode),
@@ -739,8 +734,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       }) ++ Seq(
         RegField.w(2, pattern),
         RegField.w(32, patternUICount),
-        regIO.triggerNew.regField(RegFieldDesc("triggerNew", "training triggered")),
-        regIO.triggerExit.regField(RegFieldDesc("triggerExit", "training exited"))
+        RegField(1, triggerNew.io.regRead, triggerNew.io.regWrite, RegFieldDesc("triggerNew", "training triggered"))
+        RegField(1, triggerExit.io.regRead, triggerExit.io.regWrite, RegFieldDesc("triggerNew", "training triggered"))
       )
 
       node.regmap(mmioRegs.zipWithIndex.map({ case (f, i) => i * 8 -> Seq(f) }): _*)
