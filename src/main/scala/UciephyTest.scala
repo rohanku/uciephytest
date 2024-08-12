@@ -734,8 +734,26 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       }) ++ Seq(
         RegField.w(2, pattern),
         RegField.w(32, patternUICount),
-        RegField(1, triggerNew.io.regRead, triggerNew.io.regWrite, RegFieldDesc("triggerNew", "training triggered"))
-        RegField(1, triggerExit.io.regRead, triggerExit.io.regWrite, RegFieldDesc("triggerNew", "training triggered"))
+        RegField(1, 
+          RegReadFn(triggerNew.reg.asUInt), 
+          RegWriteFn((wen, data) => {
+            when(wen) {
+              triggerNew.reg := data.asBool
+            }
+            true.B
+          }), 
+          RegFieldDesc("triggerNew", "training triggered")
+        ),
+        RegField(1, 
+          RegReadFn(triggerExit.reg.asUInt), 
+          RegWriteFn((wen, data) => {
+            when(wen) {
+              triggerExit.reg := data.asBool
+            }
+            true.B
+          }), 
+          RegFieldDesc("triggerNew", "training triggered")
+        ),
       )
 
       node.regmap(mmioRegs.zipWithIndex.map({ case (f, i) => i * 8 -> Seq(f) }): _*)
