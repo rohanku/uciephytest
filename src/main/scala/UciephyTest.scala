@@ -569,8 +569,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val maxPatternCountWidth = log2Ceil(params.linkTrainingParams.maxPatternCount + 1)
       val pattern = RegInit(0.U(2.W))
       val patternUICount = RegInit(0.U(maxPatternCountWidth.W))
-      val triggerNew = new RegisterRW(Bool(), "triggerNew") 
-      val triggerExit = new RegisterRW(Bool(), "triggerExit") 
+      val triggerNew = new RegisterRW(false.B, "triggerNew") 
+      val triggerExit = new RegisterRW(false.B, "triggerExit") 
       val outputValid = RegInit(false.B)
       val errorCounts = RegInit(VecInit(Seq.fill(params.afeParams.mbLanes)(0.U(maxPatternCountWidth.W))))
 
