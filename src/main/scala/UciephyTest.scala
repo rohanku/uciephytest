@@ -564,6 +564,33 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val terminationCtl = RegInit(VecInit(Seq.fill(params.numLanes + 3)(~0.U(6.W))))
       val vrefCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(64.W))))
       val dllCode = Wire(Vec(params.numLanes + 1, UInt(10.W)))
+
+      // Pipelined registers
+      val txTestModeDelayed = ShiftRegister(txTestMode, 3, true.B)
+      val txValidFramingModeDelayed = ShiftRegister(txValidFramingMode, 3, true.B)
+      val txLfsrSeedDelayed = ShiftRegister(txLfsrSeed, 3, true.B)
+      val txManualRepeatDelayed = ShiftRegister(txManualRepeat, 3, true.B)
+      val txBitsToSendDelayed = ShiftRegister(txBitsToSend, 3, true.B)
+      val txDataLaneGroupDelayed = ShiftRegister(txDataLaneGroup, 3, true.B)
+      val txDataOffsetDelayed = ShiftRegister(txDataOffset, 3, true.B)
+      val txPermuteDelayed = ShiftRegister(txPermute, 3, true.B)
+      val rxLfsrSeedDelayed = ShiftRegister(rxLfsrSeed, 3, true.B)
+      val rxValidStartThresholdDelayed = ShiftRegister(rxValidStartThreshold, 3, true.B)
+      val rxValidStopThresholdDelayed = ShiftRegister(rxValidStopThreshold, 3, true.B)
+      val rxPauseCountersDelayed = ShiftRegister(rxPauseCounters, 3, true.B)
+      val rxDataLaneDelayed = ShiftRegister(rxDataLane, 3, true.B)
+      val rxDataOffsetDelayed = ShiftRegister(rxDataOffset, 3, true.B)
+      val rxPermuteDelayed = ShiftRegister(rxPermute, 3, true.B)
+      val driverPuCtlDelayed = ShiftRegister(driverPuCtl, 3, true.B)
+      val driverPdCtlDelayed = ShiftRegister(driverPdCtl, 3, true.B)
+      val driverEnDelayed = ShiftRegister(driverEn, 3, true.B)
+      val clockingPiCtlDelayed = ShiftRegister(clockingPiCtl, 3, true.B)
+      val clockingMiscCtlDelayed = ShiftRegister(clockingMiscCtl, 3, true.B)
+      val shufflerCtlDelayed = ShiftRegister(shufflerCtl, 3, true.B)
+      val terminationCtlDelayed = ShiftRegister(terminationCtl, 3, true.B)
+      val vrefCtlDelayed = ShiftRegister(vrefCtl, 3, true.B)
+      val dllCodeDelayed = ShiftRegister(dllCode, 3, true.B)
+
       // UCIe logphy related
       val ucieStack = RegInit(false.B)
       val maxPatternCountWidth = log2Ceil(params.linkTrainingParams.maxPatternCount + 1)
@@ -578,24 +605,24 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       txExecute.ready := true.B
       rxFsmRst.ready := true.B
 
-      test.io.mmio.txTestMode := TxTestMode(txTestMode)
-      test.io.mmio.txValidFramingMode := TxValidFramingMode(txTestMode)
-      test.io.mmio.txLfsrSeed := txLfsrSeed
-      test.io.mmio.txManualRepeat := txManualRepeat
+      test.io.mmio.txTestMode := TxTestMode(txTestModeDelayed)
+      test.io.mmio.txValidFramingMode := TxValidFramingMode(txTestModeDelayed)
+      test.io.mmio.txLfsrSeed := txLfsrSeedDelayed
+      test.io.mmio.txManualRepeat := txManualRepeatDelayed
       test.io.mmio.txFsmRst := txFsmRst.valid
       test.io.mmio.txExecute := txExecute.valid
-      test.io.mmio.txBitsToSend := txBitsToSend
-      test.io.mmio.txDataLaneGroup := txDataLaneGroup
-      test.io.mmio.txDataOffset := txDataOffset
-      test.io.mmio.txPermute := txPermute
-      test.io.mmio.rxLfsrSeed := rxLfsrSeed
-      test.io.mmio.rxValidStartThreshold := rxValidStartThreshold
-      test.io.mmio.rxValidStopThreshold := rxValidStopThreshold
+      test.io.mmio.txBitsToSend := txBitsToSendDelayed
+      test.io.mmio.txDataLaneGroup := txDataLaneGroupDelayed
+      test.io.mmio.txDataOffset := txDataOffsetDelayed
+      test.io.mmio.txPermute := txPermuteDelayed
+      test.io.mmio.rxLfsrSeed := rxLfsrSeedDelayed
+      test.io.mmio.rxValidStartThreshold := rxValidStartThresholdDelayed
+      test.io.mmio.rxValidStopThreshold := rxValidStopThresholdDelayed
       test.io.mmio.rxFsmRst := rxFsmRst.valid
-      test.io.mmio.rxPauseCounters := rxPauseCounters
-      test.io.mmio.rxDataLane := rxDataLane
-      test.io.mmio.rxDataOffset := rxDataOffset
-      test.io.mmio.rxPermute := rxPermute
+      test.io.mmio.rxPauseCounters := rxPauseCountersDelayed
+      test.io.mmio.rxDataLane := rxDataLaneDelayed
+      test.io.mmio.rxDataOffset := rxDataOffsetDelayed
+      test.io.mmio.rxPermute := rxPermuteDelayed
 
       // PHY
       val phy = Module(new Phy(params.numLanes))
@@ -645,14 +672,14 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       phy.io.sideband.txClk := false.B
       phy.io.sideband.txData := false.B
 
-      phy.io.driverPuCtl := driverPuCtl
-      phy.io.driverPdCtl := driverPdCtl
-      phy.io.driverEn := driverEn
-      phy.io.clockingPiCtl := clockingPiCtl
-      phy.io.clockingMiscCtl := clockingMiscCtl
-      phy.io.terminationCtl := terminationCtl
-      phy.io.shufflerCtl := shufflerCtl.asTypeOf(phy.io.shufflerCtl)
-      phy.io.vrefCtl := vrefCtl
+      phy.io.driverPuCtl := driverPuCtlDelayed
+      phy.io.driverPdCtl := driverPdCtlDelayed
+      phy.io.driverEn := driverEnDelayed
+      phy.io.clockingPiCtl := clockingPiCtlDelayed
+      phy.io.clockingMiscCtl := clockingMiscCtlDelayed
+      phy.io.terminationCtl := terminationCtlDelayed
+      phy.io.shufflerCtl := shufflerCtlDelayed.asTypeOf(phy.io.shufflerCtl)
+      phy.io.vrefCtl := vrefCtlDelayed
       for (lane <- 0 to params.numLanes) {
         dllCode(lane) := Cat(phy.io.dllCode(lane), phy.io.dllCodeb(lane))
       }
@@ -712,7 +739,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
           Seq(
             toRegField(clockingPiCtl(i)),
             toRegField(clockingMiscCtl(i)),
-            RegField.r(10, dllCode(i))
+            RegField.r(10, dllCodeDelayed(i))
           )
       }) ++ (0 until params.numLanes + 1).flatMap((i: Int) => {
           Seq(
