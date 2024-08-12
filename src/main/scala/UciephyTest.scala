@@ -562,7 +562,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         VecInit((0 until 16).map(i => i.U(4.W))).asUInt
       )))
       val terminationCtl = RegInit(VecInit(Seq.fill(params.numLanes + 3)(~0.U(6.W))))
-      val vrefCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(64.W))))
+      val vrefCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(7.W))))
       val dllCode = Wire(Vec(params.numLanes + 1, UInt(10.W)))
 
       // Pipelined registers
