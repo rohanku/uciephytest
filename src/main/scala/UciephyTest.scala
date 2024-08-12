@@ -666,7 +666,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         }), None)
       }
 
-      val regIO = IO(new Bundle {
+      val regIO = Wire(new Bundle {
         val triggerNew = triggerNew.io
         val triggerExit = triggerExit.io
       })
