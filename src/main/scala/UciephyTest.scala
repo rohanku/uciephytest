@@ -16,7 +16,7 @@ import edu.berkeley.cs.ucie.digital.tilelink._
 import edu.berkeley.cs.ucie.digital.interfaces.{FdiParams, RdiParams, AfeParams}
 import edu.berkeley.cs.ucie.digital.protocol.{ProtocolLayerParams}
 import edu.berkeley.cs.ucie.digital.sideband.{SidebandParams}
-import edu.berkeley.cs.ucie.digital.logphy.{LinkTrainingParams, TransmitPattern}
+import edu.berkeley.cs.ucie.digital.logphy.{LinkTrainingParams, TransmitPattern, RegisterRWIO, RegisterRW}
 
 case class UciephyTestParams(
   address: BigInt = 0x4000,
@@ -83,39 +83,7 @@ class UciephyTopIO(numLanes: Int = 2) extends Bundle {
   val pllIref = Input(Bool())
 }
 
-class RegisterRWIO[T <: Data](gen: T) extends Bundle {
-  val write = Flipped(Decoupled(gen))
-  val read = Output(gen)
 
-  def regWrite: RegWriteFn = RegWriteFn((valid, data) => {
-    write.valid := valid
-    write.bits := data.asTypeOf(gen)
-    write.ready
-  })
-
-  def regRead: RegReadFn = RegReadFn(read.asUInt)
-
-  def getDataWidth = gen.getWidth
-
-  def regField(desc: RegFieldDesc): RegField = {
-    RegField(gen.getWidth, regRead, regWrite, desc)
-  }
-}
-
-class RegisterRW[T <: Data](val init: T, name: String) {
-  val reg: T = RegInit(init).suggestName(name)
-
-  def io = new RegisterRWIO(chiselTypeOf(init))
-
-  def connect(io: RegisterRWIO[T]): Unit = {
-    io.write.deq()
-    when(io.write.fire) {
-      reg := io.write.bits
-    }
-
-    io.read := reg
-  }
-}
 
 class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Bundle {
   // TX CONTROL
@@ -601,8 +569,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val maxPatternCountWidth = log2Ceil(params.linkTrainingParams.maxPatternCount + 1)
       val pattern = RegInit(0.U(2.W))
       val patternUICount = RegInit(0.U(maxPatternCountWidth.W))
-      //val triggerNew = new RegisterRW(Bool(), "triggerNew") //RegInit(false.B)
-      //val triggerExit = new RegisterRW(Bool(), "triggerExit") //RegInit(false.B)
+      val triggerNew = new RegisterRW(Bool(), "triggerNew") 
+      val triggerExit = new RegisterRW(Bool(), "triggerExit") 
       val outputValid = RegInit(false.B)
       val errorCounts = RegInit(VecInit(Seq.fill(params.afeParams.mbLanes)(0.U(maxPatternCountWidth.W))))
 
@@ -667,10 +635,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
 
       uciTL.module.io.train.get.pattern := pattern.asTypeOf(TransmitPattern())
       uciTL.module.io.train.get.patternUICount := patternUICount
-      uciTL.module.io.train.get.triggerNew := false.B
-      uciTL.module.io.train.get.triggerExit := false.B
-      //triggerNew.connect(uciTL.module.io.train.get.triggerNew)
-      //triggerExit.connect(uciTL.module.io.train.get.triggerExit)
+      triggerNew.connect(uciTL.module.io.train.get.triggerNew)
+      triggerExit.connect(uciTL.module.io.train.get.triggerExit)
       outputValid := uciTL.module.io.train.get.outputValid
       errorCounts := uciTL.module.io.train.get.errorCounts
 
@@ -768,8 +734,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       }) ++ Seq(
         RegField.w(2, pattern),
         RegField.w(32, patternUICount),
-        //triggerNew.io.regField(RegFieldDesc("triggerNew", "training triggered")),
-        //triggerExit.io.regField(RegFieldDesc("triggerExit", "training exited"))
+        triggerNew.io.regField(RegFieldDesc("triggerNew", "training triggered")),
+        triggerExit.io.regField(RegFieldDesc("triggerExit", "training exited"))
       )
 
       node.regmap(mmioRegs.zipWithIndex.map({ case (f, i) => i * 8 -> Seq(f) }): _*)
