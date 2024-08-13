@@ -12,64 +12,44 @@ import chisel3.experimental.BundleLiterals._
 
 // import freechips.rocketchip.unittest._
 import org.scalatest.flatspec.AnyFlatSpec
-import tilelink._
-import sideband.{SidebandParams}
-import logphy.{LinkTrainingParams}
-import interfaces._
-import protocol.{ProtocolLayerParams}
+import edu.berkeley.cs.ucie.digital.tilelink._
+import edu.berkeley.cs.ucie.digital.interfaces.{FdiParams, RdiParams, AfeParams}
+import edu.berkeley.cs.ucie.digital.protocol.{ProtocolLayerParams}
+import edu.berkeley.cs.ucie.digital.sideband.{SidebandParams}
+import edu.berkeley.cs.ucie.digital.logphy.{LinkTrainingParams, TransmitPattern, RegisterRWIO, RegisterRW}
+
+import uciephytest.phy._
+
 import java.util.ResourceBundle
 
-class AfeLoopbackTester(implicit p: Parameters) extends LazyModule {
-  val protoParams = ProtocolLayerParams()
-  val tlParams = TileLinkParams(
-    address = 0x0,
-    addressRange = 0xffff,
-    configAddress = 0x40000,
-    inwardQueueDepth = 8,
-    outwardQueueDepth = 8,
-  )
-  val fdiParams = FdiParams(width = 64, dllpWidth = 64, sbWidth = 32)
-  val rdiParams = RdiParams(width = 64, sbWidth = 32)
-  val sbParams = SidebandParams()
-  val myId = 1
-  val linkTrainingParams = LinkTrainingParams()
-  val afeParams = AfeParams()
-  val laneAsyncQueueParams = AsyncQueueParams()
+class UciLoopbackTester(implicit p: Parameters) extends LazyModule {
+  val params = UciephyTestParams()
   val delay = 0.0
   val txns = 100
 
   // Create clock source
   val clockSourceNode = ClockSourceNode(Seq(ClockSourceParameters()))
 
-  val csrfuzz = LazyModule(new TLFuzzer(txns))
+  //val csrfuzz = LazyModule(new TLFuzzer(txns))
   val fuzz = LazyModule(new TLFuzzer(txns))
-  val tlUcieDie1 = LazyModule(
-    new UCITLFront(
-      tlParams = tlParams,
-      protoParams = protoParams,
-      fdiParams = fdiParams,
-      rdiParams = rdiParams,
-      sbParams = sbParams,
-      linkTrainingParams = linkTrainingParams,
-      afeParams = afeParams,
-      laneAsyncQueueParams = laneAsyncQueueParams,
-    ),
-  )
+  val tlUcieDie1 = LazyModule(new UciephyTestTL(
+     params = params,
+     beatBytes = 16))
   tlUcieDie1.clockNode := clockSourceNode
   val ram = LazyModule(
     new TLRAM(
-      AddressSet(tlParams.ADDRESS, tlParams.addressRange),
-      beatBytes = tlParams.BEAT_BYTES,
+      AddressSet(params.tlParams.ADDRESS, params.tlParams.addressRange),
+      beatBytes = params.tlParams.BEAT_BYTES,
     ),
   )
 
   // CSR node
-  tlUcieDie1.regNode.node := csrfuzz.node
+  //tlUcieDie1.regNode.node := csrfuzz.node
   // connect data nodes
-  tlUcieDie1.managerNode := TLSourceShrinker(
-    tlParams.sourceIDWidth,
+  tlUcieDie1.uciTL.managerNode := TLSourceShrinker(
+    params.tlParams.sourceIDWidth,
   ) := fuzz.node
-  ram.node := tlUcieDie1.clientNode
+  ram.node := tlUcieDie1.uciTL.clientNode
   lazy val module = new Impl
   class Impl extends LazyModuleImp(this) {
     val io = IO(new Bundle {
@@ -78,21 +58,23 @@ class AfeLoopbackTester(implicit p: Parameters) extends LazyModule {
     })
     // connect IOs
     io.finished := fuzz.module.io.finished
-    val AfeLoopback = Module(new AfeLoopback(afeParams))
+    val UciLoopback = Module(new UciLoopback(params, 16))
     io.uci_clock <> clockSourceNode.out(0)._1
     // inputs to tlUcieDie1
     // tlUcieDie1.module.io.mbAfe <> AfeLoopback.io.mbAfe
-    tlUcieDie1.module.io.mbAfe_tx.get <> AfeLoopback.io.mbAfe_tx
-    tlUcieDie1.module.io.mbAfe_rx.get <> AfeLoopback.io.mbAfe_rx
-    tlUcieDie1.module.io.txSbAfe <> AfeLoopback.io.sbAfe_tx
-    tlUcieDie1.module.io.rxSbAfe <> AfeLoopback.io.sbAfe_rx
+    tlUcieDie1.module.phy.io.test.tx <> UciLoopback.io.test.tx
+    tlUcieDie1.module.phy.io.test.rx <> UciLoopback.io.test.rx
+    tlUcieDie1.module.phy.io.sideband.txData <> UciLoopback.io.sideband.txData
+    tlUcieDie1.module.phy.io.sideband.txClk <> UciLoopback.io.sideband.txClk
+    tlUcieDie1.module.phy.io.sideband.rxData <> UciLoopback.io.sideband.rxData
+    tlUcieDie1.module.phy.io.sideband.rxClk <> UciLoopback.io.sideband.rxClk
 
   }
 }
 
-class AfeTLTestHarness(implicit val p: Parameters) extends Module {
+class UciTLTestHarness(implicit val p: Parameters) extends Module {
   val io = IO(new Bundle { val success = Output(Bool()) })
-  val tester = Module(LazyModule(new AfeLoopbackTester).module)
+  val tester = Module(LazyModule(new UciLoopbackTester).module)
   tester.io.uci_clock.clock := clock
   tester.io.uci_clock.reset := reset
   io.success := tester.io.finished
@@ -103,24 +85,24 @@ class AfeTLTestHarness(implicit val p: Parameters) extends Module {
   ElaborationArtefacts.add("plusArgs", PlusArgArtefacts.serialize_cHeader)
 }
 
-class AfeLoopbackTest extends AnyFlatSpec with ChiselScalatestTester {
-  behavior of "AfeLoopback"
+class UciLoopbackTest extends AnyFlatSpec with ChiselScalatestTester {
+  behavior of "UciLoopback"
   val txns = 2
   val timeout = 100000
   implicit val p: Parameters = Parameters.empty
   it should "finish request and response before timeout" in {
-    test(new AfeTLTestHarness()).withAnnotations(
+    test(new UciTLTestHarness()).withAnnotations(
       Seq(VcsBackendAnnotation, WriteFsdbAnnotation),
     ) { c => // .withAnnotations(Seq(VcsBackendAnnotation, WriteVcdAnnotation))
 
-      println("start Afe Loopback Test")
+      println("start Uci Loopback Test")
       c.reset.poke(true.B)
       c.clock.step(3)
       c.reset.poke(false.B)
       c.clock.setTimeout(timeout + 10)
       c.clock.step(timeout)
       c.io.success.expect(true.B)
-      println("Afe Loopback Test finished? " + c.io.success.peek())
+      println("Uci Loopback Test finished? " + c.io.success.peek())
     }
   }
 }
