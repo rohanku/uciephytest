@@ -62,12 +62,12 @@ class UciLoopbackTester(implicit p: Parameters) extends LazyModule {
     io.uci_clock <> clockSourceNode.out(0)._1
     // inputs to tlUcieDie1
     // tlUcieDie1.module.io.mbAfe <> AfeLoopback.io.mbAfe
-    tlUcieDie1.module.phy.io.test.tx <> UciLoopback.io.test.tx
-    tlUcieDie1.module.phy.io.test.rx <> UciLoopback.io.test.rx
-    tlUcieDie1.module.phy.io.sideband.txData <> UciLoopback.io.sideband.txData
-    tlUcieDie1.module.phy.io.sideband.txClk <> UciLoopback.io.sideband.txClk
-    tlUcieDie1.module.phy.io.sideband.rxData <> UciLoopback.io.sideband.rxData
-    tlUcieDie1.module.phy.io.sideband.rxClk <> UciLoopback.io.sideband.rxClk
+    // tlUcieDie1.module.phy.io.test.tx <> UciLoopback.io.test.tx
+    // tlUcieDie1.module.phy.io.test.rx <> UciLoopback.io.test.rx
+    // tlUcieDie1.module.phy.io.sideband.txData <> UciLoopback.io.sideband.txData
+    // tlUcieDie1.module.phy.io.sideband.txClk <> UciLoopback.io.sideband.txClk
+    // tlUcieDie1.module.phy.io.sideband.rxData <> UciLoopback.io.sideband.rxData
+    // tlUcieDie1.module.phy.io.sideband.rxClk <> UciLoopback.io.sideband.rxClk
 
   }
 }
