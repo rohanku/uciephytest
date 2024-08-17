@@ -238,6 +238,9 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
       io.mmio.txDataChunkOut := inputRdPorts(i)
     }
   }
+  val txDataLaneGroupDelayed = ShiftRegister(io.mmio.txDataLaneGroup, 3, true.B)
+  val txDataChunkInBitsDelayed = ShiftRegister(io.mmio.txDataChunkIn.bits, 3, true.B)
+  val txDataChunkInValidDelayed = ShiftRegister(io.mmio.txDataChunkIn.valid, 3, true.B)
   io.mmio.txTestState := txState
 
   when (io.mmio.rxPauseCounters) {
@@ -274,10 +277,10 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   // TX logic
   switch(txState) {
     is(TxTestState.idle) {
-      when (io.mmio.txDataChunkIn.valid) {
+      when (txDataChunkInValidDelayed) {
         for (i <- 0 until numInputSrams) {
-          when (i.U === io.mmio.txDataLaneGroup) {
-              inputWrPorts(i) := io.mmio.txDataChunkIn.bits
+          when (i.U === txDataLaneGroupDelayed) {
+              inputWrPorts(i) := txDataChunkInBitsDelayed
           }
         }
       }

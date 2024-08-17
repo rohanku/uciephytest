@@ -79,11 +79,15 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.mmio.txDataLaneGroup.poke(0.U)
       c.io.mmio.txDataOffset.poke(0.U)
       c.io.mmio.txDataChunkIn.enqueueNow("h8765_4321_9abc_def0".U)
-      c.clock.step()
+      for (i <- 0 until 4) {
+        c.clock.step()
+      }
       c.io.mmio.txDataChunkOut.expect("h8765_4321_9abc_def0".U)
       c.io.mmio.txDataOffset.poke(1.U)
       c.io.mmio.txDataChunkIn.enqueueNow("h0fed_cba9_1234_5678".U)
-      c.clock.step()
+      for (i <- 0 until 4) {
+        c.clock.step()
+      }
       c.io.mmio.txDataChunkOut.expect("h0fed_cba9_1234_5678".U)
       c.io.mmio.txTestState.expect(TxTestState.idle)
 
@@ -141,13 +145,19 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.mmio.txDataLaneGroup.poke(0.U)
       c.io.mmio.txDataOffset.poke(0.U)
       c.io.mmio.txDataChunkIn.enqueueNow("h8765_4321_9abc_def0".U)
-      c.clock.step()
+      for (i <- 0 until 4) {
+        c.clock.step()
+      }
       c.io.mmio.txDataOffset.poke(1.U)
       c.io.mmio.txDataChunkIn.enqueueNow("h0fed_cba9_1234_5678".U)
-      c.clock.step()
+      for (i <- 0 until 4) {
+        c.clock.step()
+      }
       c.io.mmio.txDataOffset.poke(2.U)
       c.io.mmio.txDataChunkIn.enqueueNow("hdeed_dea1_cafe_f00d".U)
-      c.clock.step()
+      for (i <- 0 until 4) {
+        c.clock.step()
+      }
       c.io.mmio.txTestState.expect(TxTestState.idle)
 
       // Set up RX
@@ -358,11 +368,15 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.mmio.txDataLaneGroup.poke(0.U)
       c.io.mmio.txDataOffset.poke(0.U)
       c.io.mmio.txDataChunkIn.enqueueNow("h8765_4321_9abc_def0".U)
-      c.clock.step()
+      for (i <- 0 until 4) {
+        c.clock.step()
+      }
       c.io.mmio.txDataChunkOut.expect("h8765_4321_9abc_def0".U)
       c.io.mmio.txDataOffset.poke(1.U)
       c.io.mmio.txDataChunkIn.enqueueNow("h0fed_cba9_1234_5678".U)
-      c.clock.step()
+      for (i <- 0 until 4) {
+        c.clock.step()
+      }
       c.io.mmio.txDataChunkOut.expect("h0fed_cba9_1234_5678".U)
       c.io.mmio.txTestState.expect(TxTestState.idle)
 
