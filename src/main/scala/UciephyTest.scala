@@ -33,7 +33,8 @@ case class UciephyTestParams(
                                     mbSerializerRatio = 32,
                                     mbLanes = 16,
                                     STANDALONE = false),
-  laneAsyncQueueParams: AsyncQueueParams = AsyncQueueParams()
+  laneAsyncQueueParams: AsyncQueueParams = AsyncQueueParams(),
+  sim: Boolean = false
 )
 
 case object UciephyTestKey extends Field[Option[UciephyTestParams]](None)
@@ -625,7 +626,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       test.io.mmio.rxPermute := rxPermuteDelayed
 
       // PHY
-      val phy = Module(new Phy(params.numLanes))
+      val phy = Module(new Phy(params.numLanes, params.sim))
       when (ucieStack) { 
 
         phy.io.test.tx <> uciTL.module.io.phyAfe.get.tx.map(f => {
@@ -816,4 +817,8 @@ trait CanHavePeripheryUciephyTest { this: BaseSubsystem =>
 
 class WithUciephyTest(params: UciephyTestParams) extends Config((site, here, up) => {
   case UciephyTestKey => Some(params)
+})
+
+class WithUciephyTestSim extends Config((site, here, up) => {
+  case UciephyTestKey => up(UciephyTestKey, site).map(_.copy(sim = true))
 })
