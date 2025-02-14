@@ -272,6 +272,9 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
     clocking_ctl.misc := io.clockingMiscCtl(lane).asTypeOf(clocking_ctl.misc)
   }
 
+  // Add track signals (PLACEHOLDER)
+  io.top.txtrk := 0.U
+
   // Set up sideband
   val sbTxClk = Module(new TxDriver(sim))
   sbTxClk.io.din := io.sideband.txClk

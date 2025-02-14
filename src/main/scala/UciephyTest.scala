@@ -81,9 +81,29 @@ class UciephyTopIO(numLanes: Int = 2) extends Bundle {
   val sbRxClk = Input(Clock())
   val sbRxData = Input(Bool())
   val pllIref = Input(Bool())
+  val txtrk = Output(Bool())
+  val rxtrk = Input(Bool())
 }
 
 
+class UciephyClockingTopIO() extends Bundle {
+    val uciephy_pllrefClkP_100  = Input(Clock())
+    val uciephy_pllrefClkN_100  = Input(Clock())
+    val uciephy_sbref_clk800    = Input(Clock())
+    val ucie_bypassclk_p_8G     = Input(Clock())
+    val ucie_bypassclk_n_8G     = Input(Clock())
+}
+
+class UciephyDebugIO() extends Bundle {
+  val uciephy0_txData_dbg       = Output(Bool())
+  val uciephy0_rxclk_p_dbg      = Output(Bool())
+  val uciephy0_rxclk_n_dbg      = Output(Bool())
+  val uciephy0_txclk_buff_p_dbg = Output(Bool())
+  val uciephy0_txclk_buff_n_dbg = Output(Bool())
+  val uciephy_plltapClkP_dbg    = Output(Bool())
+  val uciephy_plltapClkN_dbg    = Output(Bool())
+  val uciephy0_vref_dbg         = Output(Bool())
+}
 
 class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Bundle {
   // TX CONTROL
@@ -139,7 +159,7 @@ class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends B
   // Resets the RX FSM (i.e. resetting the number of bits received and the offset within the output
   // buffer to 0).
   val rxFsmRst = Input(Bool())
-  // The number of bits received since the last FSM reset. Only the first 2^bufferDepthPerLane bits received 
+  // The number of bits received since the last FSM reset. Only the first 2^bufferDepthPerLane bits received
   // per lane are stored in the output buffer.
   val rxBitsReceived = Output(UInt((bufferDepthPerLane + 1).W))
   // The number of bit errors per lane since the last FSM reset. Only applicable in `TxTestMode.lsfr`.
@@ -155,7 +175,7 @@ class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends B
   // Data chunk at the given chunk offset for inspect the received data.
   val rxDataChunk = Output(UInt(32.W))
   // Valid chunk at the given chunk offset for inspect the valid signals corresponding to the received data.
-  // In a correct UCIe implementation, there should be 4 1-bits followed by 4 0-bits repeated across the entire 
+  // In a correct UCIe implementation, there should be 4 1-bits followed by 4 0-bits repeated across the entire
   // transmission.
   val rxValidChunk = Output(UInt(32.W))
   // Permutation of data read from the deserializer, in case deserializer timing is off.
@@ -214,7 +234,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
     lfsr.io.increment := false.B
     lfsr
   })
-  
+
   val rxSignature = withReset(rxReset) { RegInit(0.U(32.W)) }
 
   val numInputSrams = (numLanes - 1)/4 + 1
@@ -321,7 +341,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
           }
         }
       }
-      
+
       when (io.phy.tx.valid && io.phy.tx.ready) {
         switch (io.mmio.txTestMode) {
           is (TxTestMode.manual) {
@@ -344,7 +364,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   }
 
   // RX logic
-  
+
   io.phy.rx.ready := true.B
 
   // Dumb RX logic (only sets threshold to start recording)
@@ -358,7 +378,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   startIdx := 0.U
 
   val runningData = withReset(rxReset) { RegInit(VecInit(Seq.fill(numLanes)(0.U(64.W)))) }
-  val runningValid = withReset(rxReset) { RegInit(0.U(64.W)) } 
+  val runningValid = withReset(rxReset) { RegInit(0.U(64.W)) }
   runningData := runningData
   runningValid := runningValid
 
@@ -510,7 +530,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
 }
 
 class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Parameters) extends ClockSinkDomain(ClockSinkParameters())(p) {
-  val device = new SimpleDevice("uciephytest", Seq("ucbbar,uciephytest")) 
+  override lazy val desiredName = "UciephyTestTL"
+  val device = new SimpleDevice("uciephytest", Seq("ucbbar,uciephytest"))
   val node = TLRegisterNode(Seq(AddressSet(params.address, 4096-1)), device, "reg/control", beatBytes=beatBytes)
 
   val topIO = BundleBridgeSource(() => new UciephyTopIO(params.numLanes))
@@ -596,8 +617,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val maxPatternCountWidth = log2Ceil(params.linkTrainingParams.maxPatternCount + 1)
       val pattern = RegInit(0.U(2.W))
       val patternUICount = RegInit(0.U(maxPatternCountWidth.W))
-      val triggerNew = new RegisterRW(false.B, "triggerNew") 
-      val triggerExit = new RegisterRW(false.B, "triggerExit") 
+      val triggerNew = new RegisterRW(false.B, "triggerNew")
+      val triggerExit = new RegisterRW(false.B, "triggerExit")
       val outputValid = RegInit(false.B)
       val errorCounts = RegInit(VecInit(Seq.fill(params.afeParams.mbLanes)(0.U(maxPatternCountWidth.W))))
 
@@ -626,7 +647,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
 
       // PHY
       val phy = Module(new Phy(params.numLanes))
-      when (ucieStack) { 
+      when (ucieStack) {
 
         phy.io.test.tx <> uciTL.module.io.phyAfe.get.tx.map(f => {
           val x = Wire(chiselTypeOf(phy.io.test.tx.bits))
@@ -641,7 +662,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
           x.valid := f.valid.asTypeOf(x.valid)
           x
         }) <> uciTL.module.io.phyAfe.get.rx
-        
+
         phy.io.test.txRst <> uciTL.module.io.phyAfe.get.txRst
         phy.io.test.rxRst <> uciTL.module.io.phyAfe.get.rxRst
 
@@ -761,24 +782,24 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       }) ++ Seq(
         RegField.w(2, pattern),
         RegField.w(32, patternUICount),
-        RegField(1, 
-          RegReadFn(triggerNew.reg.asUInt), 
+        RegField(1,
+          RegReadFn(triggerNew.reg.asUInt),
           RegWriteFn((wen, data) => {
             when(wen) {
               triggerNew.reg := data.asBool
             }
             true.B
-          }), 
+          }),
           RegFieldDesc("triggerNew", "training triggered")
         ),
-        RegField(1, 
-          RegReadFn(triggerExit.reg.asUInt), 
+        RegField(1,
+          RegReadFn(triggerExit.reg.asUInt),
           RegWriteFn((wen, data) => {
             when(wen) {
               triggerExit.reg := data.asBool
             }
             true.B
-          }), 
+          }),
           RegFieldDesc("triggerNew", "training triggered")
         ),
       )
@@ -799,12 +820,13 @@ trait CanHavePeripheryUciephyTest { this: BaseSubsystem =>
   val uciephy = p(UciephyTestKey) match {
     case Some(params) => {
       val uciephy = params.map(x => LazyModule(new UciephyTestTL(x, sbus.beatBytes)(p)))
+
       for (((ucie, ucie_params), n) <- uciephy.zip(params).zipWithIndex){
         ucie.clockNode := sbus.fixedClockNode
-        sbus.coupleTo(portName) { ucie.node := TLBuffer() := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := TLBuffer() := _ }
+        sbus.coupleTo(s"uciephytest{$n}") { ucie.node := TLBuffer() := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := TLBuffer() := _ }
         ucie.uciTL.clockNode := sbus.fixedClockNode
-        obus.coupleTo(s"ucie_tl_man_port{$n}") { 
-            ucie.uciTL.managerNode := TLWidthWidget(obus.beatBytes) := TLBuffer() := TLSourceShrinker(ucie_params.tlParams.sourceIDWidth) := TLFragmenter(obus.beatBytes, p(CacheBlockBytes)) := TLBuffer() := _ 
+        pbus.coupleTo(s"ucie_tl_man_port{$n}") {
+            ucie.uciTL.managerNode := TLWidthWidget(obus.beatBytes) := TLBuffer() := TLSourceShrinker(ucie_params.tlParams.sourceIDWidth) := TLFragmenter(obus.beatBytes, p(CacheBlockBytes)) := TLBuffer() := _
         } //manager node because SBUS is making request?
         sbus.coupleFrom(s"ucie_tl_cl_port{$n}") { _ := TLBuffer() := TLWidthWidget(sbus.beatBytes) := TLBuffer() := ucie.uciTL.clientNode }
         sbus.coupleTo(s"ucie_tl_ctrl_port{$n}") { ucie.uciTL.regNode.node := TLWidthWidget(sbus.beatBytes) := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := TLBuffer() := _ }
