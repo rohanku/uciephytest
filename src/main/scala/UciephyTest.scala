@@ -843,5 +843,5 @@ class WithUciephyTest(params: Seq[UciephyTestParams]) extends Config((site, here
 })
 
 class WithUciephyTestSim extends Config((site, here, up) => {
-  case UciephyTestKey => up(UciephyTestKey, site).map(_.copy(sim = true))
+  case UciephyTestKey => up(UciephyTestKey, site).map(u => u.map(_.copy(sim = true)))
 })
