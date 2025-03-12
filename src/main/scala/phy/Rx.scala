@@ -394,3 +394,110 @@ class VerilogRxClk extends BlackBox {
 
   override val desiredName = "rxclk_with_esd"
 }
+
+object RxAfeCtlState extends ChiselEnum {
+  val sA, sAb, sB, sBa = Value
+}
+
+class RxAfeIO extends Bundle {
+    val aEn = Input(Bool())
+    val aPc = Input(Bool())
+    val bEn = Input(Bool())
+    val bPc = Input(Bool())
+    val selA = Input(Bool())
+}
+
+class RxAfeCtl extends Module {
+  val io = IO(new Bundle {
+    val bypass = Input(Bool())
+    val afeBypass = new RxAfeIO()
+    val opCycles = Input(UInt(16.W))
+    val overlapCycles = Input(UInt(16.W))
+    val afe = Flipped(new RxAfeIO())
+  })
+
+  val state = RegInit(RxAfeCtlState.sA)
+  val ctr = RegInit(0.U(17.W))
+  val ctrinc = Wire(UInt(17.W))
+  ctrinc := ctr + 1.U
+
+  when (reset) {
+    io.afe := (new RxAfeIO).Lit(
+      _.aEn -> false.B,
+      _.aPc -> true.B,
+      _.bEn -> false.B,
+      _.bPc -> true.B,
+      _.selA -> true.B
+    )
+  }.otherwise {
+    when (io.bypass) {
+      io.afe := io.afeBypass
+    }.otherwise {
+      switch (state) {
+        is (RxAfeCtlState.sA) {
+          io.afe := (new RxAfeIO).Lit(
+            _.aEn -> true.B,
+            _.aPc -> false.B,
+            _.bEn -> false.B,
+            _.bPc -> true.B,
+            _.selA -> true.B
+          )
+        }
+        is (RxAfeCtlState.sAb) {
+          io.afe := (new RxAfeIO).Lit(
+            _.aEn -> true.B,
+            _.aPc -> false.B,
+            _.bEn -> true.B,
+            _.bPc -> false.B,
+            _.selA -> true.B
+          )
+        }
+        is (RxAfeCtlState.sB) {
+          io.afe := (new RxAfeIO).Lit(
+            _.aEn -> false.B,
+            _.aPc -> true.B,
+            _.bEn -> true.B,
+            _.bPc -> false.B,
+            _.selA -> false.B
+          )
+        }
+        is (RxAfeCtlState.sBa) {
+          io.afe := (new RxAfeIO).Lit(
+            _.aEn -> false.B,
+            _.aPc -> false.B,
+            _.bEn -> true.B,
+            _.bPc -> false.B,
+            _.selA -> false.B
+          )
+        }
+      }
+    }
+  }
+  ctr := ctrinc
+  switch (state) {
+    is (RxAfeCtlState.sA) {
+      when (ctrinc === io.opCycles) {
+        state := RxAfeCtlState.sAb
+        ctr := 0.U
+      }
+    }
+    is (RxAfeCtlState.sAb) {
+      when (ctrinc === io.overlapCycles) {
+        state := RxAfeCtlState.sB
+        ctr := 0.U
+      }
+    }
+    is (RxAfeCtlState.sB) {
+      when (ctrinc === io.opCycles) {
+        state := RxAfeCtlState.sBa
+        ctr := 0.U
+      }
+    }
+    is (RxAfeCtlState.sBa) {
+      when (ctrinc === io.overlapCycles) {
+        state := RxAfeCtlState.sA
+        ctr := 0.U
+      }
+    }
+  }
+}
