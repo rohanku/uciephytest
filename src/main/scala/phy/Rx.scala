@@ -3,6 +3,7 @@ package uciephytest.phy
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.noPrefix
+import chisel3.experimental.BundleLiterals._
 
 class RxLaneIO extends Bundle {
   val din = Input(Bool())
