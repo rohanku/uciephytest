@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 import chisel3.util.random._
 import freechips.rocketchip.prci._
-import freechips.rocketchip.subsystem.{BaseSubsystem, PBUS, SBUS, CacheBlockBytes}
+import freechips.rocketchip.subsystem.{BaseSubsystem, PBUS, SBUS, CacheBlockBytes, TLBusWrapperLocation}
 import org.chipsalliance.cde.config.{Parameters, Field, Config}
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.regmapper.{HasRegMap, RegField, RegWriteFn, RegReadFn, RegFieldDesc}
@@ -33,7 +33,9 @@ case class UciephyTestParams(
                                     mbSerializerRatio = 32,
                                     mbLanes = 16,
                                     STANDALONE = false),
-  laneAsyncQueueParams: AsyncQueueParams = AsyncQueueParams()
+  laneAsyncQueueParams: AsyncQueueParams = AsyncQueueParams(),
+  managerWhere: TLBusWrapperLocation = PBUS,
+  sim: Boolean = false
 )
 
 case object UciephyTestKey extends Field[Option[Seq[UciephyTestParams]]](None)
@@ -646,8 +648,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       test.io.mmio.rxPermute := rxPermuteDelayed
 
       // PHY
-      val phy = Module(new Phy(params.numLanes))
-      when (ucieStack) {
+      val phy = Module(new Phy(params.numLanes, params.sim))
+      when (ucieStack) { 
 
         phy.io.test.tx <> uciTL.module.io.phyAfe.get.tx.map(f => {
           val x = Wire(chiselTypeOf(phy.io.test.tx.bits))
@@ -814,19 +816,20 @@ trait CanHavePeripheryUciephyTest { this: BaseSubsystem =>
   private val portName = "uciephytest"
 
   private val pbus = locateTLBusWrapper(PBUS)
-  // private val obus = locateTLBusWrapper(OBUS) //TODO: make parameterizable?
   private val sbus = locateTLBusWrapper(SBUS)
 
   val uciephy = p(UciephyTestKey) match {
     case Some(params) => {
       val uciephy = params.map(x => LazyModule(new UciephyTestTL(x, sbus.beatBytes)(p)))
 
-      for (((ucie, ucie_params), n) <- uciephy.zip(params).zipWithIndex){
+      lazy val uciephy_tlbus = params.map(x => locateTLBusWrapper(x.managerWhere))
+
+      for ((((ucie, ucie_params), tlbus), n) <- uciephy.zip(params).zip(uciephy_tlbus).zipWithIndex){
         ucie.clockNode := sbus.fixedClockNode
         sbus.coupleTo(s"uciephytest{$n}") { ucie.node := TLBuffer() := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := TLBuffer() := _ }
         ucie.uciTL.clockNode := sbus.fixedClockNode
-        pbus.coupleTo(s"ucie_tl_man_port{$n}") {
-            ucie.uciTL.managerNode := TLWidthWidget(pbus.beatBytes) := TLBuffer() := TLSourceShrinker(ucie_params.tlParams.sourceIDWidth) := TLFragmenter(pbus.beatBytes, p(CacheBlockBytes)) := TLBuffer() := _
+        tlbus.coupleTo(s"ucie_tl_man_port{$n}") {
+            ucie.uciTL.managerNode := TLWidthWidget(tlbus.beatBytes) := TLBuffer() := TLSourceShrinker(ucie_params.tlParams.sourceIDWidth) := TLFragmenter(tlbus.beatBytes, p(CacheBlockBytes)) := TLBuffer() := _
         } //manager node because SBUS is making request?
         sbus.coupleFrom(s"ucie_tl_cl_port{$n}") { _ := TLBuffer() := TLWidthWidget(sbus.beatBytes) := TLBuffer() := ucie.uciTL.clientNode }
         sbus.coupleTo(s"ucie_tl_ctrl_port{$n}") { ucie.uciTL.regNode.node := TLWidthWidget(sbus.beatBytes) := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := TLBuffer() := _ }
@@ -839,4 +842,8 @@ trait CanHavePeripheryUciephyTest { this: BaseSubsystem =>
 
 class WithUciephyTest(params: Seq[UciephyTestParams]) extends Config((site, here, up) => {
   case UciephyTestKey => Some(params)
+})
+
+class WithUciephyTestSim extends Config((site, here, up) => {
+  case UciephyTestKey => up(UciephyTestKey, site).map(u => u.map(_.copy(sim = true)))
 })
