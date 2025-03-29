@@ -550,6 +550,18 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         laneAsyncQueueParams = params.laneAsyncQueueParams
       ))
 
+  // // Diplomatic nodes to support Merged TL connections
+  // val merged_tl_manager = TLMergedCreditedSource(TLMergedCreditedDelay(
+  //                                                   CreditedDelay(4, 4),
+  //                                                   CreditedDelay(4, 4)))
+
+  // val merged_tl_client = TLMergedCreditedSink(TLMergedCreditedDelay(
+  //                                                   CreditedDelay(4, 4),
+  //                                                   CreditedDelay(4, 4)))
+
+  // uciTL.managerNode <> merged_tl_manager
+  // merged_tl_client <> uciTL.clientNode
+
   override lazy val module = new UciephyTestImpl
   class UciephyTestImpl extends Impl {
     val io = IO(new Bundle {})
@@ -649,7 +661,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
 
       // PHY
       val phy = Module(new Phy(params.numLanes, params.sim))
-      when (ucieStack) { 
+      when (ucieStack) {
 
         phy.io.test.tx <> uciTL.module.io.phyAfe.get.tx.map(f => {
           val x = Wire(chiselTypeOf(phy.io.test.tx.bits))
@@ -826,10 +838,10 @@ trait CanHavePeripheryUciephyTest { this: BaseSubsystem =>
 
       for ((((ucie, ucie_params), tlbus), n) <- uciephy.zip(params).zip(uciephy_tlbus).zipWithIndex){
         ucie.clockNode := sbus.fixedClockNode
-        sbus.coupleTo(s"uciephytest{$n}") { ucie.node := TLBuffer() := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := TLBuffer() := _ }
         ucie.uciTL.clockNode := sbus.fixedClockNode
-        tlbus.coupleTo(s"ucie_tl_man_port{$n}") {
-            ucie.uciTL.managerNode := TLWidthWidget(tlbus.beatBytes) := TLBuffer() := TLSourceShrinker(ucie_params.tlParams.sourceIDWidth) := TLFragmenter(tlbus.beatBytes, p(CacheBlockBytes)) := TLBuffer() := _
+        //sbus.coupleTo(s"uciephytest{$n}") { ucie.node := TLBuffer() := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := TLBuffer() := _ }
+        pbus.coupleTo(s"ucie_tl_man_port{$n}") {
+            ucie.uciTL.managerNode := TLWidthWidget(pbus.beatBytes) := TLBuffer() := TLSourceShrinker(ucie_params.tlParams.sourceIDWidth) := TLFragmenter(pbus.beatBytes, p(CacheBlockBytes)) := TLBuffer() := _
         } //manager node because SBUS is making request?
         sbus.coupleFrom(s"ucie_tl_cl_port{$n}") { _ := TLBuffer() := TLWidthWidget(sbus.beatBytes) := TLBuffer() := ucie.uciTL.clientNode }
         sbus.coupleTo(s"ucie_tl_ctrl_port{$n}") { ucie.uciTL.regNode.node := TLWidthWidget(sbus.beatBytes) := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := TLBuffer() := _ }
