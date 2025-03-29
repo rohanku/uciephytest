@@ -839,7 +839,7 @@ trait CanHavePeripheryUciephyTest { this: BaseSubsystem =>
       for ((((ucie, ucie_params), tlbus), n) <- uciephy.zip(params).zip(uciephy_tlbus).zipWithIndex){
         ucie.clockNode := sbus.fixedClockNode
         ucie.uciTL.clockNode := sbus.fixedClockNode
-        //sbus.coupleTo(s"uciephytest{$n}") { ucie.node := TLBuffer() := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := TLBuffer() := _ }
+        sbus.coupleTo(s"uciephytest{$n}") { ucie.node := TLBuffer() := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := TLBuffer() := _ }
         pbus.coupleTo(s"ucie_tl_man_port{$n}") {
             ucie.uciTL.managerNode := TLWidthWidget(pbus.beatBytes) := TLBuffer() := TLSourceShrinker(ucie_params.tlParams.sourceIDWidth) := TLFragmenter(pbus.beatBytes, p(CacheBlockBytes)) := TLBuffer() := _
         } //manager node because SBUS is making request?
