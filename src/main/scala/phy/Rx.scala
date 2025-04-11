@@ -5,28 +5,27 @@ import chisel3.util._
 import chisel3.experimental.noPrefix
 import chisel3.experimental.BundleLiterals._
 
-class RxLaneIO extends Bundle {
-  val din = Input(Bool())
-  val dout = new RxDoutIO
-  val clk = Input(Clock())
-  val clkb = Input(Clock())
-  val divclk = Output(Clock())
-  val resetb = Input(Bool())
-  val zctl = Input(UInt(6.W))
-  val vref_ctl = Input(UInt(7.W))
+class RxLaneCtlIO extends Bundle {
+  val zen = Input(Bool())
+  val zctl = Input(UInt(5.W))
+  val afe = new RxAfeIO
+  val vref_sel = Input(UInt(7.W))
 }
 
-class RxLane(sim: Boolean = false) extends RawModule {
-  val io = IO(new RxLaneIO)
+class RxDataLaneIO extends Bundle {
+  val din = Input(Bool())
+  val dout = Output(Bits(32.W))
+  val clk = Input(Clock())
+  val resetb = Input(Bool())
+  val ctl = new RxLaneCtlIO
+}
+
+class RxDataLane(sim: Boolean = false) extends RawModule {
+  val io = IO(new RxDataLaneIO)
 
   if (sim) {
-    val ctr = withClockAndReset(io.clk, !io.resetb) { RegInit(7.U((log2Ceil(Phy.SerdesRatio) - 1).W)) }
+    val ctr = withClockAndReset(io.clk, !io.resetb) { RegInit(15.U((log2Ceil(Phy.SerdesRatio) - 1).W)) }
     ctr := ctr + 1.U
-
-    val divClock = withClockAndReset(io.clk, !io.resetb) { RegInit(true.B) }
-    when (ctr === 0.U) {
-      divClock := !divClock
-    }
 
     val shiftReg = withClockAndReset(io.clk, !io.resetb) { RegInit(0.U(Phy.SerdesRatio.W)) }
     shiftReg := shiftReg << 1.U | io.din.asUInt
@@ -35,33 +34,50 @@ class RxLane(sim: Boolean = false) extends RawModule {
       RegNext(Reverse(shiftReg))
     }
 
-    io.divclk := divClock.asClock
     io.dout := outputReg.asTypeOf(io.dout)
   } else {
-    val verilogBlackBox = Module(new VerilogRxLane)
+    val verilogBlackBox = Module(new VerilogRxDataLane)
     verilogBlackBox.io.din := io.din
-    io.dout.dout_0 := verilogBlackBox.io.dout_0 
-    io.dout.dout_1 := verilogBlackBox.io.dout_1 
-    io.dout.dout_2 := verilogBlackBox.io.dout_2 
-    io.dout.dout_3 := verilogBlackBox.io.dout_3 
-    io.dout.dout_4 := verilogBlackBox.io.dout_4 
-    io.dout.dout_5 := verilogBlackBox.io.dout_5 
-    io.dout.dout_6 := verilogBlackBox.io.dout_6 
-    io.dout.dout_7 := verilogBlackBox.io.dout_7 
-    io.dout.dout_8 := verilogBlackBox.io.dout_8 
-    io.dout.dout_9 := verilogBlackBox.io.dout_9 
-    io.dout.dout_10 := verilogBlackBox.io.dout_10 
-    io.dout.dout_11 := verilogBlackBox.io.dout_11 
-    io.dout.dout_12 := verilogBlackBox.io.dout_12 
-    io.dout.dout_13 := verilogBlackBox.io.dout_13 
-    io.dout.dout_14 := verilogBlackBox.io.dout_14 
-    io.dout.dout_15 := verilogBlackBox.io.dout_15 
+
+    io.dout(0) := verilogBlackBox.io.dout_0
+    io.dout(1) := verilogBlackBox.io.dout_1
+    io.dout(2) := verilogBlackBox.io.dout_2
+    io.dout(3) := verilogBlackBox.io.dout_3
+    io.dout(4) := verilogBlackBox.io.dout_4
+    io.dout(5) := verilogBlackBox.io.dout_5
+    io.dout(6) := verilogBlackBox.io.dout_6
+    io.dout(7) := verilogBlackBox.io.dout_7
+    io.dout(8) := verilogBlackBox.io.dout_8
+    io.dout(9) := verilogBlackBox.io.dout_9
+    io.dout(10) := verilogBlackBox.io.dout_10
+    io.dout(11) := verilogBlackBox.io.dout_11
+    io.dout(12) := verilogBlackBox.io.dout_12
+    io.dout(13) := verilogBlackBox.io.dout_13
+    io.dout(14) := verilogBlackBox.io.dout_14
+    io.dout(15) := verilogBlackBox.io.dout_15
+    io.dout(16) := verilogBlackBox.io.dout_16
+    io.dout(17) := verilogBlackBox.io.dout_17
+    io.dout(18) := verilogBlackBox.io.dout_18
+    io.dout(19) := verilogBlackBox.io.dout_19
+    io.dout(20) := verilogBlackBox.io.dout_20
+    io.dout(21) := verilogBlackBox.io.dout_21
+    io.dout(22) := verilogBlackBox.io.dout_22
+    io.dout(23) := verilogBlackBox.io.dout_23
+    io.dout(24) := verilogBlackBox.io.dout_24
+    io.dout(25) := verilogBlackBox.io.dout_25
+    io.dout(26) := verilogBlackBox.io.dout_26
+    io.dout(27) := verilogBlackBox.io.dout_27
+    io.dout(28) := verilogBlackBox.io.dout_28
+    io.dout(29) := verilogBlackBox.io.dout_29
+    io.dout(30) := verilogBlackBox.io.dout_30
+    io.dout(31) := verilogBlackBox.io.dout_31
+
     verilogBlackBox.io.clk := io.clk
-    verilogBlackBox.io.clkb := io.clkb
-    io.divclk := verilogBlackBox.io.divclk
-    verilogBlackBox.io.resetb := io.resetb
-    val zctlTherm = Wire(UInt(64.W))
-    zctlTherm := (1.U << io.zctl) - 1.U
+    verilogBlackBox.io.rstb := io.resetb
+
+    verilogBlackBox.io.zen := io.ctl.zen
+    val zctlTherm = Wire(UInt(32.W))
+    zctlTherm := (1.U << io.ctl.zctl) - 1.U
     verilogBlackBox.io.zctl_0 := zctlTherm(0)
     verilogBlackBox.io.zctl_1 := zctlTherm(1)
     verilogBlackBox.io.zctl_2 := zctlTherm(2)
@@ -82,61 +98,24 @@ class RxLane(sim: Boolean = false) extends RawModule {
     verilogBlackBox.io.zctl_17 := zctlTherm(17)
     verilogBlackBox.io.zctl_18 := zctlTherm(18)
     verilogBlackBox.io.zctl_19 := zctlTherm(19)
-    verilogBlackBox.io.zctl_20 := zctlTherm(20)
-    verilogBlackBox.io.zctl_21 := zctlTherm(21)
-    verilogBlackBox.io.zctl_22 := zctlTherm(22)
-    verilogBlackBox.io.zctl_23 := zctlTherm(23)
-    verilogBlackBox.io.zctl_24 := zctlTherm(24)
-    verilogBlackBox.io.zctl_25 := zctlTherm(25)
-    verilogBlackBox.io.zctl_26 := zctlTherm(26)
-    verilogBlackBox.io.zctl_27 := zctlTherm(27)
-    verilogBlackBox.io.zctl_28 := zctlTherm(28)
-    verilogBlackBox.io.zctl_29 := zctlTherm(29)
-    verilogBlackBox.io.zctl_30 := zctlTherm(30)
-    verilogBlackBox.io.zctl_31 := zctlTherm(31)
-    verilogBlackBox.io.zctl_32 := zctlTherm(32)
-    verilogBlackBox.io.zctl_33 := zctlTherm(33)
-    verilogBlackBox.io.zctl_34 := zctlTherm(34)
-    verilogBlackBox.io.zctl_35 := zctlTherm(35)
-    verilogBlackBox.io.zctl_36 := zctlTherm(36)
-    verilogBlackBox.io.zctl_37 := zctlTherm(37)
-    verilogBlackBox.io.zctl_38 := zctlTherm(38)
-    verilogBlackBox.io.zctl_39 := zctlTherm(39)
-    verilogBlackBox.io.zctl_40 := zctlTherm(40)
-    verilogBlackBox.io.zctl_41 := zctlTherm(41)
-    verilogBlackBox.io.zctl_42 := zctlTherm(42)
-    verilogBlackBox.io.zctl_43 := zctlTherm(43)
-    verilogBlackBox.io.zctl_44 := zctlTherm(44)
-    verilogBlackBox.io.zctl_45 := zctlTherm(45)
-    verilogBlackBox.io.zctl_46 := zctlTherm(46)
-    verilogBlackBox.io.zctl_47 := zctlTherm(47)
-    verilogBlackBox.io.zctl_48 := zctlTherm(48)
-    verilogBlackBox.io.zctl_49 := zctlTherm(49)
-    verilogBlackBox.io.zctl_50 := zctlTherm(50)
-    verilogBlackBox.io.zctl_51 := zctlTherm(51)
-    verilogBlackBox.io.zctl_52 := zctlTherm(52)
-    verilogBlackBox.io.zctl_53 := zctlTherm(53)
-    verilogBlackBox.io.zctl_54 := zctlTherm(54)
-    verilogBlackBox.io.zctl_55 := zctlTherm(55)
-    verilogBlackBox.io.zctl_56 := zctlTherm(56)
-    verilogBlackBox.io.zctl_57 := zctlTherm(57)
-    verilogBlackBox.io.zctl_58 := zctlTherm(58)
-    verilogBlackBox.io.zctl_59 := zctlTherm(59)
-    verilogBlackBox.io.zctl_60 := zctlTherm(60)
-    verilogBlackBox.io.zctl_61 := zctlTherm(61)
-    verilogBlackBox.io.zctl_62 := zctlTherm(62)
-    verilogBlackBox.io.zctl_63 := zctlTherm(63)
-    verilogBlackBox.io.vref_sel_0 := io.vref_ctl(0)
-    verilogBlackBox.io.vref_sel_1 := io.vref_ctl(1)
-    verilogBlackBox.io.vref_sel_2 := io.vref_ctl(2)
-    verilogBlackBox.io.vref_sel_3 := io.vref_ctl(3)
-    verilogBlackBox.io.vref_sel_4 := io.vref_ctl(4)
-    verilogBlackBox.io.vref_sel_5 := io.vref_ctl(5)
-    verilogBlackBox.io.vref_sel_6 := io.vref_ctl(6)
+
+    verilogBlackBox.io.a_en := io.ctl.afe.aEn
+    verilogBlackBox.io.a_pc := io.ctl.afe.aPc
+    verilogBlackBox.io.b_en := io.ctl.afe.bEn
+    verilogBlackBox.io.b_pc := io.ctl.afe.bPc
+    verilogBlackBox.io.sel_a := io.ctl.afe.selA
+
+    verilogBlackBox.io.vref_sel_0 := io.ctl.vref_sel(0)
+    verilogBlackBox.io.vref_sel_1 := io.ctl.vref_sel(1)
+    verilogBlackBox.io.vref_sel_2 := io.ctl.vref_sel(2)
+    verilogBlackBox.io.vref_sel_3 := io.ctl.vref_sel(3)
+    verilogBlackBox.io.vref_sel_4 := io.ctl.vref_sel(4)
+    verilogBlackBox.io.vref_sel_5 := io.ctl.vref_sel(5)
+    verilogBlackBox.io.vref_sel_6 := io.ctl.vref_sel(6)
   }
 }
 
-class VerilogRxLaneIO extends Bundle {
+class VerilogRxDataLaneIO extends Bundle {
   val din = Input(Bool())
   val dout_0 = Output(Bool())
   val dout_1 = Output(Bool())
@@ -154,10 +133,25 @@ class VerilogRxLaneIO extends Bundle {
   val dout_13 = Output(Bool())
   val dout_14 = Output(Bool())
   val dout_15 = Output(Bool())
+  val dout_16 = Output(Bool())
+  val dout_17 = Output(Bool())
+  val dout_18 = Output(Bool())
+  val dout_19 = Output(Bool())
+  val dout_20 = Output(Bool())
+  val dout_21 = Output(Bool())
+  val dout_22 = Output(Bool())
+  val dout_23 = Output(Bool())
+  val dout_24 = Output(Bool())
+  val dout_25 = Output(Bool())
+  val dout_26 = Output(Bool())
+  val dout_27 = Output(Bool())
+  val dout_28 = Output(Bool())
+  val dout_29 = Output(Bool())
+  val dout_30 = Output(Bool())
+  val dout_31 = Output(Bool())
   val clk = Input(Clock())
-  val clkb = Input(Clock())
-  val divclk = Output(Clock())
-  val resetb = Input(Bool())
+  val rstb = Input(Bool())
+  val zen = Input(Bool())
   val zctl_0 = Input(Bool())
   val zctl_1 = Input(Bool())
   val zctl_2 = Input(Bool())
@@ -178,50 +172,11 @@ class VerilogRxLaneIO extends Bundle {
   val zctl_17 = Input(Bool())
   val zctl_18 = Input(Bool())
   val zctl_19 = Input(Bool())
-  val zctl_20 = Input(Bool())
-  val zctl_21 = Input(Bool())
-  val zctl_22 = Input(Bool())
-  val zctl_23 = Input(Bool())
-  val zctl_24 = Input(Bool())
-  val zctl_25 = Input(Bool())
-  val zctl_26 = Input(Bool())
-  val zctl_27 = Input(Bool())
-  val zctl_28 = Input(Bool())
-  val zctl_29 = Input(Bool())
-  val zctl_30 = Input(Bool())
-  val zctl_31 = Input(Bool())
-  val zctl_32 = Input(Bool())
-  val zctl_33 = Input(Bool())
-  val zctl_34 = Input(Bool())
-  val zctl_35 = Input(Bool())
-  val zctl_36 = Input(Bool())
-  val zctl_37 = Input(Bool())
-  val zctl_38 = Input(Bool())
-  val zctl_39 = Input(Bool())
-  val zctl_40 = Input(Bool())
-  val zctl_41 = Input(Bool())
-  val zctl_42 = Input(Bool())
-  val zctl_43 = Input(Bool())
-  val zctl_44 = Input(Bool())
-  val zctl_45 = Input(Bool())
-  val zctl_46 = Input(Bool())
-  val zctl_47 = Input(Bool())
-  val zctl_48 = Input(Bool())
-  val zctl_49 = Input(Bool())
-  val zctl_50 = Input(Bool())
-  val zctl_51 = Input(Bool())
-  val zctl_52 = Input(Bool())
-  val zctl_53 = Input(Bool())
-  val zctl_54 = Input(Bool())
-  val zctl_55 = Input(Bool())
-  val zctl_56 = Input(Bool())
-  val zctl_57 = Input(Bool())
-  val zctl_58 = Input(Bool())
-  val zctl_59 = Input(Bool())
-  val zctl_60 = Input(Bool())
-  val zctl_61 = Input(Bool())
-  val zctl_62 = Input(Bool())
-  val zctl_63 = Input(Bool())
+  val a_en = Input(Bool())
+  val a_pc = Input(Bool())
+  val b_en = Input(Bool())
+  val b_pc = Input(Bool())
+  val sel_a = Input(Bool())
   val vref_sel_0 = Input(Bool())
   val vref_sel_1 = Input(Bool())
   val vref_sel_2 = Input(Bool())
@@ -231,29 +186,31 @@ class VerilogRxLaneIO extends Bundle {
   val vref_sel_6 = Input(Bool())
 }
 
-class VerilogRxLane extends BlackBox {
-  val io = IO(new VerilogRxLaneIO)
+class VerilogRxDataLane extends BlackBox {
+  val io = IO(new VerilogRxDataLaneIO)
 
-  override val desiredName = "rxtile"
+  override val desiredName = "rx_data_lane"
 }
 
-class RxClkIO extends Bundle {
+class RxClkLaneIO extends Bundle {
   val clkin = Input(Bool())
   val clkout = Output(Bool())
-  val zctl = Input(UInt(6.W))
+  val ctl = new RxLaneCtlIO
 }
 
-class RxClk(sim: Boolean = false) extends RawModule {
-  val io = IO(new RxClkIO)
+class RxClkLane(sim: Boolean = false) extends RawModule {
+  val io = IO(new RxClkLaneIO)
 
   if (sim) {
     io.clkout := io.clkin
   } else {
-    val verilogBlackBox = Module(new VerilogRxClk)
+    val verilogBlackBox = Module(new VerilogRxClkLane)
     verilogBlackBox.io.clkin := io.clkin
     io.clkout := verilogBlackBox.io.clkout
-    val zctlTherm = Wire(UInt(64.W))
-    zctlTherm := (1.U << io.zctl) - 1.U
+
+    verilogBlackBox.io.zen := io.ctl.zen
+    val zctlTherm = Wire(UInt(32.W))
+    zctlTherm := (1.U << io.ctl.zctl) - 1.U
     verilogBlackBox.io.zctl_0 := zctlTherm(0)
     verilogBlackBox.io.zctl_1 := zctlTherm(1)
     verilogBlackBox.io.zctl_2 := zctlTherm(2)
@@ -274,56 +231,27 @@ class RxClk(sim: Boolean = false) extends RawModule {
     verilogBlackBox.io.zctl_17 := zctlTherm(17)
     verilogBlackBox.io.zctl_18 := zctlTherm(18)
     verilogBlackBox.io.zctl_19 := zctlTherm(19)
-    verilogBlackBox.io.zctl_20 := zctlTherm(20)
-    verilogBlackBox.io.zctl_21 := zctlTherm(21)
-    verilogBlackBox.io.zctl_22 := zctlTherm(22)
-    verilogBlackBox.io.zctl_23 := zctlTherm(23)
-    verilogBlackBox.io.zctl_24 := zctlTherm(24)
-    verilogBlackBox.io.zctl_25 := zctlTherm(25)
-    verilogBlackBox.io.zctl_26 := zctlTherm(26)
-    verilogBlackBox.io.zctl_27 := zctlTherm(27)
-    verilogBlackBox.io.zctl_28 := zctlTherm(28)
-    verilogBlackBox.io.zctl_29 := zctlTherm(29)
-    verilogBlackBox.io.zctl_30 := zctlTherm(30)
-    verilogBlackBox.io.zctl_31 := zctlTherm(31)
-    verilogBlackBox.io.zctl_32 := zctlTherm(32)
-    verilogBlackBox.io.zctl_33 := zctlTherm(33)
-    verilogBlackBox.io.zctl_34 := zctlTherm(34)
-    verilogBlackBox.io.zctl_35 := zctlTherm(35)
-    verilogBlackBox.io.zctl_36 := zctlTherm(36)
-    verilogBlackBox.io.zctl_37 := zctlTherm(37)
-    verilogBlackBox.io.zctl_38 := zctlTherm(38)
-    verilogBlackBox.io.zctl_39 := zctlTherm(39)
-    verilogBlackBox.io.zctl_40 := zctlTherm(40)
-    verilogBlackBox.io.zctl_41 := zctlTherm(41)
-    verilogBlackBox.io.zctl_42 := zctlTherm(42)
-    verilogBlackBox.io.zctl_43 := zctlTherm(43)
-    verilogBlackBox.io.zctl_44 := zctlTherm(44)
-    verilogBlackBox.io.zctl_45 := zctlTherm(45)
-    verilogBlackBox.io.zctl_46 := zctlTherm(46)
-    verilogBlackBox.io.zctl_47 := zctlTherm(47)
-    verilogBlackBox.io.zctl_48 := zctlTherm(48)
-    verilogBlackBox.io.zctl_49 := zctlTherm(49)
-    verilogBlackBox.io.zctl_50 := zctlTherm(50)
-    verilogBlackBox.io.zctl_51 := zctlTherm(51)
-    verilogBlackBox.io.zctl_52 := zctlTherm(52)
-    verilogBlackBox.io.zctl_53 := zctlTherm(53)
-    verilogBlackBox.io.zctl_54 := zctlTherm(54)
-    verilogBlackBox.io.zctl_55 := zctlTherm(55)
-    verilogBlackBox.io.zctl_56 := zctlTherm(56)
-    verilogBlackBox.io.zctl_57 := zctlTherm(57)
-    verilogBlackBox.io.zctl_58 := zctlTherm(58)
-    verilogBlackBox.io.zctl_59 := zctlTherm(59)
-    verilogBlackBox.io.zctl_60 := zctlTherm(60)
-    verilogBlackBox.io.zctl_61 := zctlTherm(61)
-    verilogBlackBox.io.zctl_62 := zctlTherm(62)
-    verilogBlackBox.io.zctl_63 := zctlTherm(63)
+
+    verilogBlackBox.io.a_en := io.ctl.afe.aEn
+    verilogBlackBox.io.a_pc := io.ctl.afe.aPc
+    verilogBlackBox.io.b_en := io.ctl.afe.bEn
+    verilogBlackBox.io.b_pc := io.ctl.afe.bPc
+    verilogBlackBox.io.sel_a := io.ctl.afe.selA
+
+    verilogBlackBox.io.vref_sel_0 := io.ctl.vref_sel(0)
+    verilogBlackBox.io.vref_sel_1 := io.ctl.vref_sel(1)
+    verilogBlackBox.io.vref_sel_2 := io.ctl.vref_sel(2)
+    verilogBlackBox.io.vref_sel_3 := io.ctl.vref_sel(3)
+    verilogBlackBox.io.vref_sel_4 := io.ctl.vref_sel(4)
+    verilogBlackBox.io.vref_sel_5 := io.ctl.vref_sel(5)
+    verilogBlackBox.io.vref_sel_6 := io.ctl.vref_sel(6)
   }
 }
 
-class VerilogRxClkIO extends Bundle {
+class VerilogRxClkLaneIO extends Bundle {
   val clkin = Input(Bool())
   val clkout = Output(Bool())
+  val zen = Input(Bool())
   val zctl_0 = Input(Bool())
   val zctl_1 = Input(Bool())
   val zctl_2 = Input(Bool())
@@ -344,56 +272,24 @@ class VerilogRxClkIO extends Bundle {
   val zctl_17 = Input(Bool())
   val zctl_18 = Input(Bool())
   val zctl_19 = Input(Bool())
-  val zctl_20 = Input(Bool())
-  val zctl_21 = Input(Bool())
-  val zctl_22 = Input(Bool())
-  val zctl_23 = Input(Bool())
-  val zctl_24 = Input(Bool())
-  val zctl_25 = Input(Bool())
-  val zctl_26 = Input(Bool())
-  val zctl_27 = Input(Bool())
-  val zctl_28 = Input(Bool())
-  val zctl_29 = Input(Bool())
-  val zctl_30 = Input(Bool())
-  val zctl_31 = Input(Bool())
-  val zctl_32 = Input(Bool())
-  val zctl_33 = Input(Bool())
-  val zctl_34 = Input(Bool())
-  val zctl_35 = Input(Bool())
-  val zctl_36 = Input(Bool())
-  val zctl_37 = Input(Bool())
-  val zctl_38 = Input(Bool())
-  val zctl_39 = Input(Bool())
-  val zctl_40 = Input(Bool())
-  val zctl_41 = Input(Bool())
-  val zctl_42 = Input(Bool())
-  val zctl_43 = Input(Bool())
-  val zctl_44 = Input(Bool())
-  val zctl_45 = Input(Bool())
-  val zctl_46 = Input(Bool())
-  val zctl_47 = Input(Bool())
-  val zctl_48 = Input(Bool())
-  val zctl_49 = Input(Bool())
-  val zctl_50 = Input(Bool())
-  val zctl_51 = Input(Bool())
-  val zctl_52 = Input(Bool())
-  val zctl_53 = Input(Bool())
-  val zctl_54 = Input(Bool())
-  val zctl_55 = Input(Bool())
-  val zctl_56 = Input(Bool())
-  val zctl_57 = Input(Bool())
-  val zctl_58 = Input(Bool())
-  val zctl_59 = Input(Bool())
-  val zctl_60 = Input(Bool())
-  val zctl_61 = Input(Bool())
-  val zctl_62 = Input(Bool())
-  val zctl_63 = Input(Bool())
+  val a_en = Input(Bool())
+  val a_pc = Input(Bool())
+  val b_en = Input(Bool())
+  val b_pc = Input(Bool())
+  val sel_a = Input(Bool())
+  val vref_sel_0 = Input(Bool())
+  val vref_sel_1 = Input(Bool())
+  val vref_sel_2 = Input(Bool())
+  val vref_sel_3 = Input(Bool())
+  val vref_sel_4 = Input(Bool())
+  val vref_sel_5 = Input(Bool())
+  val vref_sel_6 = Input(Bool())
 }
 
-class VerilogRxClk extends BlackBox {
-  val io = IO(new VerilogRxClkIO)
+class VerilogRxClkLane extends BlackBox {
+  val io = IO(new VerilogRxClkLaneIO)
 
-  override val desiredName = "rxclk_with_esd"
+  override val desiredName = "rx_clock_lane"
 }
 
 object RxAfeCtlState extends ChiselEnum {
