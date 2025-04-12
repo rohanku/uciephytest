@@ -27,6 +27,11 @@ class RxDataLane(sim: Boolean = false) extends RawModule {
     val ctr = withClockAndReset(io.clk, !io.resetb) { RegInit(15.U((log2Ceil(Phy.SerdesRatio) - 1).W)) }
     ctr := ctr + 1.U
 
+    val divClock = withClockAndReset(io.clk, !io.resetb) { RegInit(true.B) }
+    when (ctr === 0.U) {
+      divClock := !divClock
+    }
+
     val shiftReg = withClockAndReset(io.clk, !io.resetb) { RegInit(0.U(Phy.SerdesRatio.W)) }
     shiftReg := shiftReg << 1.U | io.din.asUInt
 

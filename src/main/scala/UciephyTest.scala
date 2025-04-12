@@ -3,13 +3,15 @@ package uciephytest
 import chisel3._
 import chisel3.util._
 import chisel3.util.random._
+import chisel3.experimental.BundleLiterals._
+import chisel3.experimental.VecLiterals._
 import freechips.rocketchip.prci._
 import freechips.rocketchip.subsystem.{BaseSubsystem, PBUS, SBUS, CacheBlockBytes}
 import org.chipsalliance.cde.config.{Parameters, Field, Config}
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.regmapper.{HasRegMap, RegField, RegWriteFn, RegReadFn, RegFieldDesc}
 import freechips.rocketchip.tilelink._
-import uciephytest.phy.{Phy, PhyToTestIO}
+import uciephytest.phy.{Phy, PhyToTestIO, TxLaneDigitalCtlIO, RxLaneCtlIO, DriverControlIO, TxSkewControlIO, RxAfeIO}
 import freechips.rocketchip.util.{AsyncQueueParams}
 import testchipip.soc.{OBUS}
 import edu.berkeley.cs.ucie.digital.tilelink._
@@ -558,17 +560,37 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val rxDataLane = RegInit(0.U(log2Ceil(params.numLanes).W))
       val rxDataOffset = RegInit(0.U((params.bufferDepthPerLane - 5).W))
       val rxPermute = RegInit(VecInit((0 until Phy.SerdesRatio).map(_.U(log2Ceil(Phy.SerdesRatio).W))))
-      val driverPuCtl = RegInit(VecInit(Seq.fill(params.numLanes + 5)(0.U(6.W))))
-      val driverPdCtl = RegInit(VecInit(Seq.fill(params.numLanes + 5)(0.U(6.W))))
-      val driverEn = RegInit(VecInit(Seq.fill(params.numLanes + 5)(false.B)))
-      val clockingPiCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(52.W))))
-      val clockingMiscCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(28.W))))
-      val shufflerCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(
-        VecInit((0 until 16).map(i => i.U(4.W))).asUInt
-      )))
-      val terminationCtl = RegInit(VecInit(Seq.fill(params.numLanes + 3)(~0.U(6.W))))
-      val vrefCtl = RegInit(VecInit(Seq.fill(params.numLanes + 1)(0.U(7.W))))
-      val dllCode = Wire(Vec(params.numLanes + 1, UInt(10.W)))
+
+      val txctl = RegInit(VecInit(Seq.fill(params.numLanes + 4)(
+        (new TxLaneDigitalCtlIO).Lit(
+          _.driver -> (new DriverControlIO).Lit(_.pu_ctl -> 0.U, _.pd_ctl -> 0.U, _.en -> false.B, _.en_b -> true.B),
+          _.skew -> (new TxSkewControlIO).Lit(
+            _.dll_en -> false.B,
+            _.ocl -> false.B,
+            _.delay -> 0.U,
+            _.mux_en -> 0.U,
+            _.band_ctrl -> "b01".U,
+            _.mix_en -> 0.U,
+            _.nen_out -> 0.U,
+            _.pen_out -> 0.U,
+            ),
+          _.shuffler -> Vec.Lit((0 until 32).map(i => i.U(5.W)):_*),
+          )
+        )))
+      val rxctl = RegInit(VecInit(Seq.fill(params.numLanes + 3)(
+        (new RxLaneCtlIO).Lit(
+          _.zen -> false.B,
+          _.zctl -> 0.U,
+          _.afe -> (new RxAfeIO).Lit(
+            _.aEn -> false.B,
+            _.aPc -> true.B,
+            _.bEn -> false.B,
+            _.bPc -> true.B,
+            _.selA -> false.B,
+          ),
+          _.vref_sel -> 63.U,
+          )
+        )))
 
       // Pipelined registers
       val txTestModeDelayed = ShiftRegister(txTestMode, 3, true.B)
@@ -586,15 +608,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val rxDataLaneDelayed = ShiftRegister(rxDataLane, 3, true.B)
       val rxDataOffsetDelayed = ShiftRegister(rxDataOffset, 3, true.B)
       val rxPermuteDelayed = ShiftRegister(rxPermute, 3, true.B)
-      val driverPuCtlDelayed = ShiftRegister(driverPuCtl, 3, true.B)
-      val driverPdCtlDelayed = ShiftRegister(driverPdCtl, 3, true.B)
-      val driverEnDelayed = ShiftRegister(driverEn, 3, true.B)
-      val clockingPiCtlDelayed = ShiftRegister(clockingPiCtl, 3, true.B)
-      val clockingMiscCtlDelayed = ShiftRegister(clockingMiscCtl, 3, true.B)
-      val shufflerCtlDelayed = ShiftRegister(shufflerCtl, 3, true.B)
-      val terminationCtlDelayed = ShiftRegister(terminationCtl, 3, true.B)
-      val vrefCtlDelayed = ShiftRegister(vrefCtl, 3, true.B)
-      val dllCodeDelayed = ShiftRegister(dllCode, 3, true.B)
+      val txctlDelayed = ShiftRegister(txctl, 3, true.B)
+      val rxctlDelayed = ShiftRegister(rxctl, 3, true.B)
 
       // UCIe logphy related
       val ucieStack = RegInit(false.B)
@@ -677,17 +692,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       phy.io.sideband.txClk := false.B
       phy.io.sideband.txData := false.B
 
-      phy.io.driverPuCtl := driverPuCtlDelayed
-      phy.io.driverPdCtl := driverPdCtlDelayed
-      phy.io.driverEn := driverEnDelayed
-      phy.io.clockingPiCtl := clockingPiCtlDelayed
-      phy.io.clockingMiscCtl := clockingMiscCtlDelayed
-      phy.io.terminationCtl := terminationCtlDelayed
-      phy.io.shufflerCtl := shufflerCtlDelayed.asTypeOf(phy.io.shufflerCtl)
-      phy.io.vrefCtl := vrefCtlDelayed
-      for (lane <- 0 to params.numLanes) {
-        dllCode(lane) := Cat(phy.io.dllCode(lane), phy.io.dllCodeb(lane))
-      }
+      phy.io.txctl := txctlDelayed
+      phy.io.rxctl := rxctlDelayed
 
       val toRegField = (r: UInt) => {
         RegField(r.getWidth, r, RegWriteFn((valid, data) => {
@@ -734,29 +740,13 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         RegField.r(32, test.io.mmio.rxValidChunk),
       ) ++ (0 until Phy.SerdesRatio).map((i: Int) => {
           toRegField(rxPermute(i))
-      }) ++ (0 until params.numLanes + 5).flatMap((i: Int) => {
+      }) ++ (0 until params.numLanes + 4).flatMap((i: Int) => {
           Seq(
-            toRegField(driverPuCtl(i)),
-            toRegField(driverPuCtl(i)),
-            toRegField(driverEn(i)),
-          )
-      }) ++ (0 until params.numLanes + 1).flatMap((i: Int) => {
-          Seq(
-            toRegField(clockingPiCtl(i)),
-            toRegField(clockingMiscCtl(i)),
-            RegField.r(10, dllCodeDelayed(i))
-          )
-      }) ++ (0 until params.numLanes + 1).flatMap((i: Int) => {
-          Seq(
-            toRegField(shufflerCtl(i)),
+            toRegField(txctl(i).asUInt),
           )
       }) ++ (0 until params.numLanes + 3).flatMap((i: Int) => {
           Seq(
-            toRegField(terminationCtl(i)),
-          )
-      }) ++ (0 until params.numLanes + 1).flatMap((i: Int) => {
-          Seq(
-            toRegField(vrefCtl(i)),
+            toRegField(rxctl(i).asUInt),
           )
       }) ++ Seq(
         RegField.w(1, ucieStack),

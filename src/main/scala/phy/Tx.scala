@@ -414,6 +414,8 @@ class VerilogTxLaneIO extends Bundle {
   val pd_ctlb_37 = Input(Bool())
   val pd_ctlb_38 = Input(Bool())
   val pd_ctlb_39 = Input(Bool())
+  val driver_en = Input(Bool())
+  val driver_en_b = Input(Bool())
   val dll_en = Input(Bool())
   val ocl = Input(Bool())
   val delay_0 = Input(Bool())
@@ -504,7 +506,7 @@ class VerilogTxLaneIO extends Bundle {
 class TxDriverIO extends Bundle {
   val din = Input(Bool())
   val dout = Output(Bool())
-  val driver_ctl = new DriverControlIO
+  val ctl = new DriverControlIO
 }
 
 class TxDriver(sim: Boolean = false) extends RawModule {
@@ -517,9 +519,9 @@ class TxDriver(sim: Boolean = false) extends RawModule {
     verilogBlackBox.io.din := io.din
     io.dout := verilogBlackBox.io.dout
     val puCtlTherm = Wire(UInt(64.W))
-    puCtlTherm := (1.U << io.driver_ctl.pu_ctl) - 1.U
+    puCtlTherm := (1.U << io.ctl.pu_ctl) - 1.U
     val pdCtlbTherm = Wire(UInt(64.W))
-    pdCtlbTherm := ~((1.U << io.driver_ctl.pd_ctl) - 1.U)
+    pdCtlbTherm := ~((1.U << io.ctl.pd_ctl) - 1.U)
     verilogBlackBox.io.pu_ctl_0  := puCtlTherm(0)
     verilogBlackBox.io.pu_ctl_1  := puCtlTherm(1)
     verilogBlackBox.io.pu_ctl_2  := puCtlTherm(2)
@@ -600,8 +602,8 @@ class TxDriver(sim: Boolean = false) extends RawModule {
     verilogBlackBox.io.pd_ctlb_37 := pdCtlbTherm(37)
     verilogBlackBox.io.pd_ctlb_38 := pdCtlbTherm(38)
     verilogBlackBox.io.pd_ctlb_39 := pdCtlbTherm(39)
-    verilogBlackBox.io.en := io.driver_ctl.en
-    verilogBlackBox.io.en_b := io.driver_ctl.en_b
+    verilogBlackBox.io.en := io.ctl.en
+    verilogBlackBox.io.en_b := io.ctl.en_b
   }
 }
 
@@ -713,13 +715,13 @@ class SsdpllIO extends Bundle {
   val vref_high = Input(Bool())
   val vdig_clk = Input(Bool())
   val dfine = Input(UInt(8.W))
-  val d_fcw_debug = Ouput(UInt(8.W))
-  val d_sar_debug = Ouput(UInt(8.W))
+  val d_fcw_debug = Output(UInt(8.W))
+  val d_sar_debug = Output(UInt(8.W))
   val d_digital_reset = Input(Bool())
   val d_kp = Input(UInt(16.W))
   val d_ki = Input(UInt(16.W))
   val d_clol = Input(Bool())
-  val d_ol_fcw = Ouput(UInt(8.W))
+  val d_ol_fcw = Output(UInt(8.W))
   val d_accumulator_reset = Input(Bool())
 }
 

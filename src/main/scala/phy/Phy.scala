@@ -207,40 +207,23 @@ class PhyIO(numLanes: Int = 16) extends Bundle {
 class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   val io = IO(new PhyIO(numLanes))
 
-  val connectDriverCtl = (driver_ctl: DriverControlIO, lane: Int) => {
-    when (io.driverEn(lane)) {
-      driver_ctl.pu_ctl := io.driverPuCtl(lane).asTypeOf(driver_ctl.pu_ctl)
-      driver_ctl.pd_ctl := io.driverPdCtl(lane).asTypeOf(driver_ctl.pd_ctl)
-      driver_ctl.en := true.B
-      driver_ctl.en_b := false.B
-    } .otherwise {
-      driver_ctl.pu_ctl := 0.U(6.W).asTypeOf(driver_ctl.pu_ctl)
-      driver_ctl.pd_ctl := 0.U(6.W).asTypeOf(driver_ctl.pd_ctl)
-      driver_ctl.en := false.B
-      driver_ctl.en_b := true.B
-    }
-  }
-
-  val connectClockingCtl = (clocking_ctl: ClockingControlDllIO, lane: Int) => {
-    clocking_ctl.pi := io.clockingPiCtl(lane).asTypeOf(clocking_ctl.pi)
-    clocking_ctl.misc := io.clockingMiscCtl(lane).asTypeOf(clocking_ctl.misc)
-  }
+  // TODO do we need to set pu/pd ctl to 0 when driver en is low?
 
   // Set up sideband
   val sbTxClk = Module(new TxDriver(sim))
   sbTxClk.io.din := io.sideband.txClk
   io.top.sbTxClk := sbTxClk.io.dout.asClock
-  sbTxClk.io.driver_ctl.pu_ctl := 63.U
-  sbTxClk.io.driver_ctl.pd_ctl := 63.U
-  sbTxClk.io.driver_ctl.en := true.B
-  sbTxClk.io.driver_ctl.en_b := false.B
+  sbTxClk.io.ctl.pu_ctl := 63.U
+  sbTxClk.io.ctl.pd_ctl := 63.U
+  sbTxClk.io.ctl.en := true.B
+  sbTxClk.io.ctl.en_b := false.B
   val sbTxData = Module(new TxDriver(sim))
   sbTxData.io.din := io.sideband.txData
   io.top.sbTxData := sbTxData.io.dout
-  sbTxData.io.driver_ctl.pu_ctl := 63.U
-  sbTxData.io.driver_ctl.pd_ctl := 63.U
-  sbTxData.io.driver_ctl.en := true.B
-  sbTxData.io.driver_ctl.en_b := false.B
+  sbTxData.io.ctl.pu_ctl := 63.U
+  sbTxData.io.ctl.pd_ctl := 63.U
+  sbTxData.io.ctl.en := true.B
+  sbTxData.io.ctl.en_b := false.B
   val ESD_sbRxClk = Module(new EsdRoutable(sim))
   val ESD_sbRxData = Module(new EsdRoutable(sim))
   ESD_sbRxClk.io.term := io.top.sbRxClk.asBool
@@ -252,7 +235,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   val rxClkP = Module(new RxClkLane(sim))
   rxClkP.io.clkin := io.top.rxClkP.asBool
   rxClkP.io.ctl := io.rxctl(numLanes + 1)
-  val rxClkN = Module(new RxClk(sim))
+  val rxClkN = Module(new RxClkLane(sim))
   rxClkN.io.clkin := io.top.rxClkN.asBool
   rxClkN.io.ctl := io.rxctl(numLanes + 2)
   val refClkRx = Module(new RefClkRx(sim))
@@ -264,8 +247,8 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   ESD_refClkN.io.term := io.top.refClkN.asBool
 
   val pll = Module(new SsdpllSingleSampling)
-  pll.vclk_ref := refClkRx.io.vop
-  pll.vclk_refb := refClkRx.io.von
+  pll.io.vclk_ref := refClkRx.io.vop
+  pll.io.vclk_refb := refClkRx.io.von
 
   val clkMuxP = Module(new ClkMux(sim))
   clkMuxP.io.in0 := pll.io.vp_out
@@ -285,16 +268,6 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   val txClkN_wire = Wire(Bool())
   txClkP_wire := clkMuxP.io.out
   txClkN_wire := clkMuxN.io.out
-  val txClkP = Module(new TxDriver(sim))
-  txClkP.io.din := txClkP_wire
-  io.top.txClkP := txClkP.io.dout.asClock
-  txClkP.io.ctl.driver := io.txctl(numLanes + 1).driver
-  txClkP.io.ctl.skew := io.txctl(numLanes + 1).skew
-  val txClkN = Module(new TxDriver(sim))
-  txClkN.io.din := txClkN_wire
-  io.top.txClkN := txClkN.io.dout.asClock
-  txClkN.io.ctl.driver := io.txctl(numLanes + 2).driver
-  txClkN.io.ctl.skew := io.txctl(numLanes + 2).skew
   
   val rstSyncTx = Module(new RstSync(sim))
   rstSyncTx.io.rstbAsync := !io.test.txRst.asBool
@@ -324,7 +297,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
 
   // TODO: separate clock divider for async FIFO and its reset synchronizer
   
-  for (lane <- 0 to numLanes) {
+  for (lane <- 0 to numLanes + 3) {
     val shuffler = Module(new Shuffler32)
     when (txFifo.io.deq.valid) {
       shuffler.io.din := { if (lane < numLanes) { 
