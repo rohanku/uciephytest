@@ -329,13 +329,13 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
     when (txFifo.io.deq.valid) {
       shuffler.io.din := { if (lane < numLanes) { 
       txFifo.io.deq.bits.data(lane)
-      } else if lane == numLanes {
+      } else if (lane == numLanes) {
 
       txFifo.io.deq.bits.valid
-      } else if lane == numLanes + 1 {
+      } else if (lane == numLanes + 1) {
 
       txFifo.io.deq.bits.clkp
-      } else if lane == numLanes + 2 {
+      } else if (lane == numLanes + 2) {
 
       txFifo.io.deq.bits.clkn
       }
@@ -350,11 +350,11 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
     val txLane = Module(new TxLane(sim));
     txLane.suggestName( if (lane < numLanes) {
       s"txdata$lane"
-    } else if lane == numLanes {
+    } else if (lane == numLanes) {
       "txvalid"
-    } else if lane == numLanes + 1 {
+    } else if (lane == numLanes + 1) {
       "txclkp"
-    } else if lane == numLanes + 2 {
+    } else if (lane == numLanes + 2) {
       "txclkn"
     } else {
       "txtrack"
@@ -367,11 +367,11 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
     txLane.io.din := shuffler.io.dout.asTypeOf(txLane.io.din)
     if (lane < numLanes) {
       io.top.txData(lane) := txLane.io.dout
-    } else if lane == numLanes {
+    } else if (lane == numLanes) {
       io.top.txValid := txLane.io.dout
-    } else if lane == numLanes + 1 {
+    } else if (lane == numLanes + 1) {
       io.top.txClkP := txLane.io.dout
-    } else if lane == numLanes + 2 {
+    } else if (lane == numLanes + 2) {
       io.top.txClkN := txLane.io.dout
     } else {
       io.top.txTrack := txLane.io.dout
