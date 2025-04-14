@@ -6,7 +6,7 @@ import chisel3.util.random._
 import chisel3.experimental.BundleLiterals._
 import chisel3.experimental.VecLiterals._
 import freechips.rocketchip.prci._
-import freechips.rocketchip.subsystem.{BaseSubsystem, PBUS, SBUS, CacheBlockBytes}
+import freechips.rocketchip.subsystem.{BaseSubsystem, PBUS, SBUS, CacheBlockBytes, TLBusWrapperLocation}
 import org.chipsalliance.cde.config.{Parameters, Field, Config}
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.regmapper.{HasRegMap, RegField, RegWriteFn, RegReadFn, RegFieldDesc}
@@ -35,10 +35,12 @@ case class UciephyTestParams(
                                     mbSerializerRatio = 32,
                                     mbLanes = 16,
                                     STANDALONE = false),
-  laneAsyncQueueParams: AsyncQueueParams = AsyncQueueParams()
+  laneAsyncQueueParams: AsyncQueueParams = AsyncQueueParams(),
+  managerWhere: TLBusWrapperLocation = PBUS,
+  sim: Boolean = false
 )
 
-case object UciephyTestKey extends Field[Option[UciephyTestParams]](None)
+case object UciephyTestKey extends Field[Option[Seq[UciephyTestParams]]](None)
 
 
 // TX test modes.
@@ -88,6 +90,24 @@ class UciephyTopIO(numLanes: Int = 2) extends Bundle {
 }
 
 
+class UciephyClockingTopIO() extends Bundle {
+    val uciephy_pllrefClkP_100  = Input(Clock())
+    val uciephy_pllrefClkN_100  = Input(Clock())
+    val uciephy_sbref_clk800    = Input(Clock())
+    val ucie_bypassclk_p_8G     = Input(Clock())
+    val ucie_bypassclk_n_8G     = Input(Clock())
+}
+
+class UciephyDebugIO() extends Bundle {
+  val uciephy0_txData_dbg       = Output(Bool())
+  val uciephy0_rxclk_p_dbg      = Output(Bool())
+  val uciephy0_rxclk_n_dbg      = Output(Bool())
+  val uciephy0_txclk_buff_p_dbg = Output(Bool())
+  val uciephy0_txclk_buff_n_dbg = Output(Bool())
+  val uciephy_plltapClkP_dbg    = Output(Bool())
+  val uciephy_plltapClkN_dbg    = Output(Bool())
+  val uciephy0_vref_dbg         = Output(Bool())
+}
 
 class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Bundle {
   // TX CONTROL
@@ -143,7 +163,7 @@ class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends B
   // Resets the RX FSM (i.e. resetting the number of bits received and the offset within the output
   // buffer to 0).
   val rxFsmRst = Input(Bool())
-  // The number of bits received since the last FSM reset. Only the first 2^bufferDepthPerLane bits received 
+  // The number of bits received since the last FSM reset. Only the first 2^bufferDepthPerLane bits received
   // per lane are stored in the output buffer.
   val rxBitsReceived = Output(UInt((bufferDepthPerLane + 1).W))
   // The number of bit errors per lane since the last FSM reset. Only applicable in `TxTestMode.lsfr`.
@@ -159,7 +179,7 @@ class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends B
   // Data chunk at the given chunk offset for inspect the received data.
   val rxDataChunk = Output(UInt(32.W))
   // Valid chunk at the given chunk offset for inspect the valid signals corresponding to the received data.
-  // In a correct UCIe implementation, there should be 4 1-bits followed by 4 0-bits repeated across the entire 
+  // In a correct UCIe implementation, there should be 4 1-bits followed by 4 0-bits repeated across the entire
   // transmission.
   val rxValidChunk = Output(UInt(32.W))
   // Permutation of data read from the deserializer, in case deserializer timing is off.
@@ -218,7 +238,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
     lfsr.io.increment := false.B
     lfsr
   })
-  
+
   val rxSignature = withReset(rxReset) { RegInit(0.U(32.W)) }
 
   val numInputSrams = (numLanes - 1)/4 + 1
@@ -278,6 +298,13 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   io.phy.txRst := txReset
   io.phy.rxRst := rxReset
 
+  // clkp = 101010...
+  io.phy.tx.bits.clkp := VecInit((0 until Phy.SerdesRatio/2).flatMap(_ => Seq(true.B, false.B))).asTypeOf(io.phy.tx.bits.clkp)
+  // clkn = 010101...
+  io.phy.tx.bits.clkn := VecInit((0 until Phy.SerdesRatio/2).flatMap(_ => Seq(false.B, true.B))).asTypeOf(io.phy.tx.bits.clkn)
+  // track = 000000... (for now)
+  io.phy.tx.bits.track := VecInit((0 until Phy.SerdesRatio/2).flatMap(_ => Seq(false.B, false.B))).asTypeOf(io.phy.tx.bits.track)
+
   // TX logic
   switch(txState) {
     is(TxTestState.idle) {
@@ -328,7 +355,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
           }
         }
       }
-      
+
       when (io.phy.tx.valid && io.phy.tx.ready) {
         switch (io.mmio.txTestMode) {
           is (TxTestMode.manual) {
@@ -351,7 +378,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   }
 
   // RX logic
-  
+
   io.phy.rx.ready := true.B
 
   // Dumb RX logic (only sets threshold to start recording)
@@ -365,7 +392,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   startIdx := 0.U
 
   val runningData = withReset(rxReset) { RegInit(VecInit(Seq.fill(numLanes)(0.U(64.W)))) }
-  val runningValid = withReset(rxReset) { RegInit(0.U(64.W)) } 
+  val runningValid = withReset(rxReset) { RegInit(0.U(64.W)) }
   runningData := runningData
   runningValid := runningValid
 
@@ -516,9 +543,19 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   }
 }
 
+
 class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Parameters) extends ClockSinkDomain(ClockSinkParameters())(p) {
-  val device = new SimpleDevice("uciephytest", Seq("ucbbar,uciephytest")) 
-  val node = TLRegisterNode(Seq(AddressSet(params.address, 4096-1)), device, "reg/control", beatBytes=beatBytes)
+def toRegField[T <: Data](r: T): RegField = {
+        RegField(r.getWidth, r.asUInt, RegWriteFn((valid, data) => {
+          when (valid) {
+            r := data.asTypeOf(r)
+          }
+          true.B
+        }), None)
+      }
+  override lazy val desiredName = "UciephyTestTL"
+  val device = new SimpleDevice("uciephytest", Seq("ucbbar,uciephytest"))
+  val node = TLRegisterNode(Seq(AddressSet(params.address, 8192-1)), device, "reg/control", beatBytes=beatBytes)
 
   val topIO = BundleBridgeSource(() => new UciephyTopIO(params.numLanes))
 
@@ -533,6 +570,18 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         afeParams   = params.afeParams,
         laneAsyncQueueParams = params.laneAsyncQueueParams
       ))
+
+  // // Diplomatic nodes to support Merged TL connections
+  // val merged_tl_manager = TLMergedCreditedSource(TLMergedCreditedDelay(
+  //                                                   CreditedDelay(4, 4),
+  //                                                   CreditedDelay(4, 4)))
+
+  // val merged_tl_client = TLMergedCreditedSink(TLMergedCreditedDelay(
+  //                                                   CreditedDelay(4, 4),
+  //                                                   CreditedDelay(4, 4)))
+
+  // uciTL.managerNode <> merged_tl_manager
+  // merged_tl_client <> uciTL.clientNode
 
   override lazy val module = new UciephyTestImpl
   class UciephyTestImpl extends Impl {
@@ -561,35 +610,52 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val rxDataOffset = RegInit(0.U((params.bufferDepthPerLane - 5).W))
       val rxPermute = RegInit(VecInit((0 until Phy.SerdesRatio).map(_.U(log2Ceil(Phy.SerdesRatio).W))))
 
-      val txctl = RegInit(VecInit(Seq.fill(params.numLanes + 4)(
-        (new TxLaneDigitalCtlIO).Lit(
-          _.driver -> (new DriverControlIO).Lit(_.pu_ctl -> 0.U, _.pd_ctl -> 0.U, _.en -> false.B, _.en_b -> true.B),
-          _.skew -> (new TxSkewControlIO).Lit(
-            _.dll_en -> false.B,
-            _.ocl -> false.B,
-            _.delay -> 0.U,
-            _.mux_en -> 0.U,
-            _.band_ctrl -> "b01".U,
-            _.mix_en -> 0.U,
-            _.nen_out -> 0.U,
-            _.pen_out -> 0.U,
-            ),
-          _.shuffler -> Vec.Lit((0 until 32).map(i => i.U(5.W)):_*),
-          )
-        )))
-      val rxctl = RegInit(VecInit(Seq.fill(params.numLanes + 3)(
-        (new RxLaneCtlIO).Lit(
-          _.zen -> false.B,
-          _.zctl -> 0.U,
-          _.afe -> (new RxAfeIO).Lit(
-            _.aEn -> false.B,
-            _.aPc -> true.B,
-            _.bEn -> false.B,
-            _.bPc -> true.B,
-            _.selA -> false.B,
-          ),
-          _.vref_sel -> 63.U,
-          )
+      val txctl = RegInit(VecInit(Seq.fill(params.numLanes + 4)({
+        val w = Wire(new TxLaneDigitalCtlIO)
+        w.driver.pu_ctl := 0.U
+        w.driver.pd_ctl := 0.U
+        w.driver.en := false.B
+        w.driver.en_b := true.B
+        w.skew.dll_en := false.B
+        w.skew.ocl := false.B
+        w.skew.delay := 0.U
+        w.skew.mux_en := "b00000011".U
+        w.skew.band_ctrl := "b01".U
+        w.skew.mix_en := 0.U
+        w.skew.nen_out := 20.U
+        w.skew.pen_out := 22.U
+        for (i <- 0 until 32) {
+          w.shuffler(i) := i.U(5.W)
+        }
+        // w.shuffler := Vec.Lit((0 until 32).map(i => i.U(5.W)):_*)
+        w
+      })))
+      // val rxctl = RegInit(VecInit((0 until params.numLanes + 3).map(i =>
+      //   (new RxLaneCtlIO).Lit(
+      //     _.zen -> false.B,
+      //     _.zctl -> 0.U,
+      //     _.afe -> (new RxAfeIO).Lit(
+      //       _.aEn -> false.B,
+      //       _.aPc -> true.B,
+      //       _.bEn -> false.B,
+      //       _.bPc -> true.B,
+      //       _.selA -> false.B,
+      //     ),
+      //     _.vref_sel -> 63.U,
+      //     )
+      //   )))
+      val rxctl = RegInit(VecInit(Seq.fill(params.numLanes + 3)({
+        val w = Wire(new RxLaneCtlIO)
+        w.zen := false.B
+        w.zctl := 0.U
+        w.afe.aEn := false.B
+        w.afe.aPc := true.B
+        w.afe.bEn := false.B
+        w.afe.bPc := true.B
+        w.afe.selA := false.B
+        w.vref_sel := 63.U
+        w
+        }
         )))
 
       // Pipelined registers
@@ -616,8 +682,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val maxPatternCountWidth = log2Ceil(params.linkTrainingParams.maxPatternCount + 1)
       val pattern = RegInit(0.U(2.W))
       val patternUICount = RegInit(0.U(maxPatternCountWidth.W))
-      val triggerNew = new RegisterRW(false.B, "triggerNew") 
-      val triggerExit = new RegisterRW(false.B, "triggerExit") 
+      val triggerNew = new RegisterRW(false.B, "triggerNew")
+      val triggerExit = new RegisterRW(false.B, "triggerExit")
       val outputValid = RegInit(false.B)
       val errorCounts = RegInit(VecInit(Seq.fill(params.afeParams.mbLanes)(0.U(maxPatternCountWidth.W))))
 
@@ -645,13 +711,19 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       test.io.mmio.rxPermute := rxPermuteDelayed
 
       // PHY
-      val phy = Module(new Phy(params.numLanes))
-      when (ucieStack) { 
+      val phy = Module(new Phy(params.numLanes, params.sim))
+      when (ucieStack) {
 
         phy.io.test.tx <> uciTL.module.io.phyAfe.get.tx.map(f => {
           val x = Wire(chiselTypeOf(phy.io.test.tx.bits))
           x.data := f.data
-          x.valid := f.valid.asUInt
+          x.valid := f.valid.asTypeOf(x.valid)
+  // clkp = 101010...
+  x.clkp := VecInit((0 until Phy.SerdesRatio/2).flatMap(_ => Seq(true.B, false.B))).asTypeOf(x.clkp)
+  // clkn = 010101...
+  x.clkn := VecInit((0 until Phy.SerdesRatio/2).flatMap(_ => Seq(false.B, true.B))).asTypeOf(x.clkn)
+  // track = 000000... (for now)
+  x.track := VecInit((0 until Phy.SerdesRatio/2).flatMap(_ => Seq(false.B, false.B))).asTypeOf(x.track)
           x
         })
 
@@ -661,7 +733,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
           x.valid := f.valid.asTypeOf(x.valid)
           x
         }) <> uciTL.module.io.phyAfe.get.rx
-        
+
         phy.io.test.txRst <> uciTL.module.io.phyAfe.get.txRst
         phy.io.test.rxRst <> uciTL.module.io.phyAfe.get.rxRst
 
@@ -695,14 +767,6 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       phy.io.txctl := txctlDelayed
       phy.io.rxctl := rxctlDelayed
 
-      val toRegField = (r: UInt) => {
-        RegField(r.getWidth, r, RegWriteFn((valid, data) => {
-          when (valid) {
-            r := data
-          }
-          true.B
-        }), None)
-      }
 
       var mmioRegs = Seq(
         toRegField(txTestMode),
@@ -740,13 +804,50 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         RegField.r(32, test.io.mmio.rxValidChunk),
       ) ++ (0 until Phy.SerdesRatio).map((i: Int) => {
           toRegField(rxPermute(i))
+          // todo change to numLanes + 1 and make sure there are errors
       }) ++ (0 until params.numLanes + 4).flatMap((i: Int) => {
           Seq(
-            toRegField(txctl(i).asUInt),
+            toRegField(txctl(i).driver),
+            toRegField(txctl(i).skew),
+            toRegField(txctl(i).shuffler(0)),
+            toRegField(txctl(i).shuffler(1)),
+            toRegField(txctl(i).shuffler(2)),
+            toRegField(txctl(i).shuffler(3)),
+            toRegField(txctl(i).shuffler(4)),
+            toRegField(txctl(i).shuffler(5)),
+            toRegField(txctl(i).shuffler(6)),
+            toRegField(txctl(i).shuffler(7)),
+            toRegField(txctl(i).shuffler(8)),
+            toRegField(txctl(i).shuffler(9)),
+            toRegField(txctl(i).shuffler(10)),
+            toRegField(txctl(i).shuffler(11)),
+            toRegField(txctl(i).shuffler(12)),
+            toRegField(txctl(i).shuffler(13)),
+            toRegField(txctl(i).shuffler(14)),
+            toRegField(txctl(i).shuffler(15)),
+            toRegField(txctl(i).shuffler(16)),
+            toRegField(txctl(i).shuffler(17)),
+            toRegField(txctl(i).shuffler(18)),
+            toRegField(txctl(i).shuffler(19)),
+            toRegField(txctl(i).shuffler(20)),
+            toRegField(txctl(i).shuffler(21)),
+            toRegField(txctl(i).shuffler(22)),
+            toRegField(txctl(i).shuffler(23)),
+            toRegField(txctl(i).shuffler(24)),
+            toRegField(txctl(i).shuffler(25)),
+            toRegField(txctl(i).shuffler(26)),
+            toRegField(txctl(i).shuffler(27)),
+            toRegField(txctl(i).shuffler(28)),
+            toRegField(txctl(i).shuffler(29)),
+            toRegField(txctl(i).shuffler(30)),
+            toRegField(txctl(i).shuffler(31)),
           )
       }) ++ (0 until params.numLanes + 3).flatMap((i: Int) => {
           Seq(
-            toRegField(rxctl(i).asUInt),
+            toRegField(rxctl(i).zen),
+            toRegField(rxctl(i).zctl),
+            toRegField(rxctl(i).afe),
+            toRegField(rxctl(i).vref_sel),
           )
       }) ++ Seq(
         RegField.w(1, ucieStack),
@@ -756,29 +857,31 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       }) ++ Seq(
         RegField.w(2, pattern),
         RegField.w(32, patternUICount),
-        RegField(1, 
-          RegReadFn(triggerNew.reg.asUInt), 
+        RegField(1,
+          RegReadFn(triggerNew.reg.asUInt),
           RegWriteFn((wen, data) => {
             when(wen) {
               triggerNew.reg := data.asBool
             }
             true.B
-          }), 
+          }),
           RegFieldDesc("triggerNew", "training triggered")
         ),
-        RegField(1, 
-          RegReadFn(triggerExit.reg.asUInt), 
+        RegField(1,
+          RegReadFn(triggerExit.reg.asUInt),
           RegWriteFn((wen, data) => {
             when(wen) {
               triggerExit.reg := data.asBool
             }
             true.B
-          }), 
+          }),
           RegFieldDesc("triggerNew", "training triggered")
         ),
       )
 
-      node.regmap(mmioRegs.zipWithIndex.map({ case (f, i) => i * 8 -> Seq(f) }): _*)
+      node.regmap(mmioRegs.zipWithIndex.map({ case (f, i) => {
+        println(i)
+      i * 8 -> Seq(f)} }): _*)
     }
   }
 }
@@ -788,27 +891,34 @@ trait CanHavePeripheryUciephyTest { this: BaseSubsystem =>
   private val portName = "uciephytest"
 
   private val pbus = locateTLBusWrapper(PBUS)
-  private val obus = locateTLBusWrapper(OBUS) //TODO: make parameterizable?
   private val sbus = locateTLBusWrapper(SBUS)
 
   val uciephy = p(UciephyTestKey) match {
     case Some(params) => {
-      val uciephy = LazyModule(new UciephyTestTL(params, sbus.beatBytes)(p))
-      uciephy.clockNode := sbus.fixedClockNode
-      sbus.coupleTo(portName) { uciephy.node := TLBuffer() := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := TLBuffer(8) := _ }
-      uciephy.uciTL.clockNode := sbus.fixedClockNode
-      obus.coupleTo(s"ucie_tl_man_port") { 
-          uciephy.uciTL.managerNode := TLWidthWidget(obus.beatBytes) := TLBuffer() := TLSourceShrinker(params.tlParams.sourceIDWidth) := TLFragmenter(obus.beatBytes, p(CacheBlockBytes)) := TLBuffer() := _ 
-      } //manager node because SBUS is making request?
-      sbus.coupleFrom(s"ucie_tl_cl_port") { _ := TLBuffer() := TLWidthWidget(sbus.beatBytes) := TLBuffer() := uciephy.uciTL.clientNode }
-      sbus.coupleTo(s"ucie_tl_ctrl_port") { uciephy.uciTL.regNode.node := TLWidthWidget(sbus.beatBytes) := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := TLBuffer() := _ }
+      val uciephy = params.map(x => LazyModule(new UciephyTestTL(x, sbus.beatBytes)(p)))
 
+      lazy val uciephy_tlbus = params.map(x => locateTLBusWrapper(x.managerWhere))
+
+      for ((((ucie, ucie_params), tlbus), n) <- uciephy.zip(params).zip(uciephy_tlbus).zipWithIndex){
+        ucie.clockNode := sbus.fixedClockNode
+        ucie.uciTL.clockNode := sbus.fixedClockNode
+        sbus.coupleTo(s"uciephytest{$n}") { ucie.node := TLBuffer() := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := TLBuffer() := _ }
+        pbus.coupleTo(s"ucie_tl_man_port{$n}") {
+            ucie.uciTL.managerNode := TLWidthWidget(pbus.beatBytes) := TLBuffer() := TLSourceShrinker(ucie_params.tlParams.sourceIDWidth) := TLFragmenter(pbus.beatBytes, p(CacheBlockBytes)) := TLBuffer() := _
+        } //manager node because SBUS is making request?
+        sbus.coupleFrom(s"ucie_tl_cl_port{$n}") { _ := TLBuffer() := TLWidthWidget(sbus.beatBytes) := TLBuffer() := ucie.uciTL.clientNode }
+        sbus.coupleTo(s"ucie_tl_ctrl_port{$n}") { ucie.uciTL.regNode.node := TLWidthWidget(sbus.beatBytes) := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := TLBuffer() := _ }
+      }
       Some(uciephy)
     }
     case None => None
   }
 }
 
-class WithUciephyTest(params: UciephyTestParams) extends Config((site, here, up) => {
+class WithUciephyTest(params: Seq[UciephyTestParams]) extends Config((site, here, up) => {
   case UciephyTestKey => Some(params)
+})
+
+class WithUciephyTestSim extends Config((site, here, up) => {
+  case UciephyTestKey => up(UciephyTestKey, site).map(u => u.map(_.copy(sim = true)))
 })

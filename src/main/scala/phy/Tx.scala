@@ -4,22 +4,22 @@ import chisel3._
 import chisel3.util._
 
 class DriverControlIO extends Bundle {
-  val pu_ctl = Input(UInt(6.W))
-  val pd_ctl = Input(UInt(6.W))
-  val en = Input(Bool()) 
-  val en_b = Input(Bool()) 
+  val pu_ctl = UInt(6.W)
+  val pd_ctl = UInt(6.W)
+  val en = Bool()
+  val en_b = Bool()
 }
 
 // DLL + PI + DCC control IO.
 class TxSkewControlIO extends Bundle {
-  val dll_en = Input(Bool())
-  val ocl = Input(Bool())
-  val delay = Input(Bits(5.W))
-  val mux_en = Input(Bits(8.W))
-  val band_ctrl = Input(Bits(2.W))
-  val mix_en = Input(UInt(5.W))
-  val nen_out = Input(UInt(5.W))
-  val pen_out = Input(UInt(5.W))
+  val dll_en = Bool()
+  val ocl = Bool()
+  val delay = Bits(5.W)
+  val mux_en = Bits(8.W)
+  val band_ctrl = Bits(2.W)
+  val mix_en = UInt(5.W)
+  val nen_out = UInt(5.W)
+  val pen_out = UInt(5.W)
 }
 
 class TxLaneCtlIO extends Bundle {
@@ -35,7 +35,7 @@ class TxLaneIO extends Bundle {
   val clkn = Input(Bool())
   val din = Input(Bits(32.W))
   val dout = Output(Bool())
-  val ctl = new TxLaneCtlIO
+  val ctl = Input(new TxLaneCtlIO)
 }
 
 class TxLane(sim: Boolean = false) extends RawModule {
@@ -506,7 +506,7 @@ class VerilogTxLaneIO extends Bundle {
 class TxDriverIO extends Bundle {
   val din = Input(Bool())
   val dout = Output(Bool())
-  val ctl = new DriverControlIO
+  val ctl = Input(new DriverControlIO)
 }
 
 class TxDriver(sim: Boolean = false) extends RawModule {
@@ -721,7 +721,7 @@ class SsdpllIO extends Bundle {
   val d_kp = Input(UInt(16.W))
   val d_ki = Input(UInt(16.W))
   val d_clol = Input(Bool())
-  val d_ol_fcw = Output(UInt(8.W))
+  val d_ol_fcw = Input(UInt(8.W))
   val d_accumulator_reset = Input(Bool())
 }
 

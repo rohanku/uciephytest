@@ -6,10 +6,10 @@ import chisel3.experimental.noPrefix
 import chisel3.experimental.BundleLiterals._
 
 class RxLaneCtlIO extends Bundle {
-  val zen = Input(Bool())
-  val zctl = Input(UInt(5.W))
+  val zen = Bool()
+  val zctl = UInt(5.W)
   val afe = new RxAfeIO
-  val vref_sel = Input(UInt(7.W))
+  val vref_sel = UInt(7.W)
 }
 
 class RxDataLaneIO extends Bundle {
@@ -17,7 +17,7 @@ class RxDataLaneIO extends Bundle {
   val dout = Output(Bits(32.W))
   val clk = Input(Clock())
   val resetb = Input(Bool())
-  val ctl = new RxLaneCtlIO
+  val ctl = Input(new RxLaneCtlIO)
 }
 
 class RxDataLane(sim: Boolean = false) extends RawModule {
@@ -44,38 +44,40 @@ class RxDataLane(sim: Boolean = false) extends RawModule {
     val verilogBlackBox = Module(new VerilogRxDataLane)
     verilogBlackBox.io.din := io.din
 
-    io.dout(0) := verilogBlackBox.io.dout_0
-    io.dout(1) := verilogBlackBox.io.dout_1
-    io.dout(2) := verilogBlackBox.io.dout_2
-    io.dout(3) := verilogBlackBox.io.dout_3
-    io.dout(4) := verilogBlackBox.io.dout_4
-    io.dout(5) := verilogBlackBox.io.dout_5
-    io.dout(6) := verilogBlackBox.io.dout_6
-    io.dout(7) := verilogBlackBox.io.dout_7
-    io.dout(8) := verilogBlackBox.io.dout_8
-    io.dout(9) := verilogBlackBox.io.dout_9
-    io.dout(10) := verilogBlackBox.io.dout_10
-    io.dout(11) := verilogBlackBox.io.dout_11
-    io.dout(12) := verilogBlackBox.io.dout_12
-    io.dout(13) := verilogBlackBox.io.dout_13
-    io.dout(14) := verilogBlackBox.io.dout_14
-    io.dout(15) := verilogBlackBox.io.dout_15
-    io.dout(16) := verilogBlackBox.io.dout_16
-    io.dout(17) := verilogBlackBox.io.dout_17
-    io.dout(18) := verilogBlackBox.io.dout_18
-    io.dout(19) := verilogBlackBox.io.dout_19
-    io.dout(20) := verilogBlackBox.io.dout_20
-    io.dout(21) := verilogBlackBox.io.dout_21
-    io.dout(22) := verilogBlackBox.io.dout_22
-    io.dout(23) := verilogBlackBox.io.dout_23
-    io.dout(24) := verilogBlackBox.io.dout_24
-    io.dout(25) := verilogBlackBox.io.dout_25
-    io.dout(26) := verilogBlackBox.io.dout_26
-    io.dout(27) := verilogBlackBox.io.dout_27
-    io.dout(28) := verilogBlackBox.io.dout_28
-    io.dout(29) := verilogBlackBox.io.dout_29
-    io.dout(30) := verilogBlackBox.io.dout_30
-    io.dout(31) := verilogBlackBox.io.dout_31
+
+    io.dout := Cat(
+    verilogBlackBox.io.dout_0,
+    verilogBlackBox.io.dout_1,
+    verilogBlackBox.io.dout_2,
+    verilogBlackBox.io.dout_3,
+    verilogBlackBox.io.dout_4,
+    verilogBlackBox.io.dout_5,
+    verilogBlackBox.io.dout_6,
+    verilogBlackBox.io.dout_7,
+    verilogBlackBox.io.dout_8,
+    verilogBlackBox.io.dout_9,
+     verilogBlackBox.io.dout_10,
+     verilogBlackBox.io.dout_11,
+     verilogBlackBox.io.dout_12,
+     verilogBlackBox.io.dout_13,
+     verilogBlackBox.io.dout_14,
+     verilogBlackBox.io.dout_15,
+     verilogBlackBox.io.dout_16,
+     verilogBlackBox.io.dout_17,
+     verilogBlackBox.io.dout_18,
+     verilogBlackBox.io.dout_19,
+     verilogBlackBox.io.dout_20,
+     verilogBlackBox.io.dout_21,
+     verilogBlackBox.io.dout_22,
+     verilogBlackBox.io.dout_23,
+     verilogBlackBox.io.dout_24,
+     verilogBlackBox.io.dout_25,
+     verilogBlackBox.io.dout_26,
+     verilogBlackBox.io.dout_27,
+     verilogBlackBox.io.dout_28,
+     verilogBlackBox.io.dout_29,
+     verilogBlackBox.io.dout_30,
+     verilogBlackBox.io.dout_31).asTypeOf(io.dout)
 
     verilogBlackBox.io.clk := io.clk
     verilogBlackBox.io.rstb := io.resetb
@@ -200,7 +202,7 @@ class VerilogRxDataLane extends BlackBox {
 class RxClkLaneIO extends Bundle {
   val clkin = Input(Bool())
   val clkout = Output(Bool())
-  val ctl = new RxLaneCtlIO
+  val ctl = Input(new RxLaneCtlIO)
 }
 
 class RxClkLane(sim: Boolean = false) extends RawModule {
@@ -302,20 +304,20 @@ object RxAfeCtlState extends ChiselEnum {
 }
 
 class RxAfeIO extends Bundle {
-    val aEn = Input(Bool())
-    val aPc = Input(Bool())
-    val bEn = Input(Bool())
-    val bPc = Input(Bool())
-    val selA = Input(Bool())
+    val aEn = Bool()
+    val aPc = Bool()
+    val bEn = Bool()
+    val bPc = Bool()
+    val selA = Bool()
 }
 
 class RxAfeCtl extends Module {
   val io = IO(new Bundle {
     val bypass = Input(Bool())
-    val afeBypass = new RxAfeIO()
+    val afeBypass = Input(new RxAfeIO)
     val opCycles = Input(UInt(16.W))
     val overlapCycles = Input(UInt(16.W))
-    val afe = Flipped(new RxAfeIO())
+    val afe = Output(new RxAfeIO)
   })
 
   val state = RegInit(RxAfeCtlState.sA)
