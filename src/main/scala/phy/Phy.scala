@@ -21,6 +21,7 @@ class TxIO(numLanes: Int = 16) extends Bundle  {
 class RxIO(numLanes: Int = 16) extends Bundle  {
   val data = Vec(numLanes, Bits(Phy.SerdesRatio.W))
   val valid = Bits(Phy.SerdesRatio.W)
+  val track = Bits(Phy.SerdesRatio.W)
 }
 
 class PhyToTestIO(numLanes: Int = 16) extends Bundle {
@@ -188,8 +189,11 @@ class PhyIO(numLanes: Int = 16) extends Bundle {
   val txctl = Input(Vec(numLanes + 4, new TxLaneDigitalCtlIO))
 
   // RX CONTROL
-  // Termination impedance control per lane (`numLanes` data lanes, 1 valid lane, 2 clock lanes).
-  val rxctl = Input(Vec(numLanes + 3, new RxLaneCtlIO))
+  // Termination impedance control per lane (`numLanes` data lanes, 1 valid lane, 2 clock lanes, 1 track lane).
+  val rxctl = Input(Vec(numLanes + 4, new RxLaneCtlIO))
+
+  // If 1, PHY uses bypass clk. If 0, PHY uses PLL clk.
+  val pllBypassEn = Input(Bool())
 
   // TEST INTERFACE
   // =====================
@@ -238,17 +242,10 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   val rxClkN = Module(new RxClkLane(sim))
   rxClkN.io.clkin := io.top.rxClkN.asBool
   rxClkN.io.ctl := io.rxctl(numLanes + 2)
-  val refClkRx = Module(new RefClkRx(sim))
-  refClkRx.io.vip := io.top.refClkP.asBool
-  refClkRx.io.vin := io.top.refClkN.asBool
-  val ESD_refClkP = Module(new Esd(sim))
-  val ESD_refClkN = Module(new Esd(sim))
-  ESD_refClkP.io.term := io.top.refClkP.asBool
-  ESD_refClkN.io.term := io.top.refClkN.asBool
 
-  val pll = Module(new SsdpllSingleSampling)
-  pll.io.vclk_ref := refClkRx.io.vop
-  pll.io.vclk_refb := refClkRx.io.von
+  val pll = Module(new UciePll)
+  pll.io.vclk_ref := io.top.refClkP.asBool
+  pll.io.vclk_refb := io.top.refClkN.asBool
   pll.io.dref_low := 0.U
   pll.io.dref_high := 0.U
   // TODO: assign these properly
@@ -257,28 +254,45 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   pll.io.dvco_reset := reset.asBool
   pll.io.dvco_resetn := !reset.asBool
   pll.io.d_digital_reset := reset.asBool
-  pll.io.d_accumulator_reset := reset.asBool
-  pll.io.vref_low := false.B
-  pll.io.vref_high := true.B
-  pll.io.vdig_clk := true.B
-  pll.io.dfine := 0.U
+  pll.io.d_accumulator_reset := 0.U
   pll.io.d_kp := 0.U
   pll.io.d_ki := 0.U
   pll.io.d_clol := false.B
   pll.io.d_ol_fcw := 0.U
+  io.top.debug.pllClkP := pll.io.vp_out
+  io.top.debug.pllClkN := pll.io.vn_out
+
+  val testPll = Module(new UciePll)
+  testPll.io.vclk_ref := io.top.refClkP.asBool
+  testPll.io.vclk_refb := io.top.refClkN.asBool
+  testPll.io.dref_low := 0.U
+  testPll.io.dref_high := 0.U
+  // TODO: assign these properly
+  testPll.io.vrdac_ref := true.B
+  testPll.io.dcoarse := 0.U
+  testPll.io.dvco_reset := reset.asBool
+  testPll.io.dvco_resetn := !reset.asBool
+  testPll.io.d_digital_reset := reset.asBool
+  testPll.io.d_accumulator_reset := 0.U
+  testPll.io.d_kp := 0.U
+  testPll.io.d_ki := 0.U
+  testPll.io.d_clol := false.B
+  testPll.io.d_ol_fcw := 0.U
+  io.top.debug.testPllClkP := testPll.io.vp_out
+  io.top.debug.testPllClkN := testPll.io.vn_out
 
   val clkMuxP = Module(new ClkMux(sim))
   clkMuxP.io.in0 := pll.io.vp_out
-  clkMuxP.io.in1 := false.B
-  clkMuxP.io.mux0_en_0 := true.B
-  clkMuxP.io.mux0_en_1 := false.B
+  clkMuxP.io.in1 := io.top.bypassClkP.asBool
+  clkMuxP.io.mux0_en_0 := !io.pllBypassEn
+  clkMuxP.io.mux0_en_1 := io.pllBypassEn
   clkMuxP.io.mux1_en_0 := false.B
   clkMuxP.io.mux1_en_1 := false.B
   val clkMuxN = Module(new ClkMux)
   clkMuxN.io.in0 := pll.io.vn_out
-  clkMuxN.io.in1 := false.B
-  clkMuxN.io.mux0_en_0 := true.B
-  clkMuxN.io.mux0_en_1 := false.B
+  clkMuxN.io.in1 := io.top.bypassClkN.asBool
+  clkMuxN.io.mux0_en_0 := !io.pllBypassEn
+  clkMuxN.io.mux0_en_1 := io.pllBypassEn
   clkMuxN.io.mux1_en_0 := false.B
   clkMuxN.io.mux1_en_1 := false.B
   val txClkP_wire = Wire(Bool())
@@ -324,6 +338,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   io.test.rx.valid := rxFifo.io.deq.valid
   io.test.rx.bits.data := rxFifo.io.deq.bits.data
   io.test.rx.bits.valid := rxFifo.io.deq.bits.valid
+  io.test.rx.bits.track := rxFifo.io.deq.bits.track
 
   // TODO: separate clock divider for async FIFO and its reset synchronizer
   
@@ -385,20 +400,26 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
 
   // TODO async FIFO clock and reset
 
-  for (lane <- 0 to numLanes) {
+  for (lane <- 0 to numLanes + 1) {
     val rxLane = Module(new RxDataLane(sim))
     if (lane < numLanes) {
       rxLane.suggestName(s"rxdata$lane")
       rxLane.io.din := io.top.rxData(lane)
       rxFifo.io.enq.bits.data(lane) := rxLane.io.dout
-    } else {
+      rxLane.io.ctl := io.rxctl(lane)
+    } else if (lane == numLanes) {
       rxLane.suggestName(s"rxvalid")
       rxLane.io.din := io.top.rxValid
       rxFifo.io.enq.bits.valid := rxLane.io.dout
+      rxLane.io.ctl := io.rxctl(lane)
+    } else {
+      rxLane.suggestName(s"rxtrack")
+      rxLane.io.din := io.top.rxTrack
+      rxFifo.io.enq.bits.track := rxLane.io.dout
+      rxLane.io.ctl := io.rxctl(numLanes + 3)
     }
     rxLane.io.clk := rxClkP.io.clkout.asClock
     rxLane.io.resetb := !reset.asBool
-    rxLane.io.ctl := io.rxctl(lane)
   }
 }
 

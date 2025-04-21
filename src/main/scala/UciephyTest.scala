@@ -69,14 +69,17 @@ object TxTestState extends ChiselEnum {
   val done = Value(2.U(2.W))
 }
 
-class UciephyTopIO(numLanes: Int = 2) extends Bundle {
+class UciephyTopIO(numLanes: Int = 16) extends Bundle {
   val txData = Output(Vec(numLanes, Bool()))
   val txValid = Output(Bool())
   val txTrack = Output(Bool())
   val refClkP = Input(Clock())
   val refClkN = Input(Clock())
+  val sbClk = Input(Clock())
   val txClkP = Output(Clock())
   val txClkN = Output(Clock())
+  val bypassClkP = Input(Clock())
+  val bypassClkN = Input(Clock())
   val rxData = Input(Vec(numLanes, Bool()))
   val rxValid = Input(Bool())
   val rxTrack = Input(Bool())
@@ -86,27 +89,16 @@ class UciephyTopIO(numLanes: Int = 2) extends Bundle {
   val sbTxData = Output(Bool())
   val sbRxClk = Input(Clock())
   val sbRxData = Input(Bool())
-  val pllIref = Input(Bool())
-}
-
-
-class UciephyClockingTopIO() extends Bundle {
-    val uciephy_pllrefClkP_100  = Input(Clock())
-    val uciephy_pllrefClkN_100  = Input(Clock())
-    val uciephy_sbref_clk800    = Input(Clock())
-    val ucie_bypassclk_p_8G     = Input(Clock())
-    val ucie_bypassclk_n_8G     = Input(Clock())
+  val debug = Output(new UciephyDebugIO())
 }
 
 class UciephyDebugIO() extends Bundle {
-  val uciephy0_txData_dbg       = Output(Bool())
-  val uciephy0_rxclk_p_dbg      = Output(Bool())
-  val uciephy0_rxclk_n_dbg      = Output(Bool())
-  val uciephy0_txclk_buff_p_dbg = Output(Bool())
-  val uciephy0_txclk_buff_n_dbg = Output(Bool())
-  val uciephy_plltapClkP_dbg    = Output(Bool())
-  val uciephy_plltapClkN_dbg    = Output(Bool())
-  val uciephy0_vref_dbg         = Output(Bool())
+  // Test PLL differential clock.
+  val testPllClkP = Bool()
+  val testPllClkN = Bool()
+  // Main PLL differential clock.
+  val pllClkP = Bool()
+  val pllClkN = Bool()
 }
 
 class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Bundle {
@@ -293,6 +285,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
     io.phy.tx.bits.data(lane) := 0.U
   }
   io.phy.tx.bits.valid := 0.U
+  io.phy.tx.bits.track := 0.U
   io.phy.rx.ready := false.B
   io.phy.tx.valid := false.B
   io.phy.txRst := txReset
@@ -354,6 +347,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
             io.phy.tx.bits.valid := VecInit(Seq.fill(Phy.SerdesRatio)(true.B)).asUInt
           }
         }
+        io.phy.tx.bits.track := 0.U
       }
 
       when (io.phy.tx.valid && io.phy.tx.ready) {
@@ -391,7 +385,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   startRecording := false.B
   startIdx := 0.U
 
-  val runningData = withReset(rxReset) { RegInit(VecInit(Seq.fill(numLanes)(0.U(64.W)))) }
+  // numLanes data lanes, 1 track lane
+  val runningData = withReset(rxReset) { RegInit(VecInit(Seq.fill(numLanes+1)(0.U(64.W)))) }
   val runningValid = withReset(rxReset) { RegInit(0.U(64.W)) }
   runningData := runningData
   runningValid := runningValid
@@ -440,6 +435,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
         runningData(lane) := io.phy.rx.bits.data(lane)
       }
       runningValid := io.phy.rx.bits.valid
+      runningData(numLanes) := io.phy.rx.bits.track
     } .elsewhen (startIdx === 0.U && startRecording) {
       // If we are starting recording where the whole received data is valid, append to the second
       // half of `runningData` and shift out the bad bits. Since we now have at least 32 bits of valid data,
@@ -477,15 +473,30 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
         toWrite(lane >> 2)(lane % 4) := newData(31, 0)
         runningData(lane) := newData >> 32.U
       }
+
+      {
       val data = Wire(UInt(64.W))
       data := io.phy.rx.bits.valid << dataOffset
       val newData = Wire(UInt(64.W))
       newData := prevMask | (data & dataMask)
       toWrite(numLanes >> 2)(numLanes % 4) := newData(31, 0)
+      runningValid := newData >> 32.U
+      }
+
+      {
+      val prev = Wire(UInt(64.W))
+      prev := runningData(numLanes) >> numExtraBits
+      val data = Wire(UInt(64.W))
+      data := io.phy.rx.bits.track << dataOffset
+      val newData = Wire(UInt(64.W))
+      newData := (prev & prevMask) | (data & dataMask)
+      toWrite((numLanes+1) >> 2)((numLanes+1) % 4) := newData(31, 0)
+      runningData(numLanes) := newData >> 32.U
+      }
+
       for (i <- 0 until numOutputSrams) {
         outputWrPorts(i) := toWrite(i).asTypeOf(outputWrPorts(i))
       }
-      runningValid := newData >> 32.U
       rxBitsReceived := rxBitsReceived +& Phy.SerdesRatio.U +& validHighStreak
     } .otherwise {
       when (recordingStarted || startRecording) {
@@ -524,6 +535,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
           rxErrorMask(lane) := lfsrData ^ maskedLfsr
           rxBitErrors(lane) := rxBitErrors(lane) + PopCount(rxErrorMask(lane))
         }
+
+        {
         val data = Wire(UInt(64.W))
         data := (io.phy.rx.bits.valid << rxBitsReceivedOffset) >> startIdx
         val newData = Wire(UInt(64.W))
@@ -535,6 +548,19 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
           for (i <- 0 until numOutputSrams) {
             outputWrPorts(i) := toWrite(i).asTypeOf(outputWrPorts(i))
           }
+        }
+        }
+
+        {
+        val data = Wire(UInt(64.W))
+        data := (io.phy.rx.bits.track << rxBitsReceivedOffset) >> startIdx
+        val newData = Wire(UInt(64.W))
+        newData := (data & dataMask) | (runningData(numLanes) & keepMask)
+        runningData(numLanes) := newData
+        when(shouldWrite) {
+          toWrite((numLanes+1) >> 2)((numLanes+1) % 4) := newData(31, 0)
+          runningData(numLanes) := newData >> 32.U
+        }
         }
 
         rxBitsReceived := rxBitsReceived +& Phy.SerdesRatio.U - startIdx
@@ -610,6 +636,7 @@ def toRegField[T <: Data](r: T): RegField = {
       val rxDataOffset = RegInit(0.U((params.bufferDepthPerLane - 5).W))
       val rxPermute = RegInit(VecInit((0 until Phy.SerdesRatio).map(_.U(log2Ceil(Phy.SerdesRatio).W))))
 
+      val pllBypassEn = RegInit(false.B)
       val txctl = RegInit(VecInit(Seq.fill(params.numLanes + 4)({
         val w = Wire(new TxLaneDigitalCtlIO)
         w.driver.pu_ctl := 0.U
@@ -644,7 +671,7 @@ def toRegField[T <: Data](r: T): RegField = {
       //     _.vref_sel -> 63.U,
       //     )
       //   )))
-      val rxctl = RegInit(VecInit(Seq.fill(params.numLanes + 3)({
+      val rxctl = RegInit(VecInit(Seq.fill(params.numLanes + 4)({
         val w = Wire(new RxLaneCtlIO)
         w.zen := false.B
         w.zctl := 0.U
@@ -674,6 +701,7 @@ def toRegField[T <: Data](r: T): RegField = {
       val rxDataLaneDelayed = ShiftRegister(rxDataLane, 3, true.B)
       val rxDataOffsetDelayed = ShiftRegister(rxDataOffset, 3, true.B)
       val rxPermuteDelayed = ShiftRegister(rxPermute, 3, true.B)
+      val pllBypassEnDelayed = ShiftRegister(pllBypassEn, 3, true.B)
       val txctlDelayed = ShiftRegister(txctl, 3, true.B)
       val rxctlDelayed = ShiftRegister(rxctl, 3, true.B)
 
@@ -764,6 +792,7 @@ def toRegField[T <: Data](r: T): RegField = {
       phy.io.sideband.txClk := false.B
       phy.io.sideband.txData := false.B
 
+      phy.io.pllBypassEn := pllBypassEnDelayed
       phy.io.txctl := txctlDelayed
       phy.io.rxctl := rxctlDelayed
 
@@ -802,6 +831,7 @@ def toRegField[T <: Data](r: T): RegField = {
         toRegField(rxDataOffset),
         RegField.r(32, test.io.mmio.rxDataChunk),
         RegField.r(32, test.io.mmio.rxValidChunk),
+        toRegField(pllBypassEn)
       ) ++ (0 until Phy.SerdesRatio).map((i: Int) => {
           toRegField(rxPermute(i))
           // todo change to numLanes + 1 and make sure there are errors
@@ -880,7 +910,6 @@ def toRegField[T <: Data](r: T): RegField = {
       )
 
       node.regmap(mmioRegs.zipWithIndex.map({ case (f, i) => {
-        println(i)
       i * 8 -> Seq(f)} }): _*)
     }
   }
