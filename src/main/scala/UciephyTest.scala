@@ -572,13 +572,13 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
 
 
 class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Parameters) extends ClockSinkDomain(ClockSinkParameters())(p) {
-def toRegField[T <: Data](r: T): RegField = {
+  def toRegField[T <: Data](r: T, name: String): RegField = {
         RegField(r.getWidth, r.asUInt, RegWriteFn((valid, data) => {
           when (valid) {
             r := data.asTypeOf(r)
           }
           true.B
-        }), None)
+        }), Some(RegFieldDesc(name, "")))
       }
   override lazy val desiredName = "UciephyTestTL"
   val device = new SimpleDevice("uciephytest", Seq("ucbbar,uciephytest"))
@@ -834,118 +834,89 @@ def toRegField[T <: Data](r: T): RegField = {
 
 
       var mmioRegs = Seq(
-        toRegField(txTestMode),
-        toRegField(txValidFramingMode),
+        toRegField(txTestMode, "txTestMode"),
+        toRegField(txValidFramingMode, "txValidFramingMode"),
       ) ++ (0 until params.numLanes).map((i: Int) => {
-        toRegField(txLfsrSeed(i))
+        toRegField(txLfsrSeed(i), s"txLfsrSeed_$i")
       }) ++ Seq(
-        toRegField(txManualRepeat),
-        RegField.w(1, txFsmRst),
-        RegField.w(1, txExecute),
-        RegField.r(params.bufferDepthPerLane, test.io.mmio.txBitsSent),
-        toRegField(txBitsToSend),
-        toRegField(txDataLaneGroup),
-        toRegField(txDataOffset),
-        RegField.w(64, test.io.mmio.txDataChunkIn),
-        RegField.r(64, test.io.mmio.txDataChunkOut),
+        toRegField(txManualRepeat, "txManualRepeat"),
+        RegField.w(1, txFsmRst, RegFieldDesc("txFsmRst", "")),
+        RegField.w(1, txExecute, RegFieldDesc("txExecute", "")),
+        RegField.r(params.bufferDepthPerLane, test.io.mmio.txBitsSent, RegFieldDesc("txBitsSent", "")),
+        toRegField(txBitsToSend, "txBitsToSend"),
+        toRegField(txDataLaneGroup, "txDataLaneGroup"),
+        toRegField(txDataOffset, "txDataOffset"),
+        RegField.w(64, test.io.mmio.txDataChunkIn, RegFieldDesc("txDataChunkIn", "")),
+        RegField.r(64, test.io.mmio.txDataChunkOut, RegFieldDesc("txDataChunkOut", "")),
       ) ++ (0 until Phy.SerdesRatio).map((i: Int) => {
-          toRegField(txPermute(i))
+          toRegField(txPermute(i), s"txPermute_$i")
       }) ++ Seq(
-        RegField.r(2, test.io.mmio.txTestState.asUInt),
+        RegField.r(2, test.io.mmio.txTestState.asUInt, RegFieldDesc("txTestState", "")),
       ) ++ (0 until params.numLanes).map((i: Int) => {
-          toRegField(rxLfsrSeed(i))
+          toRegField(rxLfsrSeed(i), s"rxLfsrSeed_$i")
       }) ++ (0 until params.numLanes).map((i: Int) => {
-        RegField.r(params.bufferDepthPerLane + 1, test.io.mmio.rxBitErrors(i))
+        RegField.r(params.bufferDepthPerLane + 1, test.io.mmio.rxBitErrors(i), RegFieldDesc(s"rxBitErrors_$i", ""))
       }) ++ Seq(
-        toRegField(rxValidStartThreshold),
-        toRegField(rxValidStartThreshold),
-        RegField.w(1, rxFsmRst),
-        toRegField(rxPauseCounters),
-        RegField.r(params.bufferDepthPerLane, test.io.mmio.rxBitsReceived),
-        RegField.r(32, test.io.mmio.rxSignature),
-        toRegField(rxDataLane),
-        toRegField(rxDataOffset),
-        RegField.r(32, test.io.mmio.rxDataChunk),
-        RegField.r(32, test.io.mmio.rxValidChunk),
-        toRegField(pllCtl.dref_low),
-        toRegField(pllCtl.dref_high),
-        toRegField(pllCtl.dcoarse),
-        toRegField(pllCtl.d_kp),
-        toRegField(pllCtl.d_ki),
-        toRegField(pllCtl.d_clol),
-        toRegField(pllCtl.d_ol_fcw),
-        toRegField(pllCtl.d_accumulator_reset),
-        toRegField(pllCtl.vco_reset),
-        toRegField(pllCtl.digital_reset),
-        toRegField(testPllCtl.dref_low),
-        toRegField(testPllCtl.dref_high),
-        toRegField(testPllCtl.dcoarse),
-        toRegField(testPllCtl.d_kp),
-        toRegField(testPllCtl.d_ki),
-        toRegField(testPllCtl.d_clol),
-        toRegField(testPllCtl.d_ol_fcw),
-        toRegField(testPllCtl.d_accumulator_reset),
-        toRegField(testPllCtl.vco_reset),
-        toRegField(testPllCtl.digital_reset),
-        RegField.r(16, pllOutputDelayed.asUInt),
-        RegField.r(16, testPllOutputDelayed.asUInt),
-        toRegField(pllBypassEn)
+        toRegField(rxValidStartThreshold, "rxValidStartThreshold"),
+        toRegField(rxValidStopThreshold, "rxValidStopThreshold"),
+        RegField.w(1, rxFsmRst, RegFieldDesc("rxFsmRst", "")),
+        toRegField(rxPauseCounters, "rxPauseCounters"),
+        RegField.r(params.bufferDepthPerLane, test.io.mmio.rxBitsReceived, RegFieldDesc("rxBitsReceived", "")),
+        RegField.r(32, test.io.mmio.rxSignature, RegFieldDesc("rxSignature", "")),
+        toRegField(rxDataLane, "rxDataLane"),
+        toRegField(rxDataOffset, "rxDataOffset"),
+        RegField.r(32, test.io.mmio.rxDataChunk, RegFieldDesc("rxDataChunk", "")),
+        RegField.r(32, test.io.mmio.rxValidChunk, RegFieldDesc("rxValidChunk", "")),
+        toRegField(pllCtl.dref_low, "pll_dref_low"),
+        toRegField(pllCtl.dref_high, "pll_dref_high"),
+        toRegField(pllCtl.dcoarse, "pll_dcoarse"),
+        toRegField(pllCtl.d_kp, "pll_d_kp"),
+        toRegField(pllCtl.d_ki, "pll_d_ki"),
+        toRegField(pllCtl.d_clol, "pll_d_clol"),
+        toRegField(pllCtl.d_ol_fcw, "pll_d_ol_fc"),
+        toRegField(pllCtl.d_accumulator_reset, "pll_d_accumulator_reset"),
+        toRegField(pllCtl.vco_reset, "pll_vco_reset"),
+        toRegField(pllCtl.digital_reset, "pll_digital_reset"),
+        toRegField(testPllCtl.dref_low, "test_pll_dref_low"),
+        toRegField(testPllCtl.dref_high, "test_pll_dref_high"),
+        toRegField(testPllCtl.dcoarse, "test_pll_dcoarse"),
+        toRegField(testPllCtl.d_kp, "test_pll_d_kp"),
+        toRegField(testPllCtl.d_ki, "test_pll_d_ki"),
+        toRegField(testPllCtl.d_clol, "test_pll_d_clol"),
+        toRegField(testPllCtl.d_ol_fcw, "test_pll_d_ol_fcw"),
+        toRegField(testPllCtl.d_accumulator_reset, "test_pll_d_accumulator_reset"),
+        toRegField(testPllCtl.vco_reset, "test_pll_vco_reset"),
+        toRegField(testPllCtl.digital_reset, "test_pll_digital_reset"),
+        RegField.r(16, pllOutputDelayed.asUInt, RegFieldDesc("pllOutputDelayed", "")),
+        RegField.r(16, testPllOutputDelayed.asUInt, RegFieldDesc("testPllOutputDelayed", "")),
+        toRegField(pllBypassEn, "pllBypassEn")
       ) ++ (0 until Phy.SerdesRatio).map((i: Int) => {
-          toRegField(rxPermute(i))
+          toRegField(rxPermute(i), s"rxPermute_$i")
           // todo change to numLanes + 1 and make sure there are errors
       }) ++ (0 until params.numLanes + 4).flatMap((i: Int) => {
           Seq(
-            toRegField(txctl(i).driver),
-            toRegField(txctl(i).skew),
-            toRegField(txctl(i).shuffler(0)),
-            toRegField(txctl(i).shuffler(1)),
-            toRegField(txctl(i).shuffler(2)),
-            toRegField(txctl(i).shuffler(3)),
-            toRegField(txctl(i).shuffler(4)),
-            toRegField(txctl(i).shuffler(5)),
-            toRegField(txctl(i).shuffler(6)),
-            toRegField(txctl(i).shuffler(7)),
-            toRegField(txctl(i).shuffler(8)),
-            toRegField(txctl(i).shuffler(9)),
-            toRegField(txctl(i).shuffler(10)),
-            toRegField(txctl(i).shuffler(11)),
-            toRegField(txctl(i).shuffler(12)),
-            toRegField(txctl(i).shuffler(13)),
-            toRegField(txctl(i).shuffler(14)),
-            toRegField(txctl(i).shuffler(15)),
-            toRegField(txctl(i).shuffler(16)),
-            toRegField(txctl(i).shuffler(17)),
-            toRegField(txctl(i).shuffler(18)),
-            toRegField(txctl(i).shuffler(19)),
-            toRegField(txctl(i).shuffler(20)),
-            toRegField(txctl(i).shuffler(21)),
-            toRegField(txctl(i).shuffler(22)),
-            toRegField(txctl(i).shuffler(23)),
-            toRegField(txctl(i).shuffler(24)),
-            toRegField(txctl(i).shuffler(25)),
-            toRegField(txctl(i).shuffler(26)),
-            toRegField(txctl(i).shuffler(27)),
-            toRegField(txctl(i).shuffler(28)),
-            toRegField(txctl(i).shuffler(29)),
-            toRegField(txctl(i).shuffler(30)),
-            toRegField(txctl(i).shuffler(31)),
-            RegField.r(5, dllCodeDelayed(i)),
+            toRegField(txctl(i).driver, s"txctl_$i_driver"),
+            toRegField(txctl(i).skew, s"txctl_$i_driver"),
+            ) ++ (0 until 32).map((j: Int) => 
+            toRegField(txctl(i).shuffler(j), s"txctl_$i_shuffler_$j"),
+            ) ++ Seq(
+            RegField.r(5, dllCodeDelayed(i), s"dllCodeDelayed_$i"),
           )
       }) ++ (0 until params.numLanes + 3).flatMap((i: Int) => {
           Seq(
-            toRegField(rxctl(i).zen),
-            toRegField(rxctl(i).zctl),
-            toRegField(rxctl(i).afe),
-            toRegField(rxctl(i).vref_sel),
+            toRegField(rxctl(i).zen, s"rxctl_$i_zen"),
+            toRegField(rxctl(i).zctl, s"rxctl_$i_zctl"),
+            toRegField(rxctl(i).afe, s"rxctl_$i_afe"),
+            toRegField(rxctl(i).vref_sel, s"rxctl_$i_vref_sel"),
           )
       }) ++ Seq(
-        RegField.w(1, ucieStack),
-        RegField.r(1, outputValid)
+        RegField.w(1, ucieStack, RegFieldDesc("ucieStack", "")),
+        RegField.r(1, outputValid, RegFieldDesc("outputValid", ""))
       ) ++ (0 until params.numLanes).map((i: Int) => {
-        RegField.r(maxPatternCountWidth, errorCounts(i))
+        RegField.r(maxPatternCountWidth, errorCounts(i), RegFieldDesc(s"errorCounts_$i", ""))
       }) ++ Seq(
-        RegField.w(2, pattern),
-        RegField.w(32, patternUICount),
+        RegField.w(2, pattern, RegFieldDesc("pattern", "")),
+        RegField.w(32, patternUICount, RegFieldDesc("patternUICount", "")),
         RegField(1,
           RegReadFn(triggerNew.reg.asUInt),
           RegWriteFn((wen, data) => {
@@ -964,7 +935,7 @@ def toRegField[T <: Data](r: T): RegField = {
             }
             true.B
           }),
-          RegFieldDesc("triggerNew", "training triggered")
+          RegFieldDesc("triggerExit", "exit triggered")
         ),
       )
 
