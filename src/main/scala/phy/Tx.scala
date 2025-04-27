@@ -35,6 +35,7 @@ class TxLaneIO extends Bundle {
   val clkn = Input(Bool())
   val din = Input(Bits(32.W))
   val dout = Output(Bool())
+  val dll_code = Output(UInt(5.W))
   val ctl = Input(new TxLaneCtlIO)
 }
 
@@ -284,6 +285,14 @@ class TxLane(sim: Boolean = false) extends RawModule {
     verilogBlackBox.io.pen_outb_2 := !io.ctl.skew.pen_out(2)
     verilogBlackBox.io.pen_outb_3 := !io.ctl.skew.pen_out(3)
     verilogBlackBox.io.pen_outb_4 := !io.ctl.skew.pen_out(4)
+
+    io.dll_code := Cat(
+      verilogBlackBox.io.dll_code_0,
+      verilogBlackBox.io.dll_code_1,
+      verilogBlackBox.io.dll_code_2,
+      verilogBlackBox.io.dll_code_3,
+      verilogBlackBox.io.dll_code_4,
+    )
   }
 }
 
@@ -500,6 +509,11 @@ class VerilogTxLaneIO extends Bundle {
   val pen_outb_2 = Input(Bool())
   val pen_outb_3 = Input(Bool())
   val pen_outb_4 = Input(Bool())
+  val dll_code_0 = Output(Bool())
+  val dll_code_1 = Output(Bool())
+  val dll_code_2 = Output(Bool())
+  val dll_code_3 = Output(Bool())
+  val dll_code_4 = Output(Bool())
 }
 
 

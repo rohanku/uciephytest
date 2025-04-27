@@ -187,6 +187,7 @@ class PhyIO(numLanes: Int = 16) extends Bundle {
   // TX CONTROL
   // Lane control (`numLanes` data lanes, 1 valid lane, 2 clock lanes, 1 track lane).
   val txctl = Input(Vec(numLanes + 4, new TxLaneDigitalCtlIO))
+  val dll_code = Output(Vec(numLanes + 4, UInt(5.W)))
 
   // RX CONTROL
   // Termination impedance control per lane (`numLanes` data lanes, 1 valid lane, 2 clock lanes, 1 track lane).
@@ -396,6 +397,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
     }
     txLane.io.ctl.driver := io.txctl(lane).driver
     txLane.io.ctl.skew := io.txctl(lane).skew
+    io.dll_code(lane) := txLane.io.dll_code
   }
 
   // TODO async FIFO clock and reset

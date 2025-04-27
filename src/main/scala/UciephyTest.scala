@@ -795,6 +795,7 @@ def toRegField[T <: Data](r: T): RegField = {
       phy.io.pllBypassEn := pllBypassEnDelayed
       phy.io.txctl := txctlDelayed
       phy.io.rxctl := rxctlDelayed
+      val dllCodeDelayed = ShiftRegister(phy.io.dll_code, 3, true.B)
 
 
       var mmioRegs = Seq(
@@ -871,6 +872,7 @@ def toRegField[T <: Data](r: T): RegField = {
             toRegField(txctl(i).shuffler(29)),
             toRegField(txctl(i).shuffler(30)),
             toRegField(txctl(i).shuffler(31)),
+            RegField.r(5, dllCodeDelayed(i)),
           )
       }) ++ (0 until params.numLanes + 3).flatMap((i: Int) => {
           Seq(
