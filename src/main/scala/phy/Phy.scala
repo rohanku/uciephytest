@@ -248,7 +248,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   rxClkN.io.clkin := io.top.rxClkN.asBool
   rxClkN.io.ctl := io.rxctl(numLanes + 2)
 
-  val pll = Module(new UciePll)
+  val pll = Module(new UciePll(sim))
   pll.io.vclk_ref := io.top.refClkP.asBool
   pll.io.vclk_refb := io.top.refClkN.asBool
   pll.io.dref_low := io.pllCtl.dref_low
@@ -268,7 +268,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   io.pllOutput.d_fcw_debug := pll.io.d_fcw_debug
   io.pllOutput.d_sar_debug := pll.io.d_sar_debug
 
-  val testPll = Module(new UciePll)
+  val testPll = Module(new UciePll(sim))
   testPll.io.vclk_ref := io.top.refClkP.asBool
   testPll.io.vclk_refb := io.top.refClkN.asBool
   testPll.io.dref_low := io.testPllCtl.dref_low
@@ -309,7 +309,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   txClkP_wire := clkMuxP.io.out
   txClkN_wire := clkMuxN.io.out
   
-  val txClkDiv = Module(new ClkDiv4)
+  val txClkDiv = Module(new ClkDiv4(sim))
   txClkDiv.io.clk := txClkP_wire
   txClkDiv.io.resetb := !io.test.txRst.asBool
   val rstSyncTx = Module(new RstSync(sim))
@@ -330,7 +330,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   txFifo.io.deq_reset := !rstSyncTx.io.rstbSync.asBool
   txFifo.io.deq.ready := true.B
   
-  val rxClkDiv = Module(new ClkDiv4)
+  val rxClkDiv = Module(new ClkDiv4(sim))
   rxClkDiv.io.clk := rxClkP.io.clkout
   rxClkDiv.io.resetb := !io.test.rxRst.asBool
   val rstSyncRx = Module(new RstSync(sim))
@@ -442,8 +442,37 @@ class ClkDiv4IO extends Bundle {
   val clkout_3 = Output(Bool())
 }
 
-class ClkDiv4 extends BlackBox {
+class ClkDiv4(sim: Boolean = false) extends BlackBox with HasBlackBoxInline {
   val io = IO(new ClkDiv4IO)
 
   override val desiredName = "clock_div_4_with_rst_sync"
+
+  if (sim) {
+    setInline("clock_div_4_with_rst_sync.v",
+      """module clock_div_4_with_rst_sync(
+      |  input clk, resetb,
+      |  output reg clkout_0, clkout_1, clkout_2, clkout_3
+      |);
+      |  always @(posedge clk) begin
+      |    if (resetb) begin
+      |      clkout_0 <= 1'b0;
+      |      clkout_1 <= 1'b0;
+      |      clkout_2 <= 1'b0;
+      |      clkout_3 <= 1'b0;
+      |    end else begin
+      |    	clkout_0 <= ~clkout_0;
+      |    end
+      |  end
+      |  always @(posedge clkout_0) begin
+      |    clkout_1 <= ~clkout_1;
+      |  end
+      |  always @(posedge clkout_1) begin
+      |    clkout_2 <= ~clkout_2;
+      |  end
+      |  always @(posedge clkout_2) begin
+      |    clkout_3 <= ~clkout_3;
+      |  end
+      |endmodule
+      """.stripMargin)
+  }
 }

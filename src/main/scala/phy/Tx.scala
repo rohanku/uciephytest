@@ -58,6 +58,7 @@ class TxLane(sim: Boolean = false) extends RawModule {
     }
 
     io.dout := shiftReg(0)
+    io.dll_code := 0.U
 
     io.ctl <> 0.U.asTypeOf(io.ctl)
   } else {
@@ -887,133 +888,140 @@ class VerilogUciePllIO extends Bundle {
   val d_accumulator_reset_31 = Input(Bool())
 }
 
-class UciePll extends RawModule {
+class UciePll(sim: Boolean = false) extends RawModule {
   val io = IO(new UciePllIO)
 
+  if (sim) {
+    io.vp_out := io.vclk_ref
+    io.vn_out := io.vclk_refb
+    io.d_fcw_debug := 0.U
+    io.d_sar_debug := 0.U
+  } else {
   val verilogBlackBox = Module(new VerilogUciePll)
-  verilogBlackBox.io.vclk_ref := io.vclk_ref
-  verilogBlackBox.io.vclk_refb := io.vclk_refb
-  verilogBlackBox.io.dref_low_0 := io.dref_low(0)
-  verilogBlackBox.io.dref_low_1 := io.dref_low(1)
-  verilogBlackBox.io.dref_low_2 := io.dref_low(2)
-  verilogBlackBox.io.dref_low_3 := io.dref_low(3)
-  verilogBlackBox.io.dref_low_4 := io.dref_low(4)
-  verilogBlackBox.io.dref_low_5 := io.dref_low(5)
-  verilogBlackBox.io.dref_low_6 := io.dref_low(6)
-  verilogBlackBox.io.dref_high_0 := io.dref_high(0)
-  verilogBlackBox.io.dref_high_1 := io.dref_high(1)
-  verilogBlackBox.io.dref_high_2 := io.dref_high(2)
-  verilogBlackBox.io.dref_high_3 := io.dref_high(3)
-  verilogBlackBox.io.dref_high_4 := io.dref_high(4)
-  verilogBlackBox.io.dref_high_5 := io.dref_high(5)
-  verilogBlackBox.io.dref_high_6 := io.dref_high(6)
-  verilogBlackBox.io.vrdac_ref := io.vrdac_ref
-  verilogBlackBox.io.dcoarse_0 := io.dcoarse(0)
-  verilogBlackBox.io.dcoarse_1 := io.dcoarse(1)
-  verilogBlackBox.io.dcoarse_2 := io.dcoarse(2)
-  verilogBlackBox.io.dcoarse_3 := io.dcoarse(3)
-  verilogBlackBox.io.dcoarse_4 := io.dcoarse(4)
-  verilogBlackBox.io.dcoarse_5 := io.dcoarse(5)
-  verilogBlackBox.io.dcoarse_6 := io.dcoarse(6)
-  verilogBlackBox.io.dcoarse_7 := io.dcoarse(7)
-  verilogBlackBox.io.dvco_reset := io.dvco_reset
-  verilogBlackBox.io.dvco_resetn := io.dvco_resetn
-  io.vp_out := verilogBlackBox.io.vp_out
-  io.vn_out := verilogBlackBox.io.vn_out
-  io.d_fcw_debug := Cat(
-    verilogBlackBox.io.d_fcw_debug_7,
-    verilogBlackBox.io.d_fcw_debug_6,
-    verilogBlackBox.io.d_fcw_debug_5,
-    verilogBlackBox.io.d_fcw_debug_4,
-    verilogBlackBox.io.d_fcw_debug_3,
-    verilogBlackBox.io.d_fcw_debug_2,
-    verilogBlackBox.io.d_fcw_debug_1,
-    verilogBlackBox.io.d_fcw_debug_0,
-  )
-  io.d_sar_debug := Cat(
-    verilogBlackBox.io.d_sar_debug_7,
-    verilogBlackBox.io.d_sar_debug_6,
-    verilogBlackBox.io.d_sar_debug_5,
-    verilogBlackBox.io.d_sar_debug_4,
-    verilogBlackBox.io.d_sar_debug_3,
-    verilogBlackBox.io.d_sar_debug_2,
-    verilogBlackBox.io.d_sar_debug_1,
-    verilogBlackBox.io.d_sar_debug_0,
-  )
-  verilogBlackBox.io.d_digital_reset := io.d_digital_reset
-  verilogBlackBox.io.d_kp_0 := io.d_kp(0)
-  verilogBlackBox.io.d_kp_1 := io.d_kp(1)
-  verilogBlackBox.io.d_kp_2 := io.d_kp(2)
-  verilogBlackBox.io.d_kp_3 := io.d_kp(3)
-  verilogBlackBox.io.d_kp_4 := io.d_kp(4)
-  verilogBlackBox.io.d_kp_5 := io.d_kp(5)
-  verilogBlackBox.io.d_kp_6 := io.d_kp(6)
-  verilogBlackBox.io.d_kp_7 := io.d_kp(7)
-  verilogBlackBox.io.d_kp_8 := io.d_kp(8)
-  verilogBlackBox.io.d_kp_9 := io.d_kp(9)
-  verilogBlackBox.io.d_kp_10 := io.d_kp(10)
-  verilogBlackBox.io.d_kp_11 := io.d_kp(11)
-  verilogBlackBox.io.d_kp_12 := io.d_kp(12)
-  verilogBlackBox.io.d_kp_13 := io.d_kp(13)
-  verilogBlackBox.io.d_kp_14 := io.d_kp(14)
-  verilogBlackBox.io.d_kp_15 := io.d_kp(15)
-  verilogBlackBox.io.d_ki_0 := io.d_ki(0)
-  verilogBlackBox.io.d_ki_1 := io.d_ki(1)
-  verilogBlackBox.io.d_ki_2 := io.d_ki(2)
-  verilogBlackBox.io.d_ki_3 := io.d_ki(3)
-  verilogBlackBox.io.d_ki_4 := io.d_ki(4)
-  verilogBlackBox.io.d_ki_5 := io.d_ki(5)
-  verilogBlackBox.io.d_ki_6 := io.d_ki(6)
-  verilogBlackBox.io.d_ki_7 := io.d_ki(7)
-  verilogBlackBox.io.d_ki_8 := io.d_ki(8)
-  verilogBlackBox.io.d_ki_9 := io.d_ki(9)
-  verilogBlackBox.io.d_ki_10 := io.d_ki(10)
-  verilogBlackBox.io.d_ki_11 := io.d_ki(11)
-  verilogBlackBox.io.d_ki_12 := io.d_ki(12)
-  verilogBlackBox.io.d_ki_13 := io.d_ki(13)
-  verilogBlackBox.io.d_ki_14 := io.d_ki(14)
-  verilogBlackBox.io.d_ki_15 := io.d_ki(15)
-  verilogBlackBox.io.d_clol := io.d_clol
-  verilogBlackBox.io.d_ol_fcw_0 := io.d_ol_fcw(0)
-  verilogBlackBox.io.d_ol_fcw_1 := io.d_ol_fcw(1)
-  verilogBlackBox.io.d_ol_fcw_2 := io.d_ol_fcw(2)
-  verilogBlackBox.io.d_ol_fcw_3 := io.d_ol_fcw(3)
-  verilogBlackBox.io.d_ol_fcw_4 := io.d_ol_fcw(4)
-  verilogBlackBox.io.d_ol_fcw_5 := io.d_ol_fcw(5)
-  verilogBlackBox.io.d_ol_fcw_6 := io.d_ol_fcw(6)
-  verilogBlackBox.io.d_ol_fcw_7 := io.d_ol_fcw(7)
-  verilogBlackBox.io.d_accumulator_reset_0 := io.d_accumulator_reset(0)
-  verilogBlackBox.io.d_accumulator_reset_1 := io.d_accumulator_reset(1)
-  verilogBlackBox.io.d_accumulator_reset_2 := io.d_accumulator_reset(2)
-  verilogBlackBox.io.d_accumulator_reset_3 := io.d_accumulator_reset(3)
-  verilogBlackBox.io.d_accumulator_reset_4 := io.d_accumulator_reset(4)
-  verilogBlackBox.io.d_accumulator_reset_5 := io.d_accumulator_reset(5)
-  verilogBlackBox.io.d_accumulator_reset_6 := io.d_accumulator_reset(6)
-  verilogBlackBox.io.d_accumulator_reset_7 := io.d_accumulator_reset(7)
-  verilogBlackBox.io.d_accumulator_reset_8 := io.d_accumulator_reset(8)
-  verilogBlackBox.io.d_accumulator_reset_9 := io.d_accumulator_reset(9)
-  verilogBlackBox.io.d_accumulator_reset_10 := io.d_accumulator_reset(10)
-  verilogBlackBox.io.d_accumulator_reset_11 := io.d_accumulator_reset(11)
-  verilogBlackBox.io.d_accumulator_reset_12 := io.d_accumulator_reset(12)
-  verilogBlackBox.io.d_accumulator_reset_13 := io.d_accumulator_reset(13)
-  verilogBlackBox.io.d_accumulator_reset_14 := io.d_accumulator_reset(14)
-  verilogBlackBox.io.d_accumulator_reset_15 := io.d_accumulator_reset(15)
-  verilogBlackBox.io.d_accumulator_reset_16 := io.d_accumulator_reset(16)
-  verilogBlackBox.io.d_accumulator_reset_17 := io.d_accumulator_reset(17)
-  verilogBlackBox.io.d_accumulator_reset_18 := io.d_accumulator_reset(18)
-  verilogBlackBox.io.d_accumulator_reset_19 := io.d_accumulator_reset(19)
-  verilogBlackBox.io.d_accumulator_reset_20 := io.d_accumulator_reset(20)
-  verilogBlackBox.io.d_accumulator_reset_21 := io.d_accumulator_reset(21)
-  verilogBlackBox.io.d_accumulator_reset_22 := io.d_accumulator_reset(22)
-  verilogBlackBox.io.d_accumulator_reset_23 := io.d_accumulator_reset(23)
-  verilogBlackBox.io.d_accumulator_reset_24 := io.d_accumulator_reset(24)
-  verilogBlackBox.io.d_accumulator_reset_25 := io.d_accumulator_reset(25)
-  verilogBlackBox.io.d_accumulator_reset_26 := io.d_accumulator_reset(26)
-  verilogBlackBox.io.d_accumulator_reset_27 := io.d_accumulator_reset(27)
-  verilogBlackBox.io.d_accumulator_reset_28 := io.d_accumulator_reset(28)
-  verilogBlackBox.io.d_accumulator_reset_29 := io.d_accumulator_reset(29)
-  verilogBlackBox.io.d_accumulator_reset_30 := io.d_accumulator_reset(30)
-  verilogBlackBox.io.d_accumulator_reset_31 := io.d_accumulator_reset(31)
+    verilogBlackBox.io.vclk_ref := io.vclk_ref
+    verilogBlackBox.io.vclk_refb := io.vclk_refb
+    verilogBlackBox.io.dref_low_0 := io.dref_low(0)
+    verilogBlackBox.io.dref_low_1 := io.dref_low(1)
+    verilogBlackBox.io.dref_low_2 := io.dref_low(2)
+    verilogBlackBox.io.dref_low_3 := io.dref_low(3)
+    verilogBlackBox.io.dref_low_4 := io.dref_low(4)
+    verilogBlackBox.io.dref_low_5 := io.dref_low(5)
+    verilogBlackBox.io.dref_low_6 := io.dref_low(6)
+    verilogBlackBox.io.dref_high_0 := io.dref_high(0)
+    verilogBlackBox.io.dref_high_1 := io.dref_high(1)
+    verilogBlackBox.io.dref_high_2 := io.dref_high(2)
+    verilogBlackBox.io.dref_high_3 := io.dref_high(3)
+    verilogBlackBox.io.dref_high_4 := io.dref_high(4)
+    verilogBlackBox.io.dref_high_5 := io.dref_high(5)
+    verilogBlackBox.io.dref_high_6 := io.dref_high(6)
+    verilogBlackBox.io.vrdac_ref := io.vrdac_ref
+    verilogBlackBox.io.dcoarse_0 := io.dcoarse(0)
+    verilogBlackBox.io.dcoarse_1 := io.dcoarse(1)
+    verilogBlackBox.io.dcoarse_2 := io.dcoarse(2)
+    verilogBlackBox.io.dcoarse_3 := io.dcoarse(3)
+    verilogBlackBox.io.dcoarse_4 := io.dcoarse(4)
+    verilogBlackBox.io.dcoarse_5 := io.dcoarse(5)
+    verilogBlackBox.io.dcoarse_6 := io.dcoarse(6)
+    verilogBlackBox.io.dcoarse_7 := io.dcoarse(7)
+    verilogBlackBox.io.dvco_reset := io.dvco_reset
+    verilogBlackBox.io.dvco_resetn := io.dvco_resetn
+    io.vp_out := verilogBlackBox.io.vp_out
+    io.vn_out := verilogBlackBox.io.vn_out
+    io.d_fcw_debug := Cat(
+      verilogBlackBox.io.d_fcw_debug_7,
+      verilogBlackBox.io.d_fcw_debug_6,
+      verilogBlackBox.io.d_fcw_debug_5,
+      verilogBlackBox.io.d_fcw_debug_4,
+      verilogBlackBox.io.d_fcw_debug_3,
+      verilogBlackBox.io.d_fcw_debug_2,
+      verilogBlackBox.io.d_fcw_debug_1,
+      verilogBlackBox.io.d_fcw_debug_0,
+    )
+    io.d_sar_debug := Cat(
+      verilogBlackBox.io.d_sar_debug_7,
+      verilogBlackBox.io.d_sar_debug_6,
+      verilogBlackBox.io.d_sar_debug_5,
+      verilogBlackBox.io.d_sar_debug_4,
+      verilogBlackBox.io.d_sar_debug_3,
+      verilogBlackBox.io.d_sar_debug_2,
+      verilogBlackBox.io.d_sar_debug_1,
+      verilogBlackBox.io.d_sar_debug_0,
+    )
+    verilogBlackBox.io.d_digital_reset := io.d_digital_reset
+    verilogBlackBox.io.d_kp_0 := io.d_kp(0)
+    verilogBlackBox.io.d_kp_1 := io.d_kp(1)
+    verilogBlackBox.io.d_kp_2 := io.d_kp(2)
+    verilogBlackBox.io.d_kp_3 := io.d_kp(3)
+    verilogBlackBox.io.d_kp_4 := io.d_kp(4)
+    verilogBlackBox.io.d_kp_5 := io.d_kp(5)
+    verilogBlackBox.io.d_kp_6 := io.d_kp(6)
+    verilogBlackBox.io.d_kp_7 := io.d_kp(7)
+    verilogBlackBox.io.d_kp_8 := io.d_kp(8)
+    verilogBlackBox.io.d_kp_9 := io.d_kp(9)
+    verilogBlackBox.io.d_kp_10 := io.d_kp(10)
+    verilogBlackBox.io.d_kp_11 := io.d_kp(11)
+    verilogBlackBox.io.d_kp_12 := io.d_kp(12)
+    verilogBlackBox.io.d_kp_13 := io.d_kp(13)
+    verilogBlackBox.io.d_kp_14 := io.d_kp(14)
+    verilogBlackBox.io.d_kp_15 := io.d_kp(15)
+    verilogBlackBox.io.d_ki_0 := io.d_ki(0)
+    verilogBlackBox.io.d_ki_1 := io.d_ki(1)
+    verilogBlackBox.io.d_ki_2 := io.d_ki(2)
+    verilogBlackBox.io.d_ki_3 := io.d_ki(3)
+    verilogBlackBox.io.d_ki_4 := io.d_ki(4)
+    verilogBlackBox.io.d_ki_5 := io.d_ki(5)
+    verilogBlackBox.io.d_ki_6 := io.d_ki(6)
+    verilogBlackBox.io.d_ki_7 := io.d_ki(7)
+    verilogBlackBox.io.d_ki_8 := io.d_ki(8)
+    verilogBlackBox.io.d_ki_9 := io.d_ki(9)
+    verilogBlackBox.io.d_ki_10 := io.d_ki(10)
+    verilogBlackBox.io.d_ki_11 := io.d_ki(11)
+    verilogBlackBox.io.d_ki_12 := io.d_ki(12)
+    verilogBlackBox.io.d_ki_13 := io.d_ki(13)
+    verilogBlackBox.io.d_ki_14 := io.d_ki(14)
+    verilogBlackBox.io.d_ki_15 := io.d_ki(15)
+    verilogBlackBox.io.d_clol := io.d_clol
+    verilogBlackBox.io.d_ol_fcw_0 := io.d_ol_fcw(0)
+    verilogBlackBox.io.d_ol_fcw_1 := io.d_ol_fcw(1)
+    verilogBlackBox.io.d_ol_fcw_2 := io.d_ol_fcw(2)
+    verilogBlackBox.io.d_ol_fcw_3 := io.d_ol_fcw(3)
+    verilogBlackBox.io.d_ol_fcw_4 := io.d_ol_fcw(4)
+    verilogBlackBox.io.d_ol_fcw_5 := io.d_ol_fcw(5)
+    verilogBlackBox.io.d_ol_fcw_6 := io.d_ol_fcw(6)
+    verilogBlackBox.io.d_ol_fcw_7 := io.d_ol_fcw(7)
+    verilogBlackBox.io.d_accumulator_reset_0 := io.d_accumulator_reset(0)
+    verilogBlackBox.io.d_accumulator_reset_1 := io.d_accumulator_reset(1)
+    verilogBlackBox.io.d_accumulator_reset_2 := io.d_accumulator_reset(2)
+    verilogBlackBox.io.d_accumulator_reset_3 := io.d_accumulator_reset(3)
+    verilogBlackBox.io.d_accumulator_reset_4 := io.d_accumulator_reset(4)
+    verilogBlackBox.io.d_accumulator_reset_5 := io.d_accumulator_reset(5)
+    verilogBlackBox.io.d_accumulator_reset_6 := io.d_accumulator_reset(6)
+    verilogBlackBox.io.d_accumulator_reset_7 := io.d_accumulator_reset(7)
+    verilogBlackBox.io.d_accumulator_reset_8 := io.d_accumulator_reset(8)
+    verilogBlackBox.io.d_accumulator_reset_9 := io.d_accumulator_reset(9)
+    verilogBlackBox.io.d_accumulator_reset_10 := io.d_accumulator_reset(10)
+    verilogBlackBox.io.d_accumulator_reset_11 := io.d_accumulator_reset(11)
+    verilogBlackBox.io.d_accumulator_reset_12 := io.d_accumulator_reset(12)
+    verilogBlackBox.io.d_accumulator_reset_13 := io.d_accumulator_reset(13)
+    verilogBlackBox.io.d_accumulator_reset_14 := io.d_accumulator_reset(14)
+    verilogBlackBox.io.d_accumulator_reset_15 := io.d_accumulator_reset(15)
+    verilogBlackBox.io.d_accumulator_reset_16 := io.d_accumulator_reset(16)
+    verilogBlackBox.io.d_accumulator_reset_17 := io.d_accumulator_reset(17)
+    verilogBlackBox.io.d_accumulator_reset_18 := io.d_accumulator_reset(18)
+    verilogBlackBox.io.d_accumulator_reset_19 := io.d_accumulator_reset(19)
+    verilogBlackBox.io.d_accumulator_reset_20 := io.d_accumulator_reset(20)
+    verilogBlackBox.io.d_accumulator_reset_21 := io.d_accumulator_reset(21)
+    verilogBlackBox.io.d_accumulator_reset_22 := io.d_accumulator_reset(22)
+    verilogBlackBox.io.d_accumulator_reset_23 := io.d_accumulator_reset(23)
+    verilogBlackBox.io.d_accumulator_reset_24 := io.d_accumulator_reset(24)
+    verilogBlackBox.io.d_accumulator_reset_25 := io.d_accumulator_reset(25)
+    verilogBlackBox.io.d_accumulator_reset_26 := io.d_accumulator_reset(26)
+    verilogBlackBox.io.d_accumulator_reset_27 := io.d_accumulator_reset(27)
+    verilogBlackBox.io.d_accumulator_reset_28 := io.d_accumulator_reset(28)
+    verilogBlackBox.io.d_accumulator_reset_29 := io.d_accumulator_reset(29)
+    verilogBlackBox.io.d_accumulator_reset_30 := io.d_accumulator_reset(30)
+    verilogBlackBox.io.d_accumulator_reset_31 := io.d_accumulator_reset(31)
+  }
 }
 
 class VerilogUciePll extends BlackBox {
