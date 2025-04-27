@@ -287,11 +287,11 @@ class TxLane(sim: Boolean = false) extends RawModule {
     verilogBlackBox.io.pen_outb_4 := !io.ctl.skew.pen_out(4)
 
     io.dll_code := Cat(
-      verilogBlackBox.io.dll_code_0,
-      verilogBlackBox.io.dll_code_1,
-      verilogBlackBox.io.dll_code_2,
-      verilogBlackBox.io.dll_code_3,
       verilogBlackBox.io.dll_code_4,
+      verilogBlackBox.io.dll_code_3,
+      verilogBlackBox.io.dll_code_2,
+      verilogBlackBox.io.dll_code_1,
+      verilogBlackBox.io.dll_code_0,
     )
   }
 }
@@ -714,6 +714,24 @@ class VerilogTxDriver extends BlackBox {
   override val desiredName = "tx_driver"
 }
 
+class UciePllCtlIO extends Bundle {
+  val dref_low = UInt(7.W)
+  val dref_high = UInt(7.W)
+  val dcoarse = UInt(8.W)
+  val d_kp = UInt(16.W)
+  val d_ki = UInt(16.W)
+  val d_clol = Bool()
+  val d_ol_fcw = UInt(8.W)
+  val d_accumulator_reset = UInt(32.W)
+  val vco_reset = Bool()
+  val digital_reset = Bool()
+}
+
+class UciePllDebugOutIO extends Bundle {
+  val d_fcw_debug = Output(UInt(8.W))
+  val d_sar_debug = Output(UInt(8.W))
+}
+
 class UciePllIO extends Bundle {
   val vclk_ref = Input(Bool())
   val vclk_refb = Input(Bool())
@@ -725,6 +743,8 @@ class UciePllIO extends Bundle {
   val dvco_resetn = Input(Bool())
   val vp_out = Output(Bool())
   val vn_out = Output(Bool())
+  val d_fcw_debug = Output(UInt(8.W))
+  val d_sar_debug = Output(UInt(8.W))
   val d_digital_reset = Input(Bool())
   val d_kp = Input(UInt(16.W))
   val d_ki = Input(UInt(16.W))
@@ -900,6 +920,26 @@ class UciePll extends RawModule {
   verilogBlackBox.io.dvco_resetn := io.dvco_resetn
   io.vp_out := verilogBlackBox.io.vp_out
   io.vn_out := verilogBlackBox.io.vn_out
+  io.d_fcw_debug := Cat(
+    verilogBlackBox.io.d_fcw_debug_7,
+    verilogBlackBox.io.d_fcw_debug_6,
+    verilogBlackBox.io.d_fcw_debug_5,
+    verilogBlackBox.io.d_fcw_debug_4,
+    verilogBlackBox.io.d_fcw_debug_3,
+    verilogBlackBox.io.d_fcw_debug_2,
+    verilogBlackBox.io.d_fcw_debug_1,
+    verilogBlackBox.io.d_fcw_debug_0,
+  )
+  io.d_sar_debug := Cat(
+    verilogBlackBox.io.d_sar_debug_7,
+    verilogBlackBox.io.d_sar_debug_6,
+    verilogBlackBox.io.d_sar_debug_5,
+    verilogBlackBox.io.d_sar_debug_4,
+    verilogBlackBox.io.d_sar_debug_3,
+    verilogBlackBox.io.d_sar_debug_2,
+    verilogBlackBox.io.d_sar_debug_1,
+    verilogBlackBox.io.d_sar_debug_0,
+  )
   verilogBlackBox.io.d_digital_reset := io.d_digital_reset
   verilogBlackBox.io.d_kp_0 := io.d_kp(0)
   verilogBlackBox.io.d_kp_1 := io.d_kp(1)

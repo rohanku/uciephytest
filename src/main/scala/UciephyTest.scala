@@ -11,7 +11,7 @@ import org.chipsalliance.cde.config.{Parameters, Field, Config}
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.regmapper.{HasRegMap, RegField, RegWriteFn, RegReadFn, RegFieldDesc}
 import freechips.rocketchip.tilelink._
-import uciephytest.phy.{Phy, PhyToTestIO, TxLaneDigitalCtlIO, RxLaneCtlIO, DriverControlIO, TxSkewControlIO, RxAfeIO}
+import uciephytest.phy.{Phy, UciePllCtlIO, PhyToTestIO, TxLaneDigitalCtlIO, RxLaneCtlIO, DriverControlIO, TxSkewControlIO, RxAfeIO}
 import freechips.rocketchip.util.{AsyncQueueParams}
 import testchipip.soc.{OBUS}
 import edu.berkeley.cs.ucie.digital.tilelink._
@@ -89,6 +89,7 @@ class UciephyTopIO(numLanes: Int = 16) extends Bundle {
   val sbTxData = Output(Bool())
   val sbRxClk = Input(Clock())
   val sbRxData = Input(Bool())
+  val pllRdacVref = Input(Bool())
   val debug = Output(new UciephyDebugIO())
 }
 
@@ -684,6 +685,34 @@ def toRegField[T <: Data](r: T): RegField = {
         w
         }
         )))
+      val pllCtl = RegInit({
+        val w = Wire(new UciePllCtlIO)
+        w.dref_low := 30.U
+        w.dref_high := 98.U
+        w.dcoarse := 15.U
+        w.d_kp := 50.U
+        w.d_ki := 4.U
+        w.d_clol := true.B
+        w.d_ol_fcw := 0.U
+        w.d_accumulator_reset := "h8000".U
+        w.vco_reset := true.B
+        w.digital_reset := true.B
+        w
+      })
+      val testPllCtl = RegInit({
+        val w = Wire(new UciePllCtlIO)
+        w.dref_low := 30.U
+        w.dref_high := 98.U
+        w.dcoarse := 15.U
+        w.d_kp := 50.U
+        w.d_ki := 4.U
+        w.d_clol := true.B
+        w.d_ol_fcw := 0.U
+        w.d_accumulator_reset := "h8000".U
+        w.vco_reset := true.B
+        w.digital_reset := true.B
+        w
+      })
 
       // Pipelined registers
       val txTestModeDelayed = ShiftRegister(txTestMode, 3, true.B)
@@ -703,6 +732,8 @@ def toRegField[T <: Data](r: T): RegField = {
       val rxPermuteDelayed = ShiftRegister(rxPermute, 3, true.B)
       val pllBypassEnDelayed = ShiftRegister(pllBypassEn, 3, true.B)
       val txctlDelayed = ShiftRegister(txctl, 3, true.B)
+      val pllCtlDelayed = ShiftRegister(pllCtl, 3, true.B)
+      val testPllCtlDelayed = ShiftRegister(testPllCtl, 3, true.B)
       val rxctlDelayed = ShiftRegister(rxctl, 3, true.B)
 
       // UCIe logphy related
@@ -794,8 +825,12 @@ def toRegField[T <: Data](r: T): RegField = {
 
       phy.io.pllBypassEn := pllBypassEnDelayed
       phy.io.txctl := txctlDelayed
+      phy.io.pllCtl := pllCtlDelayed
+      phy.io.testPllCtl := testPllCtlDelayed
       phy.io.rxctl := rxctlDelayed
-      val dllCodeDelayed = ShiftRegister(phy.io.dll_code, 3, true.B)
+      val dllCodeDelayed = ShiftRegister(phy.io.dllCode, 3, true.B)
+      val pllOutputDelayed = ShiftRegister(phy.io.pllOutput, 3, true.B)
+      val testPllOutputDelayed = ShiftRegister(phy.io.testPllOutput, 3, true.B)
 
 
       var mmioRegs = Seq(
@@ -832,6 +867,28 @@ def toRegField[T <: Data](r: T): RegField = {
         toRegField(rxDataOffset),
         RegField.r(32, test.io.mmio.rxDataChunk),
         RegField.r(32, test.io.mmio.rxValidChunk),
+        toRegField(pllCtl.dref_low),
+        toRegField(pllCtl.dref_high),
+        toRegField(pllCtl.dcoarse),
+        toRegField(pllCtl.d_kp),
+        toRegField(pllCtl.d_ki),
+        toRegField(pllCtl.d_clol),
+        toRegField(pllCtl.d_ol_fcw),
+        toRegField(pllCtl.d_accumulator_reset),
+        toRegField(pllCtl.vco_reset),
+        toRegField(pllCtl.digital_reset),
+        toRegField(testPllCtl.dref_low),
+        toRegField(testPllCtl.dref_high),
+        toRegField(testPllCtl.dcoarse),
+        toRegField(testPllCtl.d_kp),
+        toRegField(testPllCtl.d_ki),
+        toRegField(testPllCtl.d_clol),
+        toRegField(testPllCtl.d_ol_fcw),
+        toRegField(testPllCtl.d_accumulator_reset),
+        toRegField(testPllCtl.vco_reset),
+        toRegField(testPllCtl.digital_reset),
+        RegField.r(16, pllOutputDelayed.asUInt),
+        RegField.r(16, testPllOutputDelayed.asUInt),
         toRegField(pllBypassEn)
       ) ++ (0 until Phy.SerdesRatio).map((i: Int) => {
           toRegField(rxPermute(i))

@@ -187,7 +187,11 @@ class PhyIO(numLanes: Int = 16) extends Bundle {
   // TX CONTROL
   // Lane control (`numLanes` data lanes, 1 valid lane, 2 clock lanes, 1 track lane).
   val txctl = Input(Vec(numLanes + 4, new TxLaneDigitalCtlIO))
-  val dll_code = Output(Vec(numLanes + 4, UInt(5.W)))
+  val dllCode = Output(Vec(numLanes + 4, UInt(5.W)))
+  val pllCtl = Input(new UciePllCtlIO)
+  val pllOutput = Output(new UciePllDebugOutIO)
+  val testPllCtl = Input(new UciePllCtlIO)
+  val testPllOutput = Output(new UciePllDebugOutIO)
 
   // RX CONTROL
   // Termination impedance control per lane (`numLanes` data lanes, 1 valid lane, 2 clock lanes, 1 track lane).
@@ -247,38 +251,42 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   val pll = Module(new UciePll)
   pll.io.vclk_ref := io.top.refClkP.asBool
   pll.io.vclk_refb := io.top.refClkN.asBool
-  pll.io.dref_low := 0.U
-  pll.io.dref_high := 0.U
-  // TODO: assign these properly
-  pll.io.vrdac_ref := true.B
-  pll.io.dcoarse := 0.U
-  pll.io.dvco_reset := reset.asBool
-  pll.io.dvco_resetn := !reset.asBool
-  pll.io.d_digital_reset := reset.asBool
-  pll.io.d_accumulator_reset := 0.U
-  pll.io.d_kp := 0.U
-  pll.io.d_ki := 0.U
-  pll.io.d_clol := false.B
-  pll.io.d_ol_fcw := 0.U
+  pll.io.dref_low := io.pllCtl.dref_low
+  pll.io.dref_high := io.pllCtl.dref_high
+  pll.io.vrdac_ref := io.top.pllRdacVref
+  pll.io.dcoarse := io.pllCtl.dcoarse
+  pll.io.dvco_reset := io.pllCtl.vco_reset
+  pll.io.dvco_resetn := !io.pllCtl.vco_reset
+  pll.io.d_digital_reset := io.pllCtl.digital_reset
+  pll.io.d_accumulator_reset := io.pllCtl.d_accumulator_reset
+  pll.io.d_kp := io.pllCtl.d_kp
+  pll.io.d_ki := io.pllCtl.d_ki
+  pll.io.d_clol := io.pllCtl.d_clol
+  pll.io.d_ol_fcw := io.pllCtl.d_ol_fcw
   io.top.debug.pllClkP := pll.io.vp_out
   io.top.debug.pllClkN := pll.io.vn_out
+  io.pllOutput.d_fcw_debug := pll.io.d_fcw_debug
+  io.pllOutput.d_sar_debug := pll.io.d_sar_debug
 
   val testPll = Module(new UciePll)
   testPll.io.vclk_ref := io.top.refClkP.asBool
   testPll.io.vclk_refb := io.top.refClkN.asBool
-  testPll.io.dref_low := 0.U
-  testPll.io.dref_high := 0.U
-  // TODO: assign these properly
-  testPll.io.vrdac_ref := true.B
-  testPll.io.dcoarse := 0.U
-  testPll.io.dvco_reset := reset.asBool
-  testPll.io.dvco_resetn := !reset.asBool
-  testPll.io.d_digital_reset := reset.asBool
-  testPll.io.d_accumulator_reset := 0.U
-  testPll.io.d_kp := 0.U
-  testPll.io.d_ki := 0.U
-  testPll.io.d_clol := false.B
-  testPll.io.d_ol_fcw := 0.U
+  testPll.io.dref_low := io.testPllCtl.dref_low
+  testPll.io.dref_high := io.testPllCtl.dref_high
+  testPll.io.vrdac_ref := io.top.pllRdacVref
+  testPll.io.dcoarse := io.testPllCtl.dcoarse
+  testPll.io.dvco_reset := io.testPllCtl.vco_reset
+  testPll.io.dvco_resetn := !io.testPllCtl.vco_reset
+  testPll.io.d_digital_reset := io.testPllCtl.digital_reset
+  testPll.io.d_accumulator_reset := io.testPllCtl.d_accumulator_reset
+  testPll.io.d_kp := io.testPllCtl.d_kp
+  testPll.io.d_ki := io.testPllCtl.d_ki
+  testPll.io.d_clol := io.testPllCtl.d_clol
+  testPll.io.d_ol_fcw := io.testPllCtl.d_ol_fcw
+  io.top.debug.testPllClkP := testPll.io.vp_out
+  io.top.debug.testPllClkN := testPll.io.vn_out
+  io.testPllOutput.d_fcw_debug := testPll.io.d_fcw_debug
+  io.testPllOutput.d_sar_debug := testPll.io.d_sar_debug
   io.top.debug.testPllClkP := testPll.io.vp_out
   io.top.debug.testPllClkN := testPll.io.vn_out
 
@@ -397,7 +405,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
     }
     txLane.io.ctl.driver := io.txctl(lane).driver
     txLane.io.ctl.skew := io.txctl(lane).skew
-    io.dll_code(lane) := txLane.io.dll_code
+    io.dllCode(lane) := txLane.io.dll_code
   }
 
   // TODO async FIFO clock and reset
