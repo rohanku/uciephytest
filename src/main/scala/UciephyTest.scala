@@ -284,9 +284,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   io.phy.tx.bits.valid := 0.U
   io.phy.tx.bits.track := 0.U
   io.phy.rx.ready := false.B
-  io.phy.tx.valid := false.B
-  io.phy.txRst := txReset
-  io.phy.rxRst := rxReset
+  io.phy.tx.valid := true.B
 
   // clkp = 101010...
   io.phy.tx.bits.clkp := VecInit((0 until Phy.SerdesRatio/2).flatMap(_ => Seq(true.B, false.B))).asTypeOf(io.phy.tx.bits.clkp)
@@ -294,6 +292,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   io.phy.tx.bits.clkn := VecInit((0 until Phy.SerdesRatio/2).flatMap(_ => Seq(false.B, true.B))).asTypeOf(io.phy.tx.bits.clkn)
   // track = 000000... (for now)
   io.phy.tx.bits.track := VecInit((0 until Phy.SerdesRatio/2).flatMap(_ => Seq(false.B, false.B))).asTypeOf(io.phy.tx.bits.track)
+
+  val tx_valid = (packetsEnqueued << log2Ceil(Phy.SerdesRatio)) < io.mmio.txBitsToSend
 
   // TX logic
   switch(txState) {
@@ -322,7 +322,6 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
             for (lane <- 0 until numLanes) {
               io.phy.tx.bits.data(lane) := inputRdPorts(lane >> 2).asTypeOf(Vec(4, UInt(32.W)))(lane % 4)
             }
-            io.phy.tx.valid := (packetsEnqueued << log2Ceil(Phy.SerdesRatio)) < io.mmio.txBitsToSend
           } .otherwise {
             inputBufferAddr := 0.U
             loadedFirstChunk := true.B
@@ -332,10 +331,9 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
           for (lane <- 0 until numLanes) {
             io.phy.tx.bits.data(lane) := Reverse(txLfsrs(lane).io.out.asUInt)(31, 0).asTypeOf(io.phy.tx.bits.data(lane))
           }
-          io.phy.tx.valid := true.B
         }
       }
-      when (io.phy.tx.valid) {
+      when (tx_valid) {
         switch(io.mmio.txValidFramingMode) {
           is (TxValidFramingMode.ucie) {
             io.phy.tx.bits.valid := VecInit((0 until Phy.SerdesRatio/8).flatMap(_ => Seq.fill(4)(true.B) ++ Seq.fill(4)(false.B))).asUInt
@@ -347,7 +345,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
         io.phy.tx.bits.track := 0.U
       }
 
-      when (io.phy.tx.valid && io.phy.tx.ready) {
+      when (tx_valid && io.phy.tx.ready) {
         switch (io.mmio.txTestMode) {
           is (TxTestMode.manual) {
             packetsEnqueued := packetsEnqueued + 1.U
@@ -360,7 +358,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
         }
       }
 
-      when (loadedFirstChunk && !io.phy.tx.valid) {
+      when (loadedFirstChunk && !tx_valid) {
         txState := TxTestState.done
       }
     }
@@ -783,8 +781,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
           x
         }) <> uciTL.module.io.phyAfe.get.rx
 
-        phy.io.test.txRst <> uciTL.module.io.phyAfe.get.txRst
-        phy.io.test.rxRst <> uciTL.module.io.phyAfe.get.rxRst
+        // TODO: delete txRst and rxRst from uciedigital
 
         phy.io.sideband.txClk := uciTL.module.io.txSbAfe.clk
         phy.io.sideband.txData := uciTL.module.io.txSbAfe.data

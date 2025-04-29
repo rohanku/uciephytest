@@ -24,19 +24,22 @@ class RxDataLane(sim: Boolean = false) extends RawModule {
   val io = IO(new RxDataLaneIO)
 
   if (sim) {
-    val ctr = withClockAndReset(io.clk, !io.resetb) { RegInit(15.U((log2Ceil(Phy.SerdesRatio) - 1).W)) }
+    val ctr = withClockAndReset(io.clk, !io.resetb) { RegInit(1.U((log2Ceil(Phy.SerdesRatio) - 2).W)) }
     ctr := ctr + 1.U
 
-    val divClock = withClockAndReset(io.clk, !io.resetb) { RegInit(true.B) }
+    val divClock = withClockAndReset(io.clk, !io.resetb) { RegInit(false.B) }
     when (ctr === 0.U) {
       divClock := !divClock
     }
 
-    val shiftReg = withClockAndReset(io.clk, !io.resetb) { RegInit(0.U(Phy.SerdesRatio.W)) }
+    val shiftReg = withClockAndReset(io.clk, !io.resetb) { RegInit(0.U((Phy.SerdesRatio / 2).W)) }
     shiftReg := shiftReg << 1.U | io.din.asUInt
 
+    val shiftRegB = withClockAndReset((!io.clk.asBool).asClock, !io.resetb) { RegInit(0.U((Phy.SerdesRatio / 2).W)) }
+    shiftRegB := shiftRegB << 1.U | io.din.asUInt
+
     val outputReg = withClock(divClock.asClock) {
-      RegNext(Reverse(shiftReg))
+      RegNext(VecInit(shiftReg.asBools zip shiftRegB.asBools flatMap { case (a, b) => Seq(a, b) }).asUInt)
     }
 
     io.dout := outputReg.asTypeOf(io.dout)

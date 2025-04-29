@@ -8,7 +8,7 @@ import chisel3.experimental.VecLiterals._
 class UciephyTestHarness(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extends Module {
   val io = IO(new Bundle {
     val mmio = new UciephyTestMMIO
-    val shufflerCtl = Input(Vec(numLanes + 1, Vec(16, UInt(4.W))))
+    val shufflerCtl = Input(Vec(numLanes + 4, Vec(32, UInt(5.W))))
   })
   val test = Module(new UciephyTest(bufferDepthPerLane, numLanes))
   io.mmio <> test.io.mmio
@@ -16,29 +16,33 @@ class UciephyTestHarness(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extend
   test.io.phy <> phy.io.test
   phy.io.top.refClkP := clock
   phy.io.top.refClkN := (!clock.asBool).asClock
+  phy.io.top.bypassClkP := clock
+  phy.io.top.bypassClkN := (!clock.asBool).asClock
   phy.io.top.rxClkP := phy.io.top.txClkP
   phy.io.top.rxClkN := phy.io.top.txClkN
   phy.io.top.rxData := phy.io.top.txData
   phy.io.top.rxValid := phy.io.top.txValid
+  phy.io.top.rxTrack := phy.io.top.txTrack
   phy.io.top.sbRxData := phy.io.top.sbTxData
   phy.io.top.sbRxClk := phy.io.top.sbTxClk
-  phy.io.top.pllIref := false.B
+  phy.io.top.sbClk := clock
+  phy.io.top.pllRdacVref := false.B
   phy.io.sideband.txData := false.B
   phy.io.sideband.txClk := false.B
-  phy.io.driverPuCtl := 0.U.asTypeOf(phy.io.driverPuCtl)
-  phy.io.driverPdCtl := 0.U.asTypeOf(phy.io.driverPdCtl)
-  phy.io.driverEn := 0.U.asTypeOf(phy.io.driverEn)
-  phy.io.clockingMiscCtl := 0.U.asTypeOf(phy.io.clockingMiscCtl)
-  phy.io.clockingPiCtl := 0.U.asTypeOf(phy.io.clockingPiCtl)
-  phy.io.terminationCtl := 0.U.asTypeOf(phy.io.terminationCtl)
-  phy.io.vrefCtl := 0.U.asTypeOf(phy.io.vrefCtl)
-  phy.io.shufflerCtl := io.shufflerCtl
+  phy.io.txctl := DontCare
+  phy.io.rxctl := DontCare
+  phy.io.pllCtl := DontCare
+  phy.io.testPllCtl := DontCare
+  phy.io.pllBypassEn := false.B
+  for (i <- 0 until numLanes + 4) {
+    phy.io.txctl(i).shuffler := io.shufflerCtl(i)
+  }
 }
 
 class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "UCIe PHY tester"
   it should "work in manual test mode" in {
-    test(new UciephyTestHarness).withAnnotations(Seq(VcsBackendAnnotation, WriteFsdbAnnotation)) { c =>
+    test(new UciephyTestHarness).withAnnotations(Seq(VcsBackendAnnotation, WriteVcdAnnotation)) { c =>
       c.clock.setTimeout(1000)
       // Set up chip
       c.reset.poke(true.B)
@@ -53,8 +57,8 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       // Set up TX
       c.io.mmio.txDataChunkIn.initSource()
       c.io.mmio.txDataChunkIn.setSourceClock(c.clock)
-      c.io.shufflerCtl.poke(Vec.Lit(Seq.fill(3)(
-        Vec.Lit((0 until 16).map(i => i.U(4.W)):_*)
+      c.io.shufflerCtl.poke(Vec.Lit(Seq.fill(6)(
+        Vec.Lit((0 until 32).map(i => i.U(5.W)):_*)
       ):_*))
       c.io.mmio.txValidFramingMode.poke(TxValidFramingMode.ucie)
       c.io.mmio.txBitsToSend.poke(64.U)
@@ -224,7 +228,7 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   it should "work in lfsr test mode" in {
-    test(new UciephyTestHarness).withAnnotations(Seq(VcsBackendAnnotation, WriteFsdbAnnotation)) { c =>
+    test(new UciephyTestHarness).withAnnotations(Seq(VcsBackendAnnotation, WriteVcdAnnotation)) { c =>
       c.clock.setTimeout(1000)
       // Set up chip
       c.reset.poke(true.B)
@@ -239,8 +243,8 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       // Set up TX
       c.io.mmio.txDataChunkIn.initSource()
       c.io.mmio.txDataChunkIn.setSourceClock(c.clock)
-      c.io.shufflerCtl.poke(Vec.Lit(Seq.fill(3)(
-        Vec.Lit((0 until 16).map(i => i.U(4.W)):_*)
+      c.io.shufflerCtl.poke(Vec.Lit(Seq.fill(6)(
+        Vec.Lit((0 until 32).map(i => i.U(5.W)):_*)
       ):_*))
       c.io.mmio.txTestMode.poke(TxTestMode.lfsr)
       c.io.mmio.txValidFramingMode.poke(TxValidFramingMode.ucie)
@@ -323,7 +327,7 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
   }
 
   it should "support configurable data shuffling" in {
-    test(new UciephyTestHarness).withAnnotations(Seq(VcsBackendAnnotation, WriteFsdbAnnotation)) { c =>
+    test(new UciephyTestHarness).withAnnotations(Seq(VcsBackendAnnotation, WriteVcdAnnotation)) { c =>
       c.clock.setTimeout(1000)
       // Set up chip
       c.reset.poke(true.B)
@@ -337,11 +341,11 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
 
       // Set up TX
       c.io.mmio.txDataChunkIn.initSource()
-      c.io.shufflerCtl.poke(Vec.Lit((0 until 3).map(lane =>
+      c.io.shufflerCtl.poke(Vec.Lit((0 until 6).map(lane =>
         if (lane < 2) {
-          Vec.Lit((0 until 16).map(i => (15 - i).U(4.W)):_*)
+          Vec.Lit((0 until 32).map(i => (31 - i).U(5.W)):_*)
         } else {
-          Vec.Lit((0 until 16).map(i => i.U(4.W)):_*)
+          Vec.Lit((0 until 32).map(i => i.U(5.W)):_*)
         }
       ):_*))
       c.io.mmio.txDataChunkIn.setSourceClock(c.clock)
@@ -399,26 +403,26 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       for (i <- 0 until 4) {
         c.clock.step()
       }
-      c.io.mmio.rxDataChunk.expect("h3d59_0f7b".U)
+      c.io.mmio.rxDataChunk.expect("h0f7b_3d59".U)
       c.io.mmio.rxValidChunk.expect("h0f0f_0f0f".U)
       c.io.mmio.rxDataOffset.poke(1.U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
-      c.io.mmio.rxDataChunk.expect("h2c48_1e6a".U)
+      c.io.mmio.rxDataChunk.expect("h1e6a_2c48".U)
       c.io.mmio.rxValidChunk.expect("h0f0f_0f0f".U)
       c.io.mmio.rxDataLane.poke(1.U)
       c.io.mmio.rxDataOffset.poke(0.U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
-      c.io.mmio.rxDataChunk.expect("ha6e1_84c2".U)
+      c.io.mmio.rxDataChunk.expect("h84c2_a6e1".U)
       c.io.mmio.rxValidChunk.expect("h0f0f_0f0f".U)
       c.io.mmio.rxDataOffset.poke(1.U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
-      c.io.mmio.rxDataChunk.expect("hb7f0_95d3".U)
+      c.io.mmio.rxDataChunk.expect("h95d3_b7f0".U)
       c.io.mmio.rxValidChunk.expect("h0f0f_0f0f".U)
     }
   }
