@@ -178,6 +178,7 @@ class Shuffler32 extends RawModule {
 }
 
 class TxLaneDigitalCtlIO extends Bundle {
+  val dll_reset = Bool()
   val driver = new DriverControlIO
   val skew = new TxSkewControlIO
   val shuffler = Vec(32, UInt(5.W))
@@ -386,8 +387,8 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
     } else {
       "txtrack"
     });
-    txLane.io.dll_reset := reset.asBool
-    txLane.io.dll_resetb := !reset.asBool
+    txLane.io.dll_reset := io.txctl(lane).dll_reset
+    txLane.io.dll_resetb := !io.txctl(lane).dll_reset
     txLane.io.ser_resetb := !reset.asBool
     txLane.io.clkp := txClkP_wire
     txLane.io.clkn := txClkN_wire

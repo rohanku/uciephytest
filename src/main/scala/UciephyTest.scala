@@ -640,6 +640,7 @@ def toRegField[T <: Data](r: T): RegField = {
       val pllBypassEn = RegInit(false.B)
       val txctl = RegInit(VecInit(Seq.fill(params.numLanes + 4)({
         val w = Wire(new TxLaneDigitalCtlIO)
+        w.dll_reset := true.B
         w.driver.pu_ctl := 0.U
         w.driver.pd_ctl := 0.U
         w.driver.en := false.B
@@ -895,6 +896,7 @@ def toRegField[T <: Data](r: T): RegField = {
           // todo change to numLanes + 1 and make sure there are errors
       }) ++ (0 until params.numLanes + 4).flatMap((i: Int) => {
           Seq(
+            toRegField(txctl(i).dll_reset),
             toRegField(txctl(i).driver),
             toRegField(txctl(i).skew),
             toRegField(txctl(i).shuffler(0)),
