@@ -95,6 +95,11 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.mmio.txDataChunkOut.expect("h0fed_cba9_1234_5678".U)
       c.io.mmio.txTestState.expect(TxTestState.idle)
 
+      // Give time for clock to reach receiver.
+      for (i <- 0 until 100) {
+        c.clock.step()
+      }
+
       // Start transmitting data
       c.io.mmio.txExecute.poke(true.B)
       c.clock.step()
@@ -229,7 +234,7 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
 
   it should "work in lfsr test mode" in {
     test(new UciephyTestHarness).withAnnotations(Seq(VcsBackendAnnotation, WriteVcdAnnotation)) { c =>
-      c.clock.setTimeout(1000)
+      c.clock.setTimeout(10000)
       // Set up chip
       c.reset.poke(true.B)
 
@@ -270,6 +275,11 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.mmio.txBitsSent.expect(0.U)
       c.io.mmio.rxBitsReceived.expect(0.U)
       c.io.mmio.rxFsmRst.poke(false.B)
+
+      // Give time for clock to reach receiver.
+      for (i <- 0 until 100) {
+        c.clock.step()
+      }
 
       // Start transmitting data
       c.io.mmio.txExecute.poke(true.B)
@@ -383,6 +393,11 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       }
       c.io.mmio.txDataChunkOut.expect("h0fed_cba9_1234_5678".U)
       c.io.mmio.txTestState.expect(TxTestState.idle)
+
+      // Give time for clock to reach receiver.
+      for (i <- 0 until 100) {
+        c.clock.step()
+      }
 
       // Start transmitting data
       c.io.mmio.txExecute.poke(true.B)

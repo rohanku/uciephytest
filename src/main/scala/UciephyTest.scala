@@ -255,18 +255,6 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   val txDataChunkInBitsDelayed = ShiftRegister(io.mmio.txDataChunkIn.bits, 3, true.B)
   val txDataChunkInValidDelayed = ShiftRegister(io.mmio.txDataChunkIn.valid, 3, true.B)
   io.mmio.txTestState := txState
-
-  when (io.mmio.rxPauseCounters) {
-    rxBitsReceivedOutput := rxBitsReceivedOutput
-    for (i <- 0 until numLanes) {
-      rxBitErrorsOutput(i) := rxBitErrorsOutput(i)
-    }
-  } .otherwise {
-    rxBitsReceivedOutput := rxBitsReceived
-    for (i <- 0 until numLanes) {
-      rxBitErrorsOutput(i) := rxBitErrors(i) + PopCount(rxErrorMask(i))
-    }
-  }
   io.mmio.rxBitsReceived := rxBitsReceivedOutput
   io.mmio.rxBitErrors := rxBitErrorsOutput
   io.mmio.rxSignature := rxSignature
@@ -370,6 +358,18 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
 
   io.phy.rx.ready := true.B
 
+  when (rxBitsReceived >= rxBitsReceivedOutput) {
+  when (io.mmio.rxPauseCounters) {
+    rxBitsReceivedOutput := rxBitsReceivedOutput
+    for (i <- 0 until numLanes) {
+      rxBitErrorsOutput(i) := rxBitErrorsOutput(i)
+    }
+  } .otherwise {
+    rxBitsReceivedOutput := rxBitsReceived
+    for (i <- 0 until numLanes) {
+      rxBitErrorsOutput(i) := rxBitErrors(i) + PopCount(rxErrorMask(i))
+    }
+  }
   // Dumb RX logic (only sets threshold to start recording)
   val recordingStarted = withReset(rxReset) { RegInit(false.B) }
   val validHighStreak = withReset(rxReset) { RegInit(0.U(log2Ceil(Phy.SerdesRatio).W)) }
@@ -561,6 +561,9 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
         rxBitsReceived := rxBitsReceived +& Phy.SerdesRatio.U - startIdx
       }
     }
+  }
+  } .otherwise {
+    rxBitsReceived := VecInit(Seq.fill(rxBitsReceived.getWidth)(true.B)).asUInt
   }
 }
 

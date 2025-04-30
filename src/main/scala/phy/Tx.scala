@@ -43,23 +43,26 @@ class TxLane(sim: Boolean = false) extends RawModule {
   val io = IO(new TxLaneIO)
 
   if (sim) {
-    val ctr = withClockAndReset(io.clkp.asClock, !(io.ser_resetb || io.dll_resetb) || io.dll_reset) { RegInit(1.U((log2Ceil(Phy.SerdesRatio) - 2).W)) }
+    val rstsync = Module(new RstSync(sim));
+    rstsync.io.clk := io.clkp;
+    rstsync.io.rstbAsync := !(!(io.ser_resetb || io.dll_resetb) || io.dll_reset);
+    val ctr = withClockAndReset(io.clkp.asClock, !rstsync.io.rstbSync) { RegInit(1.U((log2Ceil(Phy.SerdesRatio) - 2).W)) }
     ctr := ctr + 1.U
 
-    val divClock = withClockAndReset(io.clkp.asClock, !(io.ser_resetb || io.dll_resetb) || io.dll_reset) { RegInit(false.B) }
+    val divClock = withClockAndReset(io.clkp.asClock, !rstsync.io.rstbSync) { RegInit(false.B) }
     when (ctr === 0.U) {
       divClock := !divClock
     }
 
-    val shiftReg = withClockAndReset(io.clkp.asClock, !(io.ser_resetb || io.dll_resetb) || io.dll_reset) { RegInit(0.U(Phy.SerdesRatio.W)) }
+    val shiftReg = withClockAndReset(io.clkp.asClock, !rstsync.io.rstbSync) { RegInit(0.U(Phy.SerdesRatio.W)) }
     shiftReg := shiftReg >> 1.U
     when (ctr === 0.U && !divClock) {
       shiftReg := VecInit(io.din.asBools.grouped(2).map(_.head).toSeq).asUInt
     }
 
-    val shiftRegB = withClockAndReset(io.clkn.asClock, !(io.ser_resetb || io.dll_resetb) || io.dll_reset) { RegInit(0.U(Phy.SerdesRatio.W)) }
+    val shiftRegB = withClockAndReset(io.clkn.asClock, !rstsync.io.rstbSync) { RegInit(0.U(Phy.SerdesRatio.W)) }
     shiftRegB := shiftRegB >> 1.U
-    when (ctr === 1.U && !divClock) {
+    when (ctr === 1.U && divClock) {
       shiftRegB := VecInit(io.din.asBools.drop(1).grouped(2).map(_.head).toSeq).asUInt
     }
 
