@@ -250,8 +250,8 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   rxClkN.io.ctl := io.rxctl(numLanes + 2)
 
   val pll = Module(new UciePll)
-  pll.io.vclk_ref := io.top.refClkP.asBool
-  pll.io.vclk_refb := io.top.refClkN.asBool
+  pll.io.vclk_ref := io.top.pllRefClkP.asBool
+  pll.io.vclk_refb := io.top.pllRefClkN.asBool
   pll.io.dref_low := io.pllCtl.dref_low
   pll.io.dref_high := io.pllCtl.dref_high
   pll.io.vrdac_ref := io.top.pllRdacVref
@@ -270,11 +270,11 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   io.pllOutput.d_sar_debug := pll.io.d_sar_debug
 
   val testPll = Module(new UciePll)
-  testPll.io.vclk_ref := io.top.refClkP.asBool
-  testPll.io.vclk_refb := io.top.refClkN.asBool
+  testPll.io.vclk_ref := io.top.testPllRefClkP.asBool
+  testPll.io.vclk_refb := io.top.testPllRefClkN.asBool
   testPll.io.dref_low := io.testPllCtl.dref_low
   testPll.io.dref_high := io.testPllCtl.dref_high
-  testPll.io.vrdac_ref := io.top.pllRdacVref
+  testPll.io.vrdac_ref := io.top.testPllRdacVref
   testPll.io.dcoarse := io.testPllCtl.dcoarse
   testPll.io.dvco_reset := io.testPllCtl.vco_reset
   testPll.io.dvco_resetn := !io.testPllCtl.vco_reset

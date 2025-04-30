@@ -73,8 +73,10 @@ class UciephyTopIO(numLanes: Int = 16) extends Bundle {
   val txData = Output(Vec(numLanes, Bool()))
   val txValid = Output(Bool())
   val txTrack = Output(Bool())
-  val refClkP = Input(Clock())
-  val refClkN = Input(Clock())
+  val pllRefClkP = Input(Clock())
+  val pllRefClkN = Input(Clock())
+  val testPllRefClkP = Input(Clock())
+  val testPllRefClkN = Input(Clock())
   val sbClk = Input(Clock())
   val txClkP = Output(Clock())
   val txClkN = Output(Clock())
@@ -90,6 +92,7 @@ class UciephyTopIO(numLanes: Int = 16) extends Bundle {
   val sbRxClk = Input(Clock())
   val sbRxData = Input(Bool())
   val pllRdacVref = Input(Bool())
+  val testPllRdacVref = Input(Bool())
   val debug = Output(new UciephyDebugIO())
 }
 
