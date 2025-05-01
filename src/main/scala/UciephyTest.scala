@@ -281,7 +281,8 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
   // track = 000000... (for now)
   io.phy.tx.bits.track := VecInit((0 until Phy.SerdesRatio/2).flatMap(_ => Seq(false.B, false.B))).asTypeOf(io.phy.tx.bits.track)
 
-  val tx_valid = (packetsEnqueued << log2Ceil(Phy.SerdesRatio)) < io.mmio.txBitsToSend
+  val tx_valid = Wire(Bool())
+  tx_valid := false.B
 
   // TX logic
   switch(txState) {
@@ -310,6 +311,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
             for (lane <- 0 until numLanes) {
               io.phy.tx.bits.data(lane) := inputRdPorts(lane >> 2).asTypeOf(Vec(4, UInt(32.W)))(lane % 4)
             }
+            tx_valid := (packetsEnqueued << log2Ceil(Phy.SerdesRatio)) < io.mmio.txBitsToSend
           } .otherwise {
             inputBufferAddr := 0.U
             loadedFirstChunk := true.B
@@ -319,6 +321,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, sim: Boolean 
           for (lane <- 0 until numLanes) {
             io.phy.tx.bits.data(lane) := Reverse(txLfsrs(lane).io.out.asUInt)(31, 0).asTypeOf(io.phy.tx.bits.data(lane))
           }
+          tx_valid := true.B
         }
       }
       when (tx_valid) {
