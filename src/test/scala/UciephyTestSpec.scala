@@ -55,16 +55,17 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.reset.poke(false.B)
 
       // Set up TX
+      c.io.mmio.txClkPEn.poke(true.B)
       c.io.mmio.txDataChunkIn.initSource()
       c.io.mmio.txDataChunkIn.setSourceClock(c.clock)
       c.io.shufflerCtl.poke(Vec.Lit(Seq.fill(6)(
         Vec.Lit((0 until 32).map(i => i.U(5.W)):_*)
       ):_*))
-      c.io.mmio.txValidFramingMode.poke(TxValidFramingMode.ucie)
-      c.io.mmio.txBitsToSend.poke(64.U)
+      c.io.mmio.txDataMode.poke(DataMode.finite)
+      c.io.mmio.txPacketsToSend.poke(2.U)
       c.io.mmio.txFsmRst.poke(true.B)
       // Set up RX
-      c.io.mmio.rxValidStartThreshold.poke(4.U)
+      c.io.mmio.rxDataMode.poke(DataMode.infinite)
       c.io.mmio.rxFsmRst.poke(true.B)
 
       // Strobe reset
@@ -75,24 +76,24 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       // Check reset state
       c.io.mmio.txFsmRst.poke(false.B)
       c.io.mmio.txTestState.expect(TxTestState.idle)
-      c.io.mmio.txBitsSent.expect(0.U)
-      c.io.mmio.rxBitsReceived.expect(0.U)
+      c.io.mmio.txPacketsSent.expect(0.U)
+      c.io.mmio.rxPacketsReceived.expect(0.U)
       c.io.mmio.rxFsmRst.poke(false.B)
 
       // Test TX data entry
       c.io.mmio.txDataLaneGroup.poke(0.U)
       c.io.mmio.txDataOffset.poke(0.U)
-      c.io.mmio.txDataChunkIn.enqueueNow("h8765_4321_9abc_def0".U)
+      c.io.mmio.txDataChunkIn.enqueueNow("h0f0f_0f0f_8765_4321_9abc_def0".U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
-      c.io.mmio.txDataChunkOut.expect("h8765_4321_9abc_def0".U)
+      c.io.mmio.txDataChunkOut.expect("h0f0f_0f0f_8765_4321_9abc_def0".U)
       c.io.mmio.txDataOffset.poke(1.U)
-      c.io.mmio.txDataChunkIn.enqueueNow("h0fed_cba9_1234_5678".U)
+      c.io.mmio.txDataChunkIn.enqueueNow("h0f0f_0f0f_0fed_cba9_1234_5678".U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
-      c.io.mmio.txDataChunkOut.expect("h0fed_cba9_1234_5678".U)
+      c.io.mmio.txDataChunkOut.expect("h0f0f_0f0f_0fed_cba9_1234_5678".U)
       c.io.mmio.txTestState.expect(TxTestState.idle)
 
       // Give time for clock to reach receiver.
@@ -107,11 +108,11 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.mmio.txTestState.expect(TxTestState.run)
 
       // Wait until all bits are received
-      while (c.io.mmio.rxBitsReceived.peek().litValue < 64) {
+      while (c.io.mmio.rxPacketsReceived.peek().litValue < 2) {
         c.clock.step()
       }
       c.io.mmio.txTestState.expect(TxTestState.done)
-      c.io.mmio.txBitsSent.expect(64.U)
+      c.io.mmio.txPacketsSent.expect(2.U)
 
       // Validate received data
       c.io.mmio.rxDataLane.poke(0.U)
@@ -120,60 +121,66 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
         c.clock.step()
       }
       c.io.mmio.rxDataChunk.expect("h9abc_def0".U)
-      c.io.mmio.rxValidChunk.expect("h0f0f_0f0f".U)
       c.io.mmio.rxDataOffset.poke(1.U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
       c.io.mmio.rxDataChunk.expect("h1234_5678".U)
-      c.io.mmio.rxValidChunk.expect("h0f0f_0f0f".U)
       c.io.mmio.rxDataLane.poke(1.U)
       c.io.mmio.rxDataOffset.poke(0.U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
       c.io.mmio.rxDataChunk.expect("h8765_4321".U)
-      c.io.mmio.rxValidChunk.expect("h0f0f_0f0f".U)
       c.io.mmio.rxDataOffset.poke(1.U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
       c.io.mmio.rxDataChunk.expect("h0fed_cba9".U)
-      c.io.mmio.rxValidChunk.expect("h0f0f_0f0f".U)
+      c.io.mmio.rxDataLane.poke(2.U)
+      c.io.mmio.rxDataOffset.poke(0.U)
+      for (i <- 0 until 4) {
+        c.clock.step()
+      }
+      c.io.mmio.rxDataChunk.expect("h0f0f_0f0f".U)
+      c.io.mmio.rxDataOffset.poke(1.U)
+      for (i <- 0 until 4) {
+        c.clock.step()
+      }
+      c.io.mmio.rxDataChunk.expect("h0f0f_0f0f".U)
 
       // Try a second transmission with different parameters.
-      c.io.mmio.txValidFramingMode.poke(TxValidFramingMode.simple)
-      c.io.mmio.txBitsToSend.poke(96.U)
+      c.io.mmio.txPacketsToSend.poke(3.U)
       c.io.mmio.txFsmRst.poke(true.B)
       c.clock.step()
       c.io.mmio.txFsmRst.poke(false.B)
       c.io.mmio.txTestState.expect(TxTestState.idle)
-      c.io.mmio.txBitsSent.expect(0.U)
+      c.io.mmio.txPacketsSent.expect(0.U)
 
       // Test TX data entry
       c.io.mmio.txDataLaneGroup.poke(0.U)
       c.io.mmio.txDataOffset.poke(0.U)
-      c.io.mmio.txDataChunkIn.enqueueNow("h8765_4321_9abc_def0".U)
+      c.io.mmio.txDataChunkIn.enqueueNow("hffff_ffff_8765_4321_9abc_def0".U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
       c.io.mmio.txDataOffset.poke(1.U)
-      c.io.mmio.txDataChunkIn.enqueueNow("h0fed_cba9_1234_5678".U)
+      c.io.mmio.txDataChunkIn.enqueueNow("hffff_ffff_0fed_cba9_1234_5678".U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
       c.io.mmio.txDataOffset.poke(2.U)
-      c.io.mmio.txDataChunkIn.enqueueNow("hdeed_dea1_cafe_f00d".U)
+      c.io.mmio.txDataChunkIn.enqueueNow("hffff_ffff_deed_dea1_cafe_f00d".U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
       c.io.mmio.txTestState.expect(TxTestState.idle)
 
       // Set up RX
-      c.io.mmio.rxValidStartThreshold.poke(31.U)
+      c.io.mmio.rxDataMode.poke(DataMode.infinite)
       c.io.mmio.rxFsmRst.poke(true.B)
       c.clock.step()
-      c.io.mmio.rxBitsReceived.expect(0.U)
+      c.io.mmio.rxPacketsReceived.expect(0.U)
       c.io.mmio.rxFsmRst.poke(false.B)
       c.clock.step()
 
@@ -184,11 +191,11 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.mmio.txTestState.expect(TxTestState.run)
 
       // Wait until all bits are received
-      while (c.io.mmio.rxBitsReceived.peek().litValue < 96) {
+      while (c.io.mmio.rxPacketsReceived.peek().litValue < 3) {
         c.clock.step()
       }
       c.io.mmio.txTestState.expect(TxTestState.done)
-      c.io.mmio.txBitsSent.expect(96.U)
+      c.io.mmio.txPacketsSent.expect(3.U)
 
       // Validate received data
       c.io.mmio.rxDataLane.poke(0.U)
@@ -197,38 +204,48 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
         c.clock.step()
       }
       c.io.mmio.rxDataChunk.expect("h9abc_def0".U)
-      c.io.mmio.rxValidChunk.expect("hffff_ffff".U)
       c.io.mmio.rxDataOffset.poke(1.U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
       c.io.mmio.rxDataChunk.expect("h1234_5678".U)
-      c.io.mmio.rxValidChunk.expect("hffff_ffff".U)
       c.io.mmio.rxDataOffset.poke(2.U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
       c.io.mmio.rxDataChunk.expect("hcafef00d".U)
-      c.io.mmio.rxValidChunk.expect("hffff_ffff".U)
       c.io.mmio.rxDataLane.poke(1.U)
       c.io.mmio.rxDataOffset.poke(0.U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
       c.io.mmio.rxDataChunk.expect("h8765_4321".U)
-      c.io.mmio.rxValidChunk.expect("hffff_ffff".U)
       c.io.mmio.rxDataOffset.poke(1.U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
       c.io.mmio.rxDataChunk.expect("h0fed_cba9".U)
-      c.io.mmio.rxValidChunk.expect("hffff_ffff".U)
       c.io.mmio.rxDataOffset.poke(2.U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
       c.io.mmio.rxDataChunk.expect("hdeeddea1".U)
-      c.io.mmio.rxValidChunk.expect("hffff_ffff".U)
+      c.io.mmio.rxDataLane.poke(2.U)
+      c.io.mmio.rxDataOffset.poke(0.U)
+      for (i <- 0 until 4) {
+        c.clock.step()
+      }
+      c.io.mmio.rxDataChunk.expect("hffff_ffff".U)
+      c.io.mmio.rxDataOffset.poke(1.U)
+      for (i <- 0 until 4) {
+        c.clock.step()
+      }
+      c.io.mmio.rxDataChunk.expect("hffff_ffff".U)
+      c.io.mmio.rxDataOffset.poke(2.U)
+      for (i <- 0 until 4) {
+        c.clock.step()
+      }
+      c.io.mmio.rxDataChunk.expect("hffff_ffff".U)
     }
   }
 
@@ -246,16 +263,18 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.reset.poke(false.B)
 
       // Set up TX
+      c.io.mmio.txClkPEn.poke(true.B)
       c.io.mmio.txDataChunkIn.initSource()
       c.io.mmio.txDataChunkIn.setSourceClock(c.clock)
       c.io.shufflerCtl.poke(Vec.Lit(Seq.fill(6)(
         Vec.Lit((0 until 32).map(i => i.U(5.W)):_*)
       ):_*))
       c.io.mmio.txTestMode.poke(TxTestMode.lfsr)
-      c.io.mmio.txValidFramingMode.poke(TxValidFramingMode.ucie)
+      c.io.mmio.txDataMode.poke(DataMode.finite)
+      c.io.mmio.txPacketsToSend.poke(8.U)
       c.io.mmio.txFsmRst.poke(true.B)
       // Set up RX
-      c.io.mmio.rxValidStartThreshold.poke(4.U)
+      c.io.mmio.rxDataMode.poke(DataMode.infinite)
       c.io.mmio.rxFsmRst.poke(true.B)
 
       // Set seeds.
@@ -272,8 +291,8 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       // Check reset state
       c.io.mmio.txFsmRst.poke(false.B)
       c.io.mmio.txTestState.expect(TxTestState.idle)
-      c.io.mmio.txBitsSent.expect(0.U)
-      c.io.mmio.rxBitsReceived.expect(0.U)
+      c.io.mmio.txPacketsSent.expect(0.U)
+      c.io.mmio.rxPacketsReceived.expect(0.U)
       c.io.mmio.rxFsmRst.poke(false.B)
 
       // Give time for clock to reach receiver.
@@ -288,7 +307,7 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.mmio.txTestState.expect(TxTestState.run)
 
       // Wait until 256 bits are received
-      while (c.io.mmio.rxBitsReceived.peek().litValue < 256) {
+      while (c.io.mmio.rxPacketsReceived.peek().litValue < 8) {
         c.clock.step()
       }
 
@@ -298,7 +317,6 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       }
 
       // Try a second transmission where the LFSR seeds to not match up
-      c.io.mmio.txValidFramingMode.poke(TxValidFramingMode.simple)
       c.io.mmio.txFsmRst.poke(true.B)
 
       // Set seeds.
@@ -307,19 +325,26 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.mmio.txLfsrSeed(1).poke(1.U)
       c.io.mmio.rxLfsrSeed(1).poke(3.U)
 
-      c.clock.step()
+      // Set up RX
+      c.io.mmio.rxDataMode.poke(DataMode.infinite)
+      c.io.mmio.rxFsmRst.poke(true.B)
+
+      // Strobe reset
+      for (i <- 0 until 64) {
+        c.clock.step()
+      }
 
       c.io.mmio.txFsmRst.poke(false.B)
       c.io.mmio.txTestState.expect(TxTestState.idle)
-      c.io.mmio.txBitsSent.expect(0.U)
-
-      // Set up RX
-      c.io.mmio.rxValidStartThreshold.poke(31.U)
-      c.io.mmio.rxFsmRst.poke(true.B)
-      c.clock.step()
-      c.io.mmio.rxBitsReceived.expect(0.U)
+      c.io.mmio.txPacketsSent.expect(0.U)
+      c.io.mmio.rxPacketsReceived.expect(0.U)
       c.io.mmio.rxFsmRst.poke(false.B)
       c.clock.step()
+
+      // Give time for clock to reach receiver.
+      for (i <- 0 until 100) {
+        c.clock.step()
+      }
 
       // Start transmitting data
       c.io.mmio.txExecute.poke(true.B)
@@ -328,7 +353,7 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.mmio.txTestState.expect(TxTestState.run)
 
       // Wait until all bits are received
-      while (c.io.mmio.rxBitsReceived.peek().litValue < 256) {
+      while (c.io.mmio.rxPacketsReceived.peek().litValue < 8) {
         c.clock.step()
       }
       c.io.mmio.rxBitErrors(0).expect(0.U)
@@ -350,6 +375,7 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.reset.poke(false.B)
 
       // Set up TX
+      c.io.mmio.txClkPEn.poke(true.B)
       c.io.mmio.txDataChunkIn.initSource()
       c.io.shufflerCtl.poke(Vec.Lit((0 until 6).map(lane =>
         if (lane < 2) {
@@ -359,11 +385,10 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
         }
       ):_*))
       c.io.mmio.txDataChunkIn.setSourceClock(c.clock)
-      c.io.mmio.txValidFramingMode.poke(TxValidFramingMode.ucie)
-      c.io.mmio.txBitsToSend.poke(64.U)
+      c.io.mmio.txPacketsToSend.poke(2.U)
       c.io.mmio.txFsmRst.poke(true.B)
       // Set up RX
-      c.io.mmio.rxValidStartThreshold.poke(4.U)
+      c.io.mmio.rxDataMode.poke(DataMode.infinite)
       c.io.mmio.rxFsmRst.poke(true.B)
 
       // Strobe reset
@@ -374,24 +399,24 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       // Check reset state
       c.io.mmio.txFsmRst.poke(false.B)
       c.io.mmio.txTestState.expect(TxTestState.idle)
-      c.io.mmio.txBitsSent.expect(0.U)
-      c.io.mmio.rxBitsReceived.expect(0.U)
+      c.io.mmio.txPacketsSent.expect(0.U)
+      c.io.mmio.rxPacketsReceived.expect(0.U)
       c.io.mmio.rxFsmRst.poke(false.B)
 
       // Test TX data entry
       c.io.mmio.txDataLaneGroup.poke(0.U)
       c.io.mmio.txDataOffset.poke(0.U)
-      c.io.mmio.txDataChunkIn.enqueueNow("h8765_4321_9abc_def0".U)
+      c.io.mmio.txDataChunkIn.enqueueNow("h0f0f_0f0f_8765_4321_9abc_def0".U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
-      c.io.mmio.txDataChunkOut.expect("h8765_4321_9abc_def0".U)
+      c.io.mmio.txDataChunkOut.expect("h0f0f_0f0f_8765_4321_9abc_def0".U)
       c.io.mmio.txDataOffset.poke(1.U)
-      c.io.mmio.txDataChunkIn.enqueueNow("h0fed_cba9_1234_5678".U)
+      c.io.mmio.txDataChunkIn.enqueueNow("h0f0f_0f0f_0fed_cba9_1234_5678".U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
-      c.io.mmio.txDataChunkOut.expect("h0fed_cba9_1234_5678".U)
+      c.io.mmio.txDataChunkOut.expect("h0f0f_0f0f_0fed_cba9_1234_5678".U)
       c.io.mmio.txTestState.expect(TxTestState.idle)
 
       // Give time for clock to reach receiver.
@@ -406,11 +431,11 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
       c.io.mmio.txTestState.expect(TxTestState.run)
 
       // Wait until all bits are received
-      while (c.io.mmio.rxBitsReceived.peek().litValue < 64) {
+      while (c.io.mmio.rxPacketsReceived.peek().litValue < 2) {
         c.clock.step()
       }
       c.io.mmio.txTestState.expect(TxTestState.done)
-      c.io.mmio.txBitsSent.expect(64.U)
+      c.io.mmio.txPacketsSent.expect(2.U)
 
       // Validate received data
       c.io.mmio.rxDataLane.poke(0.U)
@@ -419,26 +444,33 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
         c.clock.step()
       }
       c.io.mmio.rxDataChunk.expect("h0f7b_3d59".U)
-      c.io.mmio.rxValidChunk.expect("h0f0f_0f0f".U)
       c.io.mmio.rxDataOffset.poke(1.U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
       c.io.mmio.rxDataChunk.expect("h1e6a_2c48".U)
-      c.io.mmio.rxValidChunk.expect("h0f0f_0f0f".U)
       c.io.mmio.rxDataLane.poke(1.U)
       c.io.mmio.rxDataOffset.poke(0.U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
       c.io.mmio.rxDataChunk.expect("h84c2_a6e1".U)
-      c.io.mmio.rxValidChunk.expect("h0f0f_0f0f".U)
       c.io.mmio.rxDataOffset.poke(1.U)
       for (i <- 0 until 4) {
         c.clock.step()
       }
       c.io.mmio.rxDataChunk.expect("h95d3_b7f0".U)
-      c.io.mmio.rxValidChunk.expect("h0f0f_0f0f".U)
+      c.io.mmio.rxDataLane.poke(2.U)
+      c.io.mmio.rxDataOffset.poke(0.U)
+      for (i <- 0 until 4) {
+        c.clock.step()
+      }
+      c.io.mmio.rxDataChunk.expect("h0f0f_0f0f".U)
+      c.io.mmio.rxDataOffset.poke(1.U)
+      for (i <- 0 until 4) {
+        c.clock.step()
+      }
+      c.io.mmio.rxDataChunk.expect("h0f0f_0f0f".U)
     }
   }
 }
