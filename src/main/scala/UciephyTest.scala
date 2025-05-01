@@ -11,7 +11,7 @@ import org.chipsalliance.cde.config.{Parameters, Field, Config}
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.regmapper.{HasRegMap, RegField, RegWriteFn, RegReadFn, RegFieldDesc}
 import freechips.rocketchip.tilelink._
-import uciephytest.phy.{Phy, UciePllCtlIO, PhyToTestIO, TxLaneDigitalCtlIO, RxLaneCtlIO, DriverControlIO, TxSkewControlIO, RxAfeIO}
+import uciephytest.phy.{Phy, UciePllCtlIO, PhyToTestIO, TxLaneDigitalCtlIO, RxLaneDigitalCtlIO, RxLaneCtlIO, DriverControlIO, TxSkewControlIO, RxAfeIO}
 import freechips.rocketchip.util.{AsyncQueueParams}
 import testchipip.soc.{OBUS}
 import edu.berkeley.cs.ucie.digital.tilelink._
@@ -74,8 +74,10 @@ class UciephyTopIO(numLanes: Int = 16) extends Bundle {
   val txData = Output(Vec(numLanes, Bool()))
   val txValid = Output(Bool())
   val txTrack = Output(Bool())
-  val refClkP = Input(Clock())
-  val refClkN = Input(Clock())
+  val pllRefClkP = Input(Clock())
+  val pllRefClkN = Input(Clock())
+  val testPllRefClkP = Input(Clock())
+  val testPllRefClkN = Input(Clock())
   val sbClk = Input(Clock())
   val txClkP = Output(Clock())
   val txClkN = Output(Clock())
@@ -91,6 +93,7 @@ class UciephyTopIO(numLanes: Int = 16) extends Bundle {
   val sbRxClk = Input(Clock())
   val sbRxData = Input(Bool())
   val pllRdacVref = Input(Bool())
+  val testPllRdacVref = Input(Bool())
   val debug = Output(new UciephyDebugIO())
 }
 
@@ -510,7 +513,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       }
   override lazy val desiredName = "UciephyTestTL"
   val device = new SimpleDevice("uciephytest", Seq("ucbbar,uciephytest"))
-  val node = TLRegisterNode(Seq(AddressSet(params.address, 8192-1)), device, "reg/control", beatBytes=beatBytes)
+  val node = TLRegisterNode(Seq(AddressSet(params.address, 16384-1)), device, "reg/control", beatBytes=beatBytes)
 
   val topIO = BundleBridgeSource(() => new UciephyTopIO(params.numLanes))
 
@@ -573,6 +576,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val pllBypassEn = RegInit(false.B)
       val txctl = RegInit(VecInit(Seq.fill(params.numLanes + 4)({
         val w = Wire(new TxLaneDigitalCtlIO)
+        w.dll_reset := true.B
         w.driver.pu_ctl := 0.U
         w.driver.pd_ctl := 0.U
         w.driver.en := false.B
@@ -591,15 +595,18 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         w
       })))
       val rxctl = RegInit(VecInit(Seq.fill(params.numLanes + 4)({
-        val w = Wire(new RxLaneCtlIO)
+        val w = Wire(new RxLaneDigitalCtlIO)
         w.zen := false.B
         w.zctl := 0.U
-        w.afe.aEn := false.B
-        w.afe.aPc := true.B
-        w.afe.bEn := false.B
-        w.afe.bPc := true.B
-        w.afe.selA := false.B
         w.vref_sel := 63.U
+        w.afeBypassEn := false.B
+        w.afeOpCycles := 16.U
+        w.afeOverlapCycles := 2.U
+        w.afeBypass.aEn := false.B
+        w.afeBypass.aPc := true.B
+        w.afeBypass.bEn := false.B
+        w.afeBypass.bPc := true.B
+        w.afeBypass.selA := false.B
         w
         }
         )))
@@ -797,6 +804,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         toRegFieldRw(pllBypassEn, "pllBypassEn")
       ) ++ (0 until params.numLanes + 4).flatMap((i: Int) => {
           Seq(
+            toRegField(txctl(i).dll_reset, "dll_reset"),
             toRegFieldRw(txctl(i).driver, s"txctl_${i}_driver"),
             toRegFieldRw(txctl(i).skew, s"txctl_${i}_driver"),
             ) ++ (0 until 32).map((j: Int) => 
@@ -806,10 +814,13 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
           )
       }) ++ (0 until params.numLanes + 3).flatMap((i: Int) => {
           Seq(
-            toRegFieldRw(rxctl(i).zen, s"rxctl_${i}_zen"),
-            toRegFieldRw(rxctl(i).zctl, s"rxctl_${i}_zctl"),
-            toRegFieldRw(rxctl(i).afe, s"rxctl_${i}_afe"),
-            toRegFieldRw(rxctl(i).vref_sel, s"rxctl_${i}_vref_sel"),
+            toRegField(rxctl(i).zen, "zen"),
+            toRegField(rxctl(i).zctl, "zctl"),
+            toRegField(rxctl(i).vref_sel, "vref_sel"),
+            toRegField(rxctl(i).afeBypassEn, "afeBypassEn"),
+            toRegField(rxctl(i).afeBypass, "afeBypass"),
+            toRegField(rxctl(i).afeOpCycles, "afeOpCycles"),
+            toRegField(rxctl(i).afeOverlapCycles, "afeOverlapCycles"),
           )
       }) ++ Seq(
         RegField.w(1, ucieStack, RegFieldDesc("ucieStack", "")),

@@ -493,6 +493,13 @@ class RxAfeCtl extends Module {
   val ctrinc = Wire(UInt(17.W))
   ctrinc := ctr + 1.U
 
+    io.afe := (new RxAfeIO).Lit(
+      _.aEn -> false.B,
+      _.aPc -> true.B,
+      _.bEn -> false.B,
+      _.bPc -> true.B,
+      _.selA -> true.B
+    )
   when (reset.asBool) {
     io.afe := (new RxAfeIO).Lit(
       _.aEn -> false.B,
