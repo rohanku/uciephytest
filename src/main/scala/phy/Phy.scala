@@ -184,6 +184,16 @@ class TxLaneDigitalCtlIO extends Bundle {
   val shuffler = Vec(32, UInt(5.W))
 }
 
+class RxLaneDigitalCtlIO extends Bundle {
+  val zen = Bool()
+  val zctl = UInt(5.W)
+  val vref_sel = UInt(7.W)
+  val afeBypass = new RxAfeIO
+  val afeBypassEn = Bool()
+  val afeOpCycles = UInt(16.W)
+  val afeOverlapCycles = UInt(16.W)
+}
+
 class PhyIO(numLanes: Int = 16) extends Bundle {
   // TX CONTROL
   // Lane control (`numLanes` data lanes, 1 valid lane, 2 clock lanes, 1 track lane).
@@ -196,7 +206,7 @@ class PhyIO(numLanes: Int = 16) extends Bundle {
 
   // RX CONTROL
   // Termination impedance control per lane (`numLanes` data lanes, 1 valid lane, 2 clock lanes, 1 track lane).
-  val rxctl = Input(Vec(numLanes + 4, new RxLaneCtlIO))
+  val rxctl = Input(Vec(numLanes + 4, new RxLaneDigitalCtlIO))
 
   // If 1, PHY uses bypass clk. If 0, PHY uses PLL clk.
   val pllBypassEn = Input(Bool())
@@ -243,11 +253,31 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
 
   // Set up clocking
   val rxClkP = Module(new RxClkLane(sim))
+  val rxClkPAfeCtl = Module(new RxAfeCtl())
+  val rxClkPCtlWire = Wire(new RxLaneDigitalCtlIO())
+  rxClkPCtlWire := io.rxctl(numLanes + 1)
   rxClkP.io.clkin := io.top.rxClkP.asBool
-  rxClkP.io.ctl := io.rxctl(numLanes + 1)
+  rxClkP.io.ctl.zen := rxClkPCtlWire.zen
+  rxClkP.io.ctl.zctl := rxClkPCtlWire.zctl
+  rxClkP.io.ctl.vref_sel := rxClkPCtlWire.vref_sel
+  rxClkPAfeCtl.io.bypass := rxClkPCtlWire.afeBypassEn
+  rxClkPAfeCtl.io.afeBypass := rxClkPCtlWire.afeBypass
+  rxClkPAfeCtl.io.opCycles := rxClkPCtlWire.afeOpCycles
+  rxClkPAfeCtl.io.overlapCycles := rxClkPCtlWire.afeOverlapCycles
+  rxClkP.io.ctl.afe := rxClkPAfeCtl.io.afe
   val rxClkN = Module(new RxClkLane(sim))
+  val rxClkNAfeCtl = Module(new RxAfeCtl())
+  val rxClkNCtlWire = Wire(new RxLaneDigitalCtlIO())
+  rxClkNCtlWire := io.rxctl(numLanes + 2)
   rxClkN.io.clkin := io.top.rxClkN.asBool
-  rxClkN.io.ctl := io.rxctl(numLanes + 2)
+  rxClkN.io.ctl.zen := rxClkNCtlWire.zen
+  rxClkN.io.ctl.zctl := rxClkNCtlWire.zctl
+  rxClkN.io.ctl.vref_sel := rxClkNCtlWire.vref_sel
+  rxClkNAfeCtl.io.bypass := rxClkNCtlWire.afeBypassEn
+  rxClkNAfeCtl.io.afeBypass := rxClkNCtlWire.afeBypass
+  rxClkNAfeCtl.io.opCycles := rxClkNCtlWire.afeOpCycles
+  rxClkNAfeCtl.io.overlapCycles := rxClkNCtlWire.afeOverlapCycles
+  rxClkN.io.ctl.afe := rxClkNAfeCtl.io.afe
 
   val pll = Module(new UciePll)
   pll.io.vclk_ref := io.top.pllRefClkP.asBool
@@ -413,22 +443,32 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
 
   for (lane <- 0 to numLanes + 1) {
     val rxLane = Module(new RxDataLane(sim))
+    val rxLaneAfeCtl = Module(new RxAfeCtl())
+    val rxctlWire = Wire(new RxLaneDigitalCtlIO())
     if (lane < numLanes) {
       rxLane.suggestName(s"rxdata$lane")
       rxLane.io.din := io.top.rxData(lane)
       rxFifo.io.enq.bits.data(lane) := rxLane.io.dout
-      rxLane.io.ctl := io.rxctl(lane)
+      rxctlWire := io.rxctl(lane)
     } else if (lane == numLanes) {
       rxLane.suggestName(s"rxvalid")
       rxLane.io.din := io.top.rxValid
       rxFifo.io.enq.bits.valid := rxLane.io.dout
-      rxLane.io.ctl := io.rxctl(lane)
+      rxctlWire := io.rxctl(lane)
     } else {
       rxLane.suggestName(s"rxtrack")
       rxLane.io.din := io.top.rxTrack
       rxFifo.io.enq.bits.track := rxLane.io.dout
-      rxLane.io.ctl := io.rxctl(numLanes + 3)
+      rxctlWire := io.rxctl(numLanes + 3)
     }
+    rxLane.io.ctl.zen := rxctlWire.zen
+    rxLane.io.ctl.zctl := rxctlWire.zctl
+    rxLane.io.ctl.vref_sel := rxctlWire.vref_sel
+    rxLaneAfeCtl.io.bypass := rxctlWire.afeBypassEn
+    rxLaneAfeCtl.io.afeBypass := rxctlWire.afeBypass
+    rxLaneAfeCtl.io.opCycles := rxctlWire.afeOpCycles
+    rxLaneAfeCtl.io.overlapCycles := rxctlWire.afeOverlapCycles
+    rxLane.io.ctl.afe := rxLaneAfeCtl.io.afe
     rxLane.io.clk := rxClkP.io.clkout.asClock
     rxLane.io.resetb := !reset.asBool
   }

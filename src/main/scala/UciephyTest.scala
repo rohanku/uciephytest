@@ -11,7 +11,7 @@ import org.chipsalliance.cde.config.{Parameters, Field, Config}
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.regmapper.{HasRegMap, RegField, RegWriteFn, RegReadFn, RegFieldDesc}
 import freechips.rocketchip.tilelink._
-import uciephytest.phy.{Phy, UciePllCtlIO, PhyToTestIO, TxLaneDigitalCtlIO, RxLaneCtlIO, DriverControlIO, TxSkewControlIO, RxAfeIO}
+import uciephytest.phy.{Phy, UciePllCtlIO, PhyToTestIO, TxLaneDigitalCtlIO, RxLaneDigitalCtlIO, RxLaneCtlIO, DriverControlIO, TxSkewControlIO, RxAfeIO}
 import freechips.rocketchip.util.{AsyncQueueParams}
 import testchipip.soc.{OBUS}
 import edu.berkeley.cs.ucie.digital.tilelink._
@@ -585,7 +585,7 @@ def toRegField[T <: Data](r: T): RegField = {
       }
   override lazy val desiredName = "UciephyTestTL"
   val device = new SimpleDevice("uciephytest", Seq("ucbbar,uciephytest"))
-  val node = TLRegisterNode(Seq(AddressSet(params.address, 8192-1)), device, "reg/control", beatBytes=beatBytes)
+  val node = TLRegisterNode(Seq(AddressSet(params.address, 16384-1)), device, "reg/control", beatBytes=beatBytes)
 
   val topIO = BundleBridgeSource(() => new UciephyTopIO(params.numLanes))
 
@@ -677,15 +677,18 @@ def toRegField[T <: Data](r: T): RegField = {
       //     )
       //   )))
       val rxctl = RegInit(VecInit(Seq.fill(params.numLanes + 4)({
-        val w = Wire(new RxLaneCtlIO)
+        val w = Wire(new RxLaneDigitalCtlIO)
         w.zen := false.B
         w.zctl := 0.U
-        w.afe.aEn := false.B
-        w.afe.aPc := true.B
-        w.afe.bEn := false.B
-        w.afe.bPc := true.B
-        w.afe.selA := false.B
         w.vref_sel := 63.U
+        w.afeBypassEn := false.B
+        w.afeOpCycles := 16.U
+        w.afeOverlapCycles := 2.U
+        w.afeBypass.aEn := false.B
+        w.afeBypass.aPc := true.B
+        w.afeBypass.bEn := false.B
+        w.afeBypass.bPc := true.B
+        w.afeBypass.selA := false.B
         w
         }
         )))
@@ -940,8 +943,11 @@ def toRegField[T <: Data](r: T): RegField = {
           Seq(
             toRegField(rxctl(i).zen),
             toRegField(rxctl(i).zctl),
-            toRegField(rxctl(i).afe),
             toRegField(rxctl(i).vref_sel),
+            toRegField(rxctl(i).afeBypassEn),
+            toRegField(rxctl(i).afeBypass),
+            toRegField(rxctl(i).afeOpCycles),
+            toRegField(rxctl(i).afeOverlapCycles),
           )
       }) ++ Seq(
         RegField.w(1, ucieStack),
