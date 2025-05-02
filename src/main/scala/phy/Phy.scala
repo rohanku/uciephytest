@@ -423,7 +423,9 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
     txLane.io.ser_resetb := !reset.asBool
     txLane.io.clkp := txClkP_wire
     txLane.io.clkn := txClkN_wire
-    txLane.io.din := shuffler.io.dout.asTypeOf(txLane.io.din)
+    txLane.io.din := withClockAndReset(txClkDiv.io.clkout_3.asClock, !rstSyncTx.io.rstbSync) {
+      ShiftRegister(shuffler.io.dout.asTypeOf(txLane.io.din), 2, 0.U.asTypeOf(txLane.io.din), true.B)
+    }
     if (lane < numLanes) {
       io.top.txData(lane) := txLane.io.dout
     } else if (lane == numLanes) {
