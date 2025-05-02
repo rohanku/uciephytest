@@ -27,8 +27,6 @@ class RxIO(numLanes: Int = 16) extends Bundle  {
 class PhyToTestIO(numLanes: Int = 16) extends Bundle {
   val tx = Flipped(DecoupledIO(new TxIO(numLanes)))
   val rx = DecoupledIO(new RxIO(numLanes))
-  val txRst = Input(Bool())
-  val rxRst = Input(Bool())
 }
 
 class SidebandIO extends Bundle {
@@ -109,6 +107,9 @@ class RstSync(sim: Boolean = true) extends BlackBox with HasBlackBoxInline {
       | input rstbAsync,
       | output reg rstbSync
       |);
+      | always @(negedge rstbAsync) begin
+      |   rstbSync <= rstbAsync;
+      | end
       | always @(posedge clk) begin
       |   rstbSync <= rstbAsync;
       | end
@@ -279,7 +280,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   rxClkNAfeCtl.io.overlapCycles := rxClkNCtlWire.afeOverlapCycles
   rxClkN.io.ctl.afe := rxClkNAfeCtl.io.afe
 
-  val pll = Module(new UciePll)
+  val pll = Module(new UciePll(sim))
   pll.io.vclk_ref := io.top.pllRefClkP.asBool
   pll.io.vclk_refb := io.top.pllRefClkN.asBool
   pll.io.dref_low := io.pllCtl.dref_low
@@ -299,7 +300,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   io.pllOutput.d_fcw_debug := pll.io.d_fcw_debug
   io.pllOutput.d_sar_debug := pll.io.d_sar_debug
 
-  val testPll = Module(new UciePll)
+  val testPll = Module(new UciePll(sim))
   testPll.io.vclk_ref := io.top.testPllRefClkP.asBool
   testPll.io.vclk_refb := io.top.testPllRefClkN.asBool
   testPll.io.dref_low := io.testPllCtl.dref_low
@@ -340,11 +341,11 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   txClkP_wire := clkMuxP.io.out
   txClkN_wire := clkMuxN.io.out
   
-  val txClkDiv = Module(new ClkDiv4)
+  val txClkDiv = Module(new ClkDiv4(sim))
   txClkDiv.io.clk := txClkP_wire
-  txClkDiv.io.resetb := !io.test.txRst.asBool
+  txClkDiv.io.resetb := !reset.asBool
   val rstSyncTx = Module(new RstSync(sim))
-  rstSyncTx.io.rstbAsync := !io.test.txRst.asBool
+  rstSyncTx.io.rstbAsync := !reset.asBool
   rstSyncTx.io.clk := txClkDiv.io.clkout_3
 
   val txFifo = Module(new AsyncQueue(new TxIO(numLanes), Phy.QueueParams))
@@ -357,23 +358,23 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   txFifo.io.deq_clock := txClkDiv.io.clkout_3.asClock
   io.test.tx.ready := txFifo.io.enq.ready
   txFifo.io.enq_clock := clock
-  txFifo.io.enq_reset := io.test.txRst
+  txFifo.io.enq_reset := reset
   txFifo.io.deq_reset := !rstSyncTx.io.rstbSync.asBool
   txFifo.io.deq.ready := true.B
   
-  val rxClkDiv = Module(new ClkDiv4)
+  val rxClkDiv = Module(new ClkDiv4(sim))
   rxClkDiv.io.clk := rxClkP.io.clkout
-  rxClkDiv.io.resetb := !io.test.rxRst.asBool
+  rxClkDiv.io.resetb := !reset.asBool
   val rstSyncRx = Module(new RstSync(sim))
-  rstSyncRx.io.rstbAsync := !io.test.rxRst.asBool
+  rstSyncRx.io.rstbAsync := !reset.asBool
   rstSyncRx.io.clk := rxClkDiv.io.clkout_3
 
   val rxFifo = Module(new AsyncQueue(new RxIO(numLanes), Phy.QueueParams))
   rxFifo.io.enq.valid := true.B
-  rxFifo.io.enq_reset := !rstSyncRx.io.rstbAsync.asBool
+  rxFifo.io.enq_reset := !rstSyncRx.io.rstbSync.asBool
   rxFifo.io.deq_clock := clock
   rxFifo.io.enq_clock := rxClkDiv.io.clkout_3.asClock
-  rxFifo.io.deq_reset := io.test.rxRst
+  rxFifo.io.deq_reset := reset
   rxFifo.io.deq.ready := io.test.rx.ready
   io.test.rx.valid := rxFifo.io.deq.valid
   io.test.rx.bits.data := rxFifo.io.deq.bits.data
@@ -483,8 +484,38 @@ class ClkDiv4IO extends Bundle {
   val clkout_3 = Output(Bool())
 }
 
-class ClkDiv4 extends BlackBox {
+class ClkDiv4(sim: Boolean = false) extends BlackBox with HasBlackBoxInline {
   val io = IO(new ClkDiv4IO)
 
   override val desiredName = "clock_div_4_with_rst_sync"
+
+  if (sim) {
+    setInline("clock_div_4_with_rst_sync.v",
+      """module clock_div_4_with_rst_sync(
+      |  input clk, resetb,
+      |  output reg clkout_0, clkout_1, clkout_2, clkout_3
+      |);
+      |  always @(negedge resetb) begin
+      |    clkout_0 <= 1'b0;
+      |    clkout_1 <= 1'b0;
+      |    clkout_2 <= 1'b0;
+      |    clkout_3 <= 1'b0;
+      |  end
+      |  always @(posedge clk) begin
+      |    if (resetb) begin
+      |    	clkout_0 <= ~clkout_0;
+      |    end
+      |  end
+      |  always @(posedge clkout_0) begin
+      |    clkout_1 <= ~clkout_1;
+      |  end
+      |  always @(posedge clkout_1) begin
+      |    clkout_2 <= ~clkout_2;
+      |  end
+      |  always @(posedge clkout_2) begin
+      |    clkout_3 <= ~clkout_3;
+      |  end
+      |endmodule
+      """.stripMargin)
+  }
 }
