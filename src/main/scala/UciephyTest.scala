@@ -808,13 +808,13 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
           )
       }) ++ (0 until params.numLanes + 3).flatMap((i: Int) => {
           Seq(
-            toRegFieldRw(rxctl(i).zen, "zen"),
-            toRegFieldRw(rxctl(i).zctl, "zctl"),
-            toRegFieldRw(rxctl(i).vref_sel, "vref_sel"),
-            toRegFieldRw(rxctl(i).afeBypassEn, "afeBypassEn"),
-            toRegFieldRw(rxctl(i).afeBypass, "afeBypass"),
-            toRegFieldRw(rxctl(i).afeOpCycles, "afeOpCycles"),
-            toRegFieldRw(rxctl(i).afeOverlapCycles, "afeOverlapCycles"),
+            toRegFieldRw(rxctl(i).zen, s"zen_$i"),
+            toRegFieldRw(rxctl(i).zctl, s"zctl_$i"),
+            toRegFieldRw(rxctl(i).vref_sel, s"vref_sel_$i"),
+            toRegFieldRw(rxctl(i).afeBypassEn, s"afeBypassEn_$i"),
+            toRegFieldRw(rxctl(i).afeBypass, s"afeBypass_$i"),
+            toRegFieldRw(rxctl(i).afeOpCycles, s"afeOpCycles_$i"),
+            toRegFieldRw(rxctl(i).afeOverlapCycles, s"afeOverlapCycles_$i"),
           )
       }) ++ Seq(
         RegField.w(1, ucieStack, RegFieldDesc("ucieStack", "")),

@@ -498,7 +498,7 @@ module tx_lane (
   output dll_code_3,
   output dll_code_4
 );
-  wire rstbAsync = !(!ser_resetb || !dll_resetb || dll_reset);
+  wire rstbAsync = ser_resetb;
   reg rstbSync;
   always @(negedge rstbAsync) begin
     rstbSync <= rstbAsync;
@@ -561,7 +561,7 @@ module tx_lane (
   always @(posedge clkn) begin
     shiftReg <= shiftReg >> 1'b1;
   end
-  assign dout = shiftReg[0];
+  assign dout = (dll_reset || !dll_resetb) ? 1'b0 : shiftReg[0];
   assign dll_code_0 = 1'b0;
   assign dll_code_1 = 1'b0;
   assign dll_code_2 = 1'b0;
@@ -1521,8 +1521,9 @@ module ucie_pll (
    input d_accumulator_reset_30,
    input d_accumulator_reset_31
 );
-  assign vp_out = vclk_ref;
-  assign vn_out = vclk_refb;
+  wire reset = dvco_reset || !dvco_resetn || d_digital_reset;
+  assign vp_out = reset ? 1'b0 : vclk_ref;
+  assign vn_out = reset ? 1'b0 : vclk_refb;
   assign d_fcw_debug_0 = 1'b0;
   assign d_fcw_debug_1 = 1'b0;
   assign d_fcw_debug_2 = 1'b0;
