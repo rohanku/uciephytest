@@ -14,8 +14,12 @@ class UciephyTestHarness(bufferDepthPerLane: Int = 10, numLanes: Int = 2) extend
   io.mmio <> test.io.mmio
   val phy = Module(new uciephytest.phy.Phy(numLanes, sim = true))
   test.io.phy <> phy.io.test
-  phy.io.top.refClkP := clock
-  phy.io.top.refClkN := (!clock.asBool).asClock
+  phy.io.top.testPllRefClkP := clock
+  phy.io.top.testPllRefClkN := (!clock.asBool).asClock
+  phy.io.top.testPllRdacVref := true.B
+  phy.io.top.pllRefClkP := clock
+  phy.io.top.pllRefClkN := (!clock.asBool).asClock
+  phy.io.top.pllRdacVref := true.B
   phy.io.top.bypassClkP := clock
   phy.io.top.bypassClkN := (!clock.asBool).asClock
   phy.io.top.rxClkP := phy.io.top.txClkP

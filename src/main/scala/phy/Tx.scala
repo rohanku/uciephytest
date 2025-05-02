@@ -498,7 +498,7 @@ module tx_lane (
   output dll_code_3,
   output dll_code_4
 );
-  wire rstbAsync = !(!(ser_resetb || dll_resetb) || dll_reset);
+  wire rstbAsync = !(!ser_resetb || !dll_resetb || dll_reset);
   reg rstbSync;
   always @(negedge rstbAsync) begin
     rstbSync <= rstbAsync;
