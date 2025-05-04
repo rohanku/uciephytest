@@ -36,21 +36,21 @@ class SidebandIO extends Bundle {
   val rxData = Output(Bool())
 }
 
-class RefClkRxIO extends Bundle {
+class ClkRxIO extends Bundle {
   val vip = Input(Bool())
   val vin = Input(Bool())
   val vop = Output(Bool())
   val von = Output(Bool())
 }
 
-class RefClkRx(sim: Boolean = false) extends BlackBox with HasBlackBoxInline {
-  val io = IO(new RefClkRxIO)
+class ClkRx(sim: Boolean = false) extends BlackBox with HasBlackBoxInline {
+  val io = IO(new ClkRxIO)
 
-  override val desiredName = "refclkrx"
+  override val desiredName = "clkrx_with_esd"
 
   if (sim) {
-    setInline("refclkrx.v",
-      """module refclkrx(
+    setInline("clkrx_with_esd.v",
+      """module clkrx_with_esd(
       | input vip, vin,
       | output vop, von
       |);
@@ -281,8 +281,8 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   rxClkN.io.ctl.afe := rxClkNAfeCtl.io.afe
 
   val pll = Module(new UciePll(sim))
-  pll.io.vclk_ref := io.top.pllRefClkP.asBool
-  pll.io.vclk_refb := io.top.pllRefClkN.asBool
+  pll.io.vclk_ref := io.top.refClkP.asBool
+  pll.io.vclk_refb := io.top.refClkN.asBool
   pll.io.dref_low := io.pllCtl.dref_low
   pll.io.dref_high := io.pllCtl.dref_high
   pll.io.vrdac_ref := io.top.pllRdacVref
@@ -301,8 +301,8 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   io.pllOutput.d_sar_debug := pll.io.d_sar_debug
 
   val testPll = Module(new UciePll(sim))
-  testPll.io.vclk_ref := io.top.testPllRefClkP.asBool
-  testPll.io.vclk_refb := io.top.testPllRefClkN.asBool
+  testPll.io.vclk_ref := io.top.refClkP.asBool
+  testPll.io.vclk_refb := io.top.refClkN.asBool
   testPll.io.dref_low := io.testPllCtl.dref_low
   testPll.io.dref_high := io.testPllCtl.dref_high
   testPll.io.vrdac_ref := io.top.testPllRdacVref
