@@ -21,6 +21,22 @@ class TxDinIO extends Bundle {
   val din_13 = Input(Bool())
   val din_14 = Input(Bool())
   val din_15 = Input(Bool())
+  val din_16 = Input(Bool())
+  val din_17 = Input(Bool())
+  val din_18 = Input(Bool())
+  val din_19 = Input(Bool())
+  val din_20 = Input(Bool())
+  val din_21 = Input(Bool())
+  val din_22 = Input(Bool())
+  val din_23 = Input(Bool())
+  val din_24 = Input(Bool())
+  val din_25 = Input(Bool())
+  val din_26 = Input(Bool())
+  val din_27 = Input(Bool())
+  val din_28 = Input(Bool())
+  val din_29 = Input(Bool())
+  val din_30 = Input(Bool())
+  val din_31 = Input(Bool())
 }
 
 class RxDoutIO extends Bundle {
