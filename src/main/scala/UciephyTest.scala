@@ -627,7 +627,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val dllCodeDelayed = ShiftRegister(dllCode, 3, true.B)
 
       // UCIe logphy related
-      val ucieStack = RegInit(false.B)
+      val ucieStack = RegInit(true.B) //ELLA CHANGED THIS NO COMMIT
       val maxPatternCountWidth = log2Ceil(params.linkTrainingParams.maxPatternCount + 1)
       val pattern = RegInit(0.U(2.W))
       val patternUICount = RegInit(0.U(maxPatternCountWidth.W))
@@ -693,6 +693,9 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         uciTL.module.io.phyAfe.get.rx.noenq()
         uciTL.module.io.rxSbAfe.clk := 0.U
         uciTL.module.io.rxSbAfe.data := 0.U.asTypeOf(uciTL.module.io.rxSbAfe.data)
+        // Tie sideband to 0 for simple test
+        phy.io.sideband.txClk := false.B
+        phy.io.sideband.txData := false.B
       }
 
       uciTL.module.io.train.get.pattern := pattern.asTypeOf(TransmitPattern())
@@ -703,9 +706,6 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       errorCounts := uciTL.module.io.train.get.errorCounts
 
       topIO.out(0)._1 <> phy.io.top
-      // Tie sideband to 0 for simple test
-      phy.io.sideband.txClk := false.B
-      phy.io.sideband.txData := false.B
 
       phy.io.driverPuCtl := driverPuCtlDelayed
       phy.io.driverPdCtl := driverPdCtlDelayed

@@ -380,10 +380,11 @@ class Phy(numLanes: Int = 2, sim: Boolean = false) extends Module {
     } .otherwise {
       serializer.io.din := 0.U
     }
-    val shuffler = Module(new Shuffler16)
-    shuffler.io.din := serializer.io.dout
-    shuffler.io.permutation := io.shufflerCtl(lane).asTypeOf(shuffler.io.permutation)
-    txLane.io.din := shuffler.io.dout.asTypeOf(txLane.io.din)
+    // val shuffler = Module(new Shuffler16)
+    // shuffler.io.din := serializer.io.dout
+    // shuffler.io.permutation := io.shufflerCtl(lane).asTypeOf(shuffler.io.permutation)
+    // txLane.io.din := shuffler.io.dout.asTypeOf(txLane.io.din)
+    txLane.io.din := serializer.io.dout.asTypeOf(txLane.io.din)
     // Use the first 32:16 serializer's divided clock to clock the async FIFO and its reset synchronizer.
     if (lane == 0) {
       rstSyncTx.io.clk := serializer.io.divClock
