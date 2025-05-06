@@ -70,7 +70,7 @@ object TxTestState extends ChiselEnum {
   val done = Value(2.U(2.W))
 }
 
-class UciephyTopIO(numLanes: Int = 16) extends Bundle {
+class UciephyTestTLIO(numLanes: Int = 16) extends Bundle {
   val txData = Output(Vec(numLanes, Bool()))
   val txValid = Output(Bool())
   val txTrack = Output(Bool())
@@ -104,7 +104,6 @@ class UciephyDebugIO() extends Bundle {
   val pllClkN = Bool()
 }
 
-//
 // bufferDepthPerLane: log2(# of bits stored per lane)
 // numLanes: number of lanes
 // bitCounterWidth: Width of counters for TX bits sent and RX bits received.
@@ -513,7 +512,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
   val device = new SimpleDevice("uciephytest", Seq("ucbbar,uciephytest"))
   val node = TLRegisterNode(Seq(AddressSet(params.address, 16384-1)), device, "reg/control", beatBytes=beatBytes)
 
-  val topIO = BundleBridgeSource(() => new UciephyTopIO(params.numLanes))
+  val topIO = BundleBridgeSource(() => new UciephyTestTLIO(params.numLanes))
 
   val uciTL = LazyModule(new UCITLFront(
         tlParams    = params.tlParams,
@@ -798,7 +797,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
           Seq(
             toRegFieldRw(txctl(i).dll_reset, s"dll_reset_$i"),
             toRegFieldRw(txctl(i).driver, s"txctl_${i}_driver"),
-            toRegFieldRw(txctl(i).skew, s"txctl_${i}_driver"),
+            toRegFieldRw(txctl(i).skew, s"txctl_${i}_skew"),
             ) ++ (0 until 32).map((j: Int) => 
             toRegFieldRw(txctl(i).shuffler(j), s"txctl_${i}_shuffler_$j"),
             ) ++ Seq(

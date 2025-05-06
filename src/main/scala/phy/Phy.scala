@@ -222,7 +222,7 @@ class PhyIO(numLanes: Int = 16) extends Bundle {
 
   // TOP INTERFACE
   // =====================
-  val top = new uciephytest.UciephyTopIO(numLanes)
+  val top = new uciephytest.UciephyTestTLIO(numLanes)
 }
 
 class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
