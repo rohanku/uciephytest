@@ -871,7 +871,7 @@ trait CanHavePeripheryUciephyTest { this: BaseSubsystem =>
             ucie.uciTL.managerNode := TLWidthWidget(sbus.beatBytes) := TLBuffer() := TLSourceShrinker(ucie_params.tlParams.sourceIDWidth) := TLFragmenter(sbus.beatBytes, p(CacheBlockBytes)) := TLBuffer() := _
         } //manager node because SBUS is making request?
         sbus.coupleFrom(s"ucie_tl_cl_port{$n}") { _ := TLBuffer() := TLWidthWidget(sbus.beatBytes) := TLBuffer() := ucie.uciTL.clientNode }
-        pbus.coupleTo(s"ucie_tl_ctrl_port{$n}") { ucie.uciTL.regNode.node := TLWidthWidget(pbus.beatBytes) := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := TLBuffer() := _ }
+        sbus.coupleTo(s"ucie_tl_ctrl_port{$n}") { ucie.uciTL.regNode.node := TLWidthWidget(sbus.beatBytes) := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := TLBuffer() := _ }
       }
       Some(uciephy)
     }
