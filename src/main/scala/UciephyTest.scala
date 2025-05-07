@@ -52,6 +52,13 @@ object DataMode extends ChiselEnum {
   val infinite = Value(1.U(1.W))
 }
 
+object RxReceiveTarget extends ChiselEnum {
+  // Receive from mainband once valid lane goes high.
+  val mainband = Value(0.U(1.W))
+  // Receive from loopback receiver as soon as first one is received.
+  val loopback = Value(1.U(1.W))
+}
+
 // TX test modes.
 object TxTestMode extends ChiselEnum {
   // Data to send is provided manually via `txDataOffset` and `txDataChunkIn`.
@@ -152,6 +159,8 @@ class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2, bitCounte
   // ====================
   // The data mode of the RX.
   val rxDataMode = Input(DataMode())
+  // The data mode of the RX.
+  val rxReceiveTarget = Input(RxReceiveTarget())
   // Seed of the RX LFSR used for detecting bit errors. Should be the same as the TX seed of the transmitting chiplet.
   val rxLfsrSeed = Input(Vec(numLanes, UInt((2 * Phy.SerdesRatio).W)))
   // Resets the RX FSM (i.e. resetting the number of bits received and the offset within the output
@@ -195,7 +204,7 @@ class UciephyTest(bufferDepthPerLane: Int = 10, numLanes: Int = 2, bitCounterWid
   // TX registers
   val txReset = io.mmio.txFsmRst || reset.asBool
   val txState = withReset(txReset) { RegInit(TxTestState.idle) }
-  val txPacketsEnqueued = withReset(txReset) { RegInit(0.U((64 - log2Ceil(Phy.SerdesRatio)).W)) }
+  val txPacketsEnqueued = withReset(txReset) { RegInit(0.U(bitCounterWidth.W)) }
   val inputBufferAddrReg = withReset(txReset) { RegInit(0.U((bufferDepthPerLane - 5).W)) }
   val txLfsrs = (0 until numLanes).map((i: Int) => {
     val lfsr = Module(
@@ -570,7 +579,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       val rxDataOffset = RegInit(0.U(test.io.mmio.rxDataOffset.getWidth.W))
 
       val pllBypassEn = RegInit(false.B)
-      val txctl = RegInit(VecInit(Seq.fill(params.numLanes + 4)({
+      val txctl = RegInit(VecInit(Seq.fill(params.numLanes + 5)({
         val w = Wire(new TxLaneDigitalCtlIO)
         w.dll_reset := true.B
         w.driver.pu_ctl := 0.U
@@ -590,7 +599,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         }
         w
       })))
-      val rxctl = RegInit(VecInit(Seq.fill(params.numLanes + 4)({
+      val rxctl = RegInit(VecInit(Seq.fill(params.numLanes + 5)({
         val w = Wire(new RxLaneDigitalCtlIO)
         w.zen := false.B
         w.zctl := 0.U
@@ -793,7 +802,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         toRegFieldR(phy.io.pllOutput, "pllOutput"),
         toRegFieldR(phy.io.testPllOutput, "testPllOutput"),
         toRegFieldRw(pllBypassEn, "pllBypassEn")
-      ) ++ (0 until params.numLanes + 4).flatMap((i: Int) => {
+      ) ++ (0 until params.numLanes + 5).flatMap((i: Int) => {
           Seq(
             toRegFieldRw(txctl(i).dll_reset, s"dll_reset_$i"),
             toRegFieldRw(txctl(i).driver, s"txctl_${i}_driver"),
@@ -801,9 +810,11 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
             ) ++ (0 until 32).map((j: Int) => 
             toRegFieldRw(txctl(i).shuffler(j), s"txctl_${i}_shuffler_$j"),
             ) ++ Seq(
+            toRegFieldRw(txctl(i).sample_negedge, s"txctl_${i}_sample_negedge"),
+            toRegFieldRw(txctl(i).delay, s"txctl_${i}_delay"),
             toRegFieldR(phy.io.dllCode(i), s"dllCode_$i"),
           )
-      }) ++ (0 until params.numLanes + 3).flatMap((i: Int) => {
+      }) ++ (0 until params.numLanes + 5).flatMap((i: Int) => {
           Seq(
             toRegFieldRw(rxctl(i).zen, s"zen_$i"),
             toRegFieldRw(rxctl(i).zctl, s"zctl_$i"),
@@ -812,6 +823,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
             toRegFieldRw(rxctl(i).afeBypass, s"afeBypass_$i"),
             toRegFieldRw(rxctl(i).afeOpCycles, s"afeOpCycles_$i"),
             toRegFieldRw(rxctl(i).afeOverlapCycles, s"afeOverlapCycles_$i"),
+            toRegFieldRw(rxctl(i).sample_negedge, s"sample_negedge_$i"),
+            toRegFieldRw(rxctl(i).delay, s"rx_delay_$i"),
           )
       }) ++ Seq(
         RegField.w(1, ucieStack, RegFieldDesc("ucieStack", "")),

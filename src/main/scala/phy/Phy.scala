@@ -27,6 +27,8 @@ class RxIO(numLanes: Int = 16) extends Bundle  {
 class PhyToTestIO(numLanes: Int = 16) extends Bundle {
   val tx = Flipped(DecoupledIO(new TxIO(numLanes)))
   val rx = DecoupledIO(new RxIO(numLanes))
+  val tx_loopback = Flipped(DecoupledIO(Bits(Phy.SerdesRatio.W)))
+  val rx_loopback = DecoupledIO(Bits(Phy.SerdesRatio.W))
 }
 
 class SidebandIO extends Bundle {
@@ -85,7 +87,7 @@ class ClkMux(sim: Boolean = false) extends BlackBox with HasBlackBoxInline {
       | input mux1_en_0, mux1_en_1,
       | output out, outb
       |);
-      | assign out = mux0_en_0 ? in0 : in1;
+      | assign out = mux0_en_0 && ~mux0_en_1 ? in0 : (~mux0_en_0 && mux0_en_1 ? in1 : 1'b0);
       |endmodule
       """.stripMargin)
   }
@@ -183,6 +185,8 @@ class TxLaneDigitalCtlIO extends Bundle {
   val driver = new DriverControlIO
   val skew = new TxSkewControlIO
   val shuffler = Vec(32, UInt(5.W))
+  val sample_negedge = Bool()
+  val delay = UInt(7.W)
 }
 
 class RxLaneDigitalCtlIO extends Bundle {
@@ -193,21 +197,23 @@ class RxLaneDigitalCtlIO extends Bundle {
   val afeBypassEn = Bool()
   val afeOpCycles = UInt(16.W)
   val afeOverlapCycles = UInt(16.W)
+  val sample_negedge = Bool()
+  val delay = UInt(7.W)
 }
 
 class PhyIO(numLanes: Int = 16) extends Bundle {
   // TX CONTROL
-  // Lane control (`numLanes` data lanes, 1 valid lane, 2 clock lanes, 1 track lane).
-  val txctl = Input(Vec(numLanes + 4, new TxLaneDigitalCtlIO))
-  val dllCode = Output(Vec(numLanes + 4, UInt(5.W)))
+  // Lane control (`numLanes` data lanes, 1 valid lane, 2 clock lanes, 1 track lane, 1 loopback lane).
+  val txctl = Input(Vec(numLanes + 5, new TxLaneDigitalCtlIO))
+  val dllCode = Output(Vec(numLanes + 5, UInt(5.W)))
   val pllCtl = Input(new UciePllCtlIO)
   val pllOutput = Output(new UciePllDebugOutIO)
   val testPllCtl = Input(new UciePllCtlIO)
   val testPllOutput = Output(new UciePllDebugOutIO)
 
   // RX CONTROL
-  // Termination impedance control per lane (`numLanes` data lanes, 1 valid lane, 2 clock lanes, 1 track lane).
-  val rxctl = Input(Vec(numLanes + 4, new RxLaneDigitalCtlIO))
+  // Lane control (`numLanes` data lanes, 1 valid lane, 2 clock lanes, 1 track lane, 1 loopback lane).
+  val rxctl = Input(Vec(numLanes + 5, new RxLaneDigitalCtlIO))
 
   // If 1, PHY uses bypass clk. If 0, PHY uses PLL clk.
   val pllBypassEn = Input(Bool())
@@ -349,11 +355,6 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   rstSyncTx.io.clk := txClkDiv.io.clkout_3
 
   val txFifo = Module(new AsyncQueue(new TxIO(numLanes), Phy.QueueParams))
-  txFifo.io.enq.bits.data := io.test.tx.bits.data
-  txFifo.io.enq.bits.valid := io.test.tx.bits.valid
-  txFifo.io.enq.bits.clkp := io.test.tx.bits.clkp
-  txFifo.io.enq.bits.clkn := io.test.tx.bits.clkn
-  txFifo.io.enq.bits.track := io.test.tx.bits.track
   txFifo.io.enq.valid := io.test.tx.valid
   txFifo.io.deq_clock := txClkDiv.io.clkout_3.asClock
   io.test.tx.ready := txFifo.io.enq.ready
@@ -361,6 +362,43 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   txFifo.io.enq_reset := reset
   txFifo.io.deq_reset := !rstSyncTx.io.rstbSync.asBool
   txFifo.io.deq.ready := true.B
+
+  val enqDataDelayed = Reg(new TxIO(numLanes))
+  val enqDataDelayed2 = Reg(new TxIO(numLanes))
+  when (txFifo.io.enq.valid && txFifo.io.enq.ready) {
+    enqDataDelayed := io.test.tx.bits
+    enqDataDelayed2 := enqDataDelayed
+  }
+
+  for (lane <- 0 to numLanes + 3) {
+    val data = if (lane < numLanes) { 
+      Cat(enqDataDelayed2.data(lane), enqDataDelayed.data(lane), io.test.tx.bits.data(lane))
+    } else if (lane == numLanes) {
+      Cat(enqDataDelayed2.valid, enqDataDelayed.valid, io.test.tx.bits.valid)
+      io.test.tx.bits.valid
+    } else if (lane == numLanes + 1) {
+      Cat(enqDataDelayed2.clkp, enqDataDelayed.clkp, io.test.tx.bits.clkp)
+      io.test.tx.bits.clkp
+    } else if (lane == numLanes + 2) {
+      Cat(enqDataDelayed2.clkn, enqDataDelayed.clkn, io.test.tx.bits.clkn)
+      io.test.tx.bits.clkn
+    } else {
+      Cat(enqDataDelayed2.track, enqDataDelayed.track, io.test.tx.bits.track)
+      io.test.tx.bits.track
+    }
+    val delayedData = (data >> io.txctl(lane).delay)(31, 0)
+    if (lane < numLanes) { 
+      txFifo.io.enq.bits.data(lane) := delayedData
+    } else if (lane == numLanes) {
+      txFifo.io.enq.bits.valid := delayedData
+    } else if (lane == numLanes + 1) {
+      txFifo.io.enq.bits.clkp := delayedData
+    } else if (lane == numLanes + 2) {
+      txFifo.io.enq.bits.clkn := delayedData
+    } else {
+      txFifo.io.enq.bits.track := delayedData
+    }
+  }
   
   val rxClkDiv = Module(new ClkDiv4(sim))
   rxClkDiv.io.clk := rxClkP.io.clkout
@@ -387,19 +425,15 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
     val shuffler = Module(new Shuffler32)
     when (txFifo.io.deq.valid) {
       shuffler.io.din := { if (lane < numLanes) { 
-      txFifo.io.deq.bits.data(lane)
+        txFifo.io.deq.bits.data(lane)
       } else if (lane == numLanes) {
-
-      txFifo.io.deq.bits.valid
+        txFifo.io.deq.bits.valid
       } else if (lane == numLanes + 1) {
-
-      txFifo.io.deq.bits.clkp
+        txFifo.io.deq.bits.clkp
       } else if (lane == numLanes + 2) {
-
-      txFifo.io.deq.bits.clkn
-      }
-      else {
-      txFifo.io.deq.bits.track
+        txFifo.io.deq.bits.clkn
+      } else {
+        txFifo.io.deq.bits.track
       } }
     } .otherwise {
       shuffler.io.din := 0.U
@@ -423,9 +457,13 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
     txLane.io.ser_resetb := !reset.asBool
     txLane.io.clkp := txClkP_wire
     txLane.io.clkn := txClkN_wire
-    txLane.io.din := withClockAndReset(txClkDiv.io.clkout_3.asClock, !rstSyncTx.io.rstbSync) {
+    val dinRegP = withClockAndReset(txClkDiv.io.clkout_3.asClock, !rstSyncTx.io.rstbSync) {
       ShiftRegister(shuffler.io.dout.asTypeOf(txLane.io.din), 2, 0.U.asTypeOf(txLane.io.din), true.B)
     }
+    val dinRegN = withClockAndReset((!txClkDiv.io.clkout_3).asClock, !rstSyncTx.io.rstbSync) {
+      RegNext(dinRegP)
+    }
+    txLane.io.din := Mux(io.txctl(lane).sample_negedge, dinRegN, dinRegP)
     if (lane < numLanes) {
       io.top.txData(lane) := txLane.io.dout
     } else if (lane == numLanes) {
@@ -442,27 +480,26 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
     io.dllCode(lane) := txLane.io.dll_code
   }
 
-  // TODO async FIFO clock and reset
-
-  for (lane <- 0 to numLanes + 1) {
+  for (lane <- 0 to numLanes + 2) {
     val rxLane = Module(new RxDataLane(sim))
     val rxLaneAfeCtl = Module(new RxAfeCtl())
-    val rxctlWire = Wire(new RxLaneDigitalCtlIO())
+    val doutRegN = withClockAndReset((!rxClkDiv.io.clkout_3).asClock, !rstSyncRx.io.rstbSync) {
+      RegNext(rxLane.io.dout)
+    }
+    val rxctlWire = io.rxctl(lane)
+    val doutEnq = Mux(rxctlWire.sample_negedge, doutRegN, rxLane.io.dout)
     if (lane < numLanes) {
       rxLane.suggestName(s"rxdata$lane")
       rxLane.io.din := io.top.rxData(lane)
-      rxFifo.io.enq.bits.data(lane) := rxLane.io.dout
-      rxctlWire := io.rxctl(lane)
+      rxFifo.io.enq.bits.data(lane) := doutEnq
     } else if (lane == numLanes) {
       rxLane.suggestName(s"rxvalid")
       rxLane.io.din := io.top.rxValid
-      rxFifo.io.enq.bits.valid := rxLane.io.dout
-      rxctlWire := io.rxctl(lane)
+      rxFifo.io.enq.bits.valid := doutEnq
     } else {
       rxLane.suggestName(s"rxtrack")
       rxLane.io.din := io.top.rxTrack
-      rxFifo.io.enq.bits.track := rxLane.io.dout
-      rxctlWire := io.rxctl(numLanes + 3)
+      rxFifo.io.enq.bits.track := doutEnq
     }
     rxLane.io.ctl.zen := rxctlWire.zen
     rxLane.io.ctl.zctl := rxctlWire.zctl
@@ -475,6 +512,66 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
     rxLane.io.clk := rxClkP.io.clkout.asClock
     rxLane.io.resetb := !reset.asBool
   }
+
+  // Loopback
+  val txLoopbackFifo = Module(new AsyncQueue(UInt(Phy.SerdesRatio.W), Phy.QueueParams))
+  val loopbackShuffler = Module(new Shuffler32)
+  val txLoopbackLane = Module(new TxLane(sim))
+  val rstSyncTxLoopback = Module(new RstSync(sim))
+  rstSyncTxLoopback.io.rstbAsync := !reset.asBool
+  rstSyncTxLoopback.io.clk := txLoopbackLane.io.divclk
+  txLoopbackFifo.io.enq.bits:= 0.U
+  txLoopbackFifo.io.enq.valid := io.test.tx_loopback.valid
+  txLoopbackFifo.io.enq_clock := clock
+  txLoopbackFifo.io.enq_reset := reset
+  txLoopbackFifo.io.deq_clock := txLoopbackLane.io.divclk.asClock
+  txLoopbackFifo.io.deq_reset := !rstSyncTxLoopback.io.rstbSync.asBool
+  txLoopbackFifo.io.deq.ready := true.B
+
+  when (txLoopbackFifo.io.deq.valid) {
+    loopbackShuffler.io.din := txLoopbackFifo.io.deq.bits
+  } .otherwise {
+    loopbackShuffler.io.din := 0.U
+  }
+  loopbackShuffler.io.permutation := io.txctl(numLanes + 4).shuffler
+
+  txLoopbackLane.io.dll_reset := io.txctl(numLanes + 4).dll_reset
+  txLoopbackLane.io.dll_resetb := !io.txctl(numLanes + 4).dll_reset
+  txLoopbackLane.io.ser_resetb := !reset.asBool
+  txLoopbackLane.io.clkp := txClkP_wire
+  txLoopbackLane.io.clkn := txClkN_wire
+  txLoopbackLane.io.din := loopbackShuffler.io.dout.asTypeOf(txLoopbackLane.io.din)
+  txLoopbackLane.io.ctl.driver := io.txctl(numLanes + 4).driver
+  txLoopbackLane.io.ctl.skew := io.txctl(numLanes + 4).skew
+  io.dllCode(numLanes + 4) := txLoopbackLane.io.dll_code
+
+  val rxLoopbackLane = Module(new RxDataLane(sim))
+  val rxLoopbackLaneAfeCtl = Module(new RxAfeCtl())
+  val rxctlLoopbackWire = Wire(new RxLaneDigitalCtlIO())
+  val rxLoopbackFifo = Module(new AsyncQueue(UInt(Phy.SerdesRatio.W), Phy.QueueParams))
+  val rstSyncRxLoopback = Module(new RstSync(sim))
+  rstSyncRxLoopback.io.rstbAsync := !reset.asBool
+  rstSyncRxLoopback.io.clk := rxLoopbackLane.io.divclk
+  rxLoopbackFifo.io.enq.valid := true.B
+  rxLoopbackFifo.io.enq_reset := !rstSyncRx.io.rstbSync.asBool
+  rxLoopbackFifo.io.deq_clock := clock
+  rxLoopbackFifo.io.enq_clock := rxLoopbackLane.io.divclk.asClock
+  rxLoopbackFifo.io.deq_reset := reset
+  rxLoopbackFifo.io.deq.ready := io.test.rx_loopback.ready
+  io.test.rx_loopback.valid := rxLoopbackFifo.io.deq.valid
+  io.test.rx_loopback.bits := rxLoopbackFifo.io.deq.bits
+  rxLoopbackLane.io.din := txLoopbackLane.io.dout
+  rxLoopbackFifo.io.enq.bits := rxLoopbackLane.io.dout
+  rxLoopbackLane.io.ctl.zen := io.rxctl(numLanes + 4).zen
+  rxLoopbackLane.io.ctl.zctl := io.rxctl(numLanes + 4).zctl
+  rxLoopbackLane.io.ctl.vref_sel := io.rxctl(numLanes + 4).vref_sel
+  rxLoopbackLaneAfeCtl.io.bypass := io.rxctl(numLanes + 4).afeBypassEn
+  rxLoopbackLaneAfeCtl.io.afeBypass := io.rxctl(numLanes + 4).afeBypass
+  rxLoopbackLaneAfeCtl.io.opCycles := io.rxctl(numLanes + 4).afeOpCycles
+  rxLoopbackLaneAfeCtl.io.overlapCycles := io.rxctl(numLanes + 4).afeOverlapCycles
+  rxLoopbackLane.io.ctl.afe := rxLoopbackLaneAfeCtl.io.afe
+  rxLoopbackLane.io.clk := rxClkP.io.clkout.asClock
+  rxLoopbackLane.io.resetb := !reset.asBool
 }
 
 class ClkDiv4IO extends Bundle {
