@@ -107,6 +107,8 @@ class UciephyCommonTL(params: UciephyCommonParams, beatBytes: Int)(implicit p: P
         for (i <- 0 until 32) {
           w.shuffler(i) := i.U(5.W)
         }
+        w.sample_negedge := false.B
+        w.delay := 0.U
         w
       })
 

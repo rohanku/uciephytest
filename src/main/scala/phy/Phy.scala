@@ -261,8 +261,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   // Set up clocking
   val rxClkP = Module(new RxClkLane(sim))
   val rxClkPAfeCtl = Module(new RxAfeCtl())
-  val rxClkPCtlWire = Wire(new RxLaneDigitalCtlIO())
-  rxClkPCtlWire := io.rxctl(numLanes + 1)
+  val rxClkPCtlWire = io.rxctl(numLanes + 1)
   rxClkP.io.clkin := io.top.rxClkP.asBool
   rxClkP.io.ctl.zen := rxClkPCtlWire.zen
   rxClkP.io.ctl.zctl := rxClkPCtlWire.zctl
@@ -274,8 +273,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   rxClkP.io.ctl.afe := rxClkPAfeCtl.io.afe
   val rxClkN = Module(new RxClkLane(sim))
   val rxClkNAfeCtl = Module(new RxAfeCtl())
-  val rxClkNCtlWire = Wire(new RxLaneDigitalCtlIO())
-  rxClkNCtlWire := io.rxctl(numLanes + 2)
+  val rxClkNCtlWire = io.rxctl(numLanes + 2)
   rxClkN.io.clkin := io.top.rxClkN.asBool
   rxClkN.io.ctl.zen := rxClkNCtlWire.zen
   rxClkN.io.ctl.zctl := rxClkNCtlWire.zctl
@@ -342,10 +340,8 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   clkMuxN.io.mux0_en_1 := io.pllBypassEn
   clkMuxN.io.mux1_en_0 := false.B
   clkMuxN.io.mux1_en_1 := false.B
-  val txClkP_wire = Wire(Bool())
-  val txClkN_wire = Wire(Bool())
-  txClkP_wire := clkMuxP.io.out
-  txClkN_wire := clkMuxN.io.out
+  val txClkP_wire = clkMuxP.io.out
+  val txClkN_wire = clkMuxN.io.out
   
   val txClkDiv = Module(new ClkDiv4(sim))
   txClkDiv.io.clk := txClkP_wire
@@ -527,6 +523,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   txLoopbackFifo.io.deq_clock := txLoopbackLane.io.divclk.asClock
   txLoopbackFifo.io.deq_reset := !rstSyncTxLoopback.io.rstbSync.asBool
   txLoopbackFifo.io.deq.ready := true.B
+  io.test.tx_loopback.ready := txLoopbackFifo.io.enq.ready
 
   when (txLoopbackFifo.io.deq.valid) {
     loopbackShuffler.io.din := txLoopbackFifo.io.deq.bits
@@ -547,7 +544,6 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
 
   val rxLoopbackLane = Module(new RxDataLane(sim))
   val rxLoopbackLaneAfeCtl = Module(new RxAfeCtl())
-  val rxctlLoopbackWire = Wire(new RxLaneDigitalCtlIO())
   val rxLoopbackFifo = Module(new AsyncQueue(UInt(Phy.SerdesRatio.W), Phy.QueueParams))
   val rstSyncRxLoopback = Module(new RstSync(sim))
   rstSyncRxLoopback.io.rstbAsync := !reset.asBool
