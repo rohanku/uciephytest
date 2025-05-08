@@ -714,7 +714,7 @@ class DiffBufferN(n: Int) extends BlackBox with HasBlackBoxInline {
   val body = new StringBuilder("")
 
   for (i <- 0 until n) {
-    body ++= s" ucie_diff_buffer buf$i(vinp, vinn, voutp, voutn);\n"
+    body ++= s" ucie_diff_buffer buf$i(.vinp(vinp), .vinn(vinn), .voutp(voutp), .voutn(voutn));\n"
   }
   setInline(s"ucie_diff_buffer_$n.v",
     s"""module ucie_diff_buffer_$n(
