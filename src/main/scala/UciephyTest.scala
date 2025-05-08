@@ -149,7 +149,7 @@ class UciephyTestMMIO(bufferDepthPerLane: Int = 10, numLanes: Int = 2, bitCounte
   val txTrackEn = Input(Bool())
   // Data chunk lane group in input buffer. Each lane group consists of 4 adjacent lanes (e.g. 0, 1, 2, 3).
   // Lane numLanes is valid, numLanes + 1 is track, numLanes + 2 is loopback.
-  val txDataLaneGroup = Input(UInt((log2Ceil(numLanes + 3) - 1).W))
+  val txDataLaneGroup = Input(UInt(log2Ceil((numLanes + 2)/4 + 1).W))
   // Data chunk offset in input buffer.
   val txDataOffset = Input(UInt((bufferDepthPerLane - 5).W))
   // 128-bit data chunk to write (32 bits per lane).
