@@ -35,6 +35,7 @@ class TxLaneIO extends Bundle {
   val clkn = Input(Bool())
   val din = Input(Bits(32.W))
   val dout = Output(Bool())
+  val divclk = Output(Bool())
   val dll_code = Output(UInt(5.W))
   val ctl = Input(new TxLaneCtlIO)
 }
@@ -83,6 +84,7 @@ class TxLane(sim: Boolean = false) extends RawModule {
   verilogBlackBox.io.din_31 :=  io.din(31)
 
   io.dout := verilogBlackBox.io.dout
+  io.divclk := verilogBlackBox.io.divclk
 
   val puCtlTherm = Wire(UInt(64.W))
   puCtlTherm := (1.U << io.ctl.driver.pu_ctl) - 1.U
@@ -326,6 +328,7 @@ module tx_lane (
   input din_30,
   input din_31,
   output dout,
+  output divclk,
   input pu_ctl_0,
   input pu_ctl_1,
   input pu_ctl_2,
@@ -561,6 +564,7 @@ module tx_lane (
   always @(posedge clkn) begin
     shiftReg <= shiftReg >> 1'b1;
   end
+  assign divclk = divClock;
   assign dout = (dll_reset || !dll_resetb) ? 1'b0 : shiftReg[0];
   assign dll_code_0 = 1'b0;
   assign dll_code_1 = 1'b0;
@@ -613,6 +617,7 @@ class VerilogTxLaneIO extends Bundle {
   val din_30 = Input(Bool())
   val din_31 = Input(Bool())
   val dout = Output(Bool())
+  val divclk = Output(Bool())
   val pu_ctl_0 = Input(Bool())
   val pu_ctl_1 = Input(Bool())
   val pu_ctl_2 = Input(Bool())

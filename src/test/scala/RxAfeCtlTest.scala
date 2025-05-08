@@ -26,7 +26,7 @@ class RxAfeCtlTest extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "RxAfeCtl"
   it should "behave correctly in FSM mode and bypass mode" in {
     test(new RxAfeCtl()).withAnnotations(
-      Seq(VcsBackendAnnotation, WriteFsdbAnnotation),
+      Seq(VcsBackendAnnotation, WriteVcdAnnotation),
     ) { c =>
       c.reset.poke(true.B)
       c.io.bypass.poke(false.B)
@@ -39,8 +39,8 @@ class RxAfeCtlTest extends AnyFlatSpec with ChiselScalatestTester {
       c.clock.step(4)
       c.reset.poke(false.B)
 
-      for (iter <- 0 to 8) {
-        for (i <- 0 to 32) {
+      for (iter <- 0 until 8) {
+        for (i <- 0 until 32) {
           c.io.afe.aEn.expect(true.B)
           c.io.afe.aPc.expect(false.B)
           c.io.afe.bEn.expect(false.B)
@@ -48,7 +48,7 @@ class RxAfeCtlTest extends AnyFlatSpec with ChiselScalatestTester {
           c.io.afe.selA.expect(true.B)
           c.clock.step()
         }
-        for (i <- 0 to 16) {
+        for (i <- 0 until 16) {
           c.io.afe.aEn.expect(true.B)
           c.io.afe.aPc.expect(false.B)
           c.io.afe.bEn.expect(true.B)
@@ -62,7 +62,7 @@ class RxAfeCtlTest extends AnyFlatSpec with ChiselScalatestTester {
         c.io.afe.bPc.expect(false.B)
         c.io.afe.selA.expect(false.B)
         c.clock.step()
-        for (i <- 0 to 32) {
+        for (i <- 0 until 32) {
           c.io.afe.aEn.expect(false.B)
           c.io.afe.aPc.expect(true.B)
           c.io.afe.bEn.expect(true.B)
@@ -70,7 +70,7 @@ class RxAfeCtlTest extends AnyFlatSpec with ChiselScalatestTester {
           c.io.afe.selA.expect(false.B)
           c.clock.step()
         }
-        for (i <- 0 to 16) {
+        for (i <- 0 until 16) {
           c.io.afe.aEn.expect(true.B)
           c.io.afe.aPc.expect(false.B)
           c.io.afe.bEn.expect(true.B)
@@ -109,8 +109,8 @@ class RxAfeCtlTest extends AnyFlatSpec with ChiselScalatestTester {
       c.io.afe.selA.expect(false.B)
       c.io.bypass.poke(false.B)
 
-      for (iter <- 0 to 8) {
-        for (i <- 0 to 32) {
+      for (iter <- 0 until 8) {
+        for (i <- 0 until 32) {
           c.io.afe.aEn.expect(true.B)
           c.io.afe.aPc.expect(false.B)
           c.io.afe.bEn.expect(false.B)
@@ -118,7 +118,7 @@ class RxAfeCtlTest extends AnyFlatSpec with ChiselScalatestTester {
           c.io.afe.selA.expect(true.B)
           c.clock.step()
         }
-        for (i <- 0 to 16) {
+        for (i <- 0 until 16) {
           c.io.afe.aEn.expect(true.B)
           c.io.afe.aPc.expect(false.B)
           c.io.afe.bEn.expect(true.B)
@@ -126,7 +126,13 @@ class RxAfeCtlTest extends AnyFlatSpec with ChiselScalatestTester {
           c.io.afe.selA.expect(true.B)
           c.clock.step()
         }
-        for (i <- 0 to 32) {
+        c.io.afe.aEn.expect(true.B)
+        c.io.afe.aPc.expect(false.B)
+        c.io.afe.bEn.expect(true.B)
+        c.io.afe.bPc.expect(false.B)
+        c.io.afe.selA.expect(false.B)
+        c.clock.step()
+        for (i <- 0 until 32) {
           c.io.afe.aEn.expect(false.B)
           c.io.afe.aPc.expect(true.B)
           c.io.afe.bEn.expect(true.B)
@@ -134,7 +140,7 @@ class RxAfeCtlTest extends AnyFlatSpec with ChiselScalatestTester {
           c.io.afe.selA.expect(false.B)
           c.clock.step()
         }
-        for (i <- 0 to 16) {
+        for (i <- 0 until 16) {
           c.io.afe.aEn.expect(true.B)
           c.io.afe.aPc.expect(false.B)
           c.io.afe.bEn.expect(true.B)
@@ -142,13 +148,13 @@ class RxAfeCtlTest extends AnyFlatSpec with ChiselScalatestTester {
           c.io.afe.selA.expect(false.B)
           c.clock.step()
         }
+        c.io.afe.aEn.expect(true.B)
+        c.io.afe.aPc.expect(false.B)
+        c.io.afe.bEn.expect(true.B)
+        c.io.afe.bPc.expect(false.B)
+        c.io.afe.selA.expect(true.B)
+        c.clock.step()
       }
-
-      c.reset.poke(true.B)
-      c.io.afe.aEn.expect(false.B)
-      c.io.afe.aPc.expect(true.B)
-      c.io.afe.bEn.expect(false.B)
-      c.io.afe.bPc.expect(true.B)
     }
   }
 }

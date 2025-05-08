@@ -15,6 +15,7 @@ class RxLaneCtlIO extends Bundle {
 class RxDataLaneIO extends Bundle {
   val din = Input(Bool())
   val dout = Output(Bits(32.W))
+  val divclk = Output(Bool())
   val clk = Input(Clock())
   val resetb = Input(Bool())
   val ctl = Input(new RxLaneCtlIO)
@@ -61,6 +62,7 @@ class RxDataLane(sim: Boolean = false) extends RawModule {
   verilogBlackBox.io.dout_1,
   verilogBlackBox.io.dout_0,
   ).asTypeOf(io.dout)
+  io.divclk := verilogBlackBox.io.divclk
 
   verilogBlackBox.io.clk := io.clk
   verilogBlackBox.io.rstb := io.resetb
@@ -138,6 +140,7 @@ class VerilogRxDataLaneIO extends Bundle {
   val dout_29 = Output(Bool())
   val dout_30 = Output(Bool())
   val dout_31 = Output(Bool())
+  val divclk = Output(Bool())
   val clk = Input(Clock())
   val rstb = Input(Bool())
   val zen = Input(Bool())
@@ -219,6 +222,7 @@ module rx_data_lane (
    output dout_29,
    output dout_30,
    output dout_31,
+   output divclk,
    input clk,
    input rstb,
    input zen,
@@ -317,6 +321,7 @@ module rx_data_lane (
   assign dout_29 = outputReg[2];
   assign dout_30 = outputReg[1];
   assign dout_31 = outputReg[0];
+  assign divclk = divClock;
 endmodule
       """
     )
@@ -601,7 +606,7 @@ class RxAfeCtl extends Module {
       }
     }
     is (RxAfeCtlState.sBaSel) {
-      state := RxAfeCtlState.sB
+      state := RxAfeCtlState.sA
       ctr := 0.U
     }
   }
