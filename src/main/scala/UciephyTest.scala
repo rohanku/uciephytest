@@ -349,7 +349,7 @@ class UciephyTest(
   for (i <- 0 until numSrams) {
     when(i.U === io.mmio.rxDataLane >> 2.U) {
       io.mmio.rxDataChunk := outputRdPorts(i).asTypeOf(Vec(4, UInt(32.W)))(
-        io.mmio.rxDataLane % 4.U
+        io.mmio.rxDataLane(1,0)
       )
     }
   }
