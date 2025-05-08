@@ -14,6 +14,7 @@ import freechips.rocketchip.tilelink._
 import uciephytest.phy.{Phy, UciePllCtlIO, PhyToTestIO, TxLaneDigitalCtlIO, RxLaneDigitalCtlIO, RxLaneCtlIO, DriverControlIO, TxSkewControlIO, RxAfeIO}
 import freechips.rocketchip.util.{AsyncQueueParams}
 import testchipip.soc.{OBUS}
+import testchipip.soc.{InwardAddressTranslator}
 import edu.berkeley.cs.ucie.digital.tilelink._
 import edu.berkeley.cs.ucie.digital.interfaces.{FdiParams, RdiParams, AfeParams}
 import edu.berkeley.cs.ucie.digital.protocol.{ProtocolLayerParams}
@@ -38,6 +39,7 @@ case class UciephyTestParams(
                                     STANDALONE = false),
   laneAsyncQueueParams: AsyncQueueParams = AsyncQueueParams(),
   managerWhere: TLBusWrapperLocation = PBUS,
+  onchipAddr: Option[BigInt] = None,
   sim: Boolean = false
 )
 
@@ -867,9 +869,9 @@ trait CanHavePeripheryUciephyTest { this: BaseSubsystem =>
         ucie.clockNode := sbus.fixedClockNode
         ucie.uciTL.clockNode := sbus.fixedClockNode
         pbus.coupleTo(s"uciephytest{$n}") { ucie.node := TLBuffer() := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := TLBuffer() := _ }
-        sbus.coupleTo(s"ucie_tl_man_port{$n}") {
-            ucie.uciTL.managerNode := TLWidthWidget(sbus.beatBytes) := TLBuffer() := TLSourceShrinker(ucie_params.tlParams.sourceIDWidth) := TLFragmenter(sbus.beatBytes, p(CacheBlockBytes)) := TLBuffer() := _
-        } //manager node because SBUS is making request?
+        // sbus.coupleTo(s"ucie_tl_man_port{$n}") {
+        //     ucie.uciTL.managerNode := TLWidthWidget(sbus.beatBytes) := TLBuffer() := TLSourceShrinker(ucie_params.tlParams.sourceIDWidth) := TLFragmenter(sbus.beatBytes, p(CacheBlockBytes)) := TLBuffer() := _
+        // } //manager node because SBUS is making request?
         sbus.coupleFrom(s"ucie_tl_cl_port{$n}") { _ := TLBuffer() := TLWidthWidget(sbus.beatBytes) := TLBuffer() := ucie.uciTL.clientNode }
         sbus.coupleTo(s"ucie_tl_ctrl_port{$n}") { ucie.uciTL.regNode.node := TLWidthWidget(sbus.beatBytes) := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := TLBuffer() := _ }
       }
