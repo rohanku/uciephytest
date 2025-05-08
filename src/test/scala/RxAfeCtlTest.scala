@@ -16,7 +16,12 @@ import edu.berkeley.cs.ucie.digital.tilelink._
 import edu.berkeley.cs.ucie.digital.interfaces.{FdiParams, RdiParams, AfeParams}
 import edu.berkeley.cs.ucie.digital.protocol.{ProtocolLayerParams}
 import edu.berkeley.cs.ucie.digital.sideband.{SidebandParams}
-import edu.berkeley.cs.ucie.digital.logphy.{LinkTrainingParams, TransmitPattern, RegisterRWIO, RegisterRW}
+import edu.berkeley.cs.ucie.digital.logphy.{
+  LinkTrainingParams,
+  TransmitPattern,
+  RegisterRWIO,
+  RegisterRW
+}
 
 import uciephytest.phy._
 
@@ -26,7 +31,7 @@ class RxAfeCtlTest extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "RxAfeCtl"
   it should "behave correctly in FSM mode and bypass mode" in {
     test(new RxAfeCtl()).withAnnotations(
-      Seq(VcsBackendAnnotation, WriteVcdAnnotation),
+      Seq(VcsBackendAnnotation, WriteVcdAnnotation)
     ) { c =>
       c.reset.poke(true.B)
       c.io.bypass.poke(false.B)

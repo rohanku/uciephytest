@@ -27,7 +27,6 @@ class RxDataLane(sim: Boolean = false) extends RawModule {
   val verilogBlackBox = Module(new VerilogRxDataLane(sim))
   verilogBlackBox.io.din := io.din
 
-
   io.dout := Cat(
     verilogBlackBox.io.dout_31,
     verilogBlackBox.io.dout_30,
@@ -51,16 +50,16 @@ class RxDataLane(sim: Boolean = false) extends RawModule {
     verilogBlackBox.io.dout_12,
     verilogBlackBox.io.dout_11,
     verilogBlackBox.io.dout_10,
-  verilogBlackBox.io.dout_9,
-  verilogBlackBox.io.dout_8,
-  verilogBlackBox.io.dout_7,
-  verilogBlackBox.io.dout_6,
-  verilogBlackBox.io.dout_5,
-  verilogBlackBox.io.dout_4,
-  verilogBlackBox.io.dout_3,
-  verilogBlackBox.io.dout_2,
-  verilogBlackBox.io.dout_1,
-  verilogBlackBox.io.dout_0,
+    verilogBlackBox.io.dout_9,
+    verilogBlackBox.io.dout_8,
+    verilogBlackBox.io.dout_7,
+    verilogBlackBox.io.dout_6,
+    verilogBlackBox.io.dout_5,
+    verilogBlackBox.io.dout_4,
+    verilogBlackBox.io.dout_3,
+    verilogBlackBox.io.dout_2,
+    verilogBlackBox.io.dout_1,
+    verilogBlackBox.io.dout_0
   ).asTypeOf(io.dout)
   io.divclk := verilogBlackBox.io.divclk
 
@@ -178,13 +177,16 @@ class VerilogRxDataLaneIO extends Bundle {
   val vref_sel_6 = Input(Bool())
 }
 
-class VerilogRxDataLane(sim: Boolean = false) extends BlackBox with HasBlackBoxInline {
+class VerilogRxDataLane(sim: Boolean = false)
+    extends BlackBox
+    with HasBlackBoxInline {
   val io = IO(new VerilogRxDataLaneIO)
 
   override val desiredName = "rx_data_lane"
-  
+
   if (sim) {
-    setInline("rx_data_lane.v",
+    setInline(
+      "rx_data_lane.v",
       """
 module rx_data_lane (
    inout vdd,
@@ -418,13 +420,16 @@ class VerilogRxClkLaneIO extends Bundle {
   val vref_sel_6 = Input(Bool())
 }
 
-class VerilogRxClkLane(sim: Boolean = false) extends BlackBox with HasBlackBoxInline {
+class VerilogRxClkLane(sim: Boolean = false)
+    extends BlackBox
+    with HasBlackBoxInline {
   val io = IO(new VerilogRxClkLaneIO)
 
   override val desiredName = "rx_clock_lane"
 
   if (sim) {
-    setInline("rx_clock_lane.v",
+    setInline(
+      "rx_clock_lane.v",
       """
 module rx_clock_lane (
    inout vdd,
@@ -477,11 +482,11 @@ object RxAfeCtlState extends ChiselEnum {
 }
 
 class RxAfeIO extends Bundle {
-    val aEn = Bool()
-    val aPc = Bool()
-    val bEn = Bool()
-    val bPc = Bool()
-    val selA = Bool()
+  val aEn = Bool()
+  val aPc = Bool()
+  val bEn = Bool()
+  val bPc = Bool()
+  val selA = Bool()
 }
 
 class RxAfeCtl extends Module {
@@ -498,14 +503,14 @@ class RxAfeCtl extends Module {
   val ctrinc = Wire(UInt(17.W))
   ctrinc := ctr + 1.U
 
-    io.afe := (new RxAfeIO).Lit(
-      _.aEn -> false.B,
-      _.aPc -> true.B,
-      _.bEn -> false.B,
-      _.bPc -> true.B,
-      _.selA -> true.B
-    )
-  when (reset.asBool) {
+  io.afe := (new RxAfeIO).Lit(
+    _.aEn -> false.B,
+    _.aPc -> true.B,
+    _.bEn -> false.B,
+    _.bPc -> true.B,
+    _.selA -> true.B
+  )
+  when(reset.asBool) {
     io.afe := (new RxAfeIO).Lit(
       _.aEn -> false.B,
       _.aPc -> true.B,
@@ -514,11 +519,11 @@ class RxAfeCtl extends Module {
       _.selA -> true.B
     )
   }.otherwise {
-    when (io.bypass) {
+    when(io.bypass) {
       io.afe := io.afeBypass
     }.otherwise {
-      switch (state) {
-        is (RxAfeCtlState.sA) {
+      switch(state) {
+        is(RxAfeCtlState.sA) {
           io.afe := (new RxAfeIO).Lit(
             _.aEn -> true.B,
             _.aPc -> false.B,
@@ -527,7 +532,7 @@ class RxAfeCtl extends Module {
             _.selA -> true.B
           )
         }
-        is (RxAfeCtlState.sAbInit) {
+        is(RxAfeCtlState.sAbInit) {
           io.afe := (new RxAfeIO).Lit(
             _.aEn -> true.B,
             _.aPc -> false.B,
@@ -536,7 +541,7 @@ class RxAfeCtl extends Module {
             _.selA -> true.B
           )
         }
-        is (RxAfeCtlState.sAbSel) {
+        is(RxAfeCtlState.sAbSel) {
           io.afe := (new RxAfeIO).Lit(
             _.aEn -> true.B,
             _.aPc -> false.B,
@@ -545,7 +550,7 @@ class RxAfeCtl extends Module {
             _.selA -> false.B
           )
         }
-        is (RxAfeCtlState.sB) {
+        is(RxAfeCtlState.sB) {
           io.afe := (new RxAfeIO).Lit(
             _.aEn -> false.B,
             _.aPc -> true.B,
@@ -554,7 +559,7 @@ class RxAfeCtl extends Module {
             _.selA -> false.B
           )
         }
-        is (RxAfeCtlState.sBaInit) {
+        is(RxAfeCtlState.sBaInit) {
           io.afe := (new RxAfeIO).Lit(
             _.aEn -> true.B,
             _.aPc -> false.B,
@@ -563,7 +568,7 @@ class RxAfeCtl extends Module {
             _.selA -> false.B
           )
         }
-        is (RxAfeCtlState.sBaSel) {
+        is(RxAfeCtlState.sBaSel) {
           io.afe := (new RxAfeIO).Lit(
             _.aEn -> true.B,
             _.aPc -> false.B,
@@ -576,36 +581,36 @@ class RxAfeCtl extends Module {
     }
   }
   ctr := ctrinc
-  switch (state) {
-    is (RxAfeCtlState.sA) {
-      when (ctrinc === io.opCycles) {
+  switch(state) {
+    is(RxAfeCtlState.sA) {
+      when(ctrinc === io.opCycles) {
         state := RxAfeCtlState.sAbInit
         ctr := 0.U
       }
     }
-    is (RxAfeCtlState.sAbInit) {
-      when (ctrinc === io.overlapCycles) {
+    is(RxAfeCtlState.sAbInit) {
+      when(ctrinc === io.overlapCycles) {
         state := RxAfeCtlState.sAbSel
         ctr := 0.U
       }
     }
-    is (RxAfeCtlState.sAbSel) {
+    is(RxAfeCtlState.sAbSel) {
       state := RxAfeCtlState.sB
       ctr := 0.U
     }
-    is (RxAfeCtlState.sB) {
-      when (ctrinc === io.opCycles) {
+    is(RxAfeCtlState.sB) {
+      when(ctrinc === io.opCycles) {
         state := RxAfeCtlState.sBaInit
         ctr := 0.U
       }
     }
-    is (RxAfeCtlState.sBaInit) {
-      when (ctrinc === io.overlapCycles) {
+    is(RxAfeCtlState.sBaInit) {
+      when(ctrinc === io.overlapCycles) {
         state := RxAfeCtlState.sBaSel
         ctr := 0.U
       }
     }
-    is (RxAfeCtlState.sBaSel) {
+    is(RxAfeCtlState.sBaSel) {
       state := RxAfeCtlState.sA
       ctr := 0.U
     }

@@ -16,7 +16,12 @@ import edu.berkeley.cs.ucie.digital.tilelink._
 import edu.berkeley.cs.ucie.digital.interfaces.{FdiParams, RdiParams, AfeParams}
 import edu.berkeley.cs.ucie.digital.protocol.{ProtocolLayerParams}
 import edu.berkeley.cs.ucie.digital.sideband.{SidebandParams}
-import edu.berkeley.cs.ucie.digital.logphy.{LinkTrainingParams, TransmitPattern, RegisterRWIO, RegisterRW}
+import edu.berkeley.cs.ucie.digital.logphy.{
+  LinkTrainingParams,
+  TransmitPattern,
+  RegisterRWIO,
+  RegisterRW
+}
 
 import uciephytest.phy._
 
@@ -30,24 +35,24 @@ class UciLoopbackTester(implicit p: Parameters) extends LazyModule {
   // Create clock source
   val clockSourceNode = ClockSourceNode(Seq(ClockSourceParameters()))
 
-  //val csrfuzz = LazyModule(new TLFuzzer(txns))
+  // val csrfuzz = LazyModule(new TLFuzzer(txns))
   val fuzz = LazyModule(new TLFuzzer(txns))
-  val tlUcieDie1 = LazyModule(new UciephyTestTL(
-     params = params,
-     beatBytes = 16))
+  val tlUcieDie1 = LazyModule(
+    new UciephyTestTL(params = params, beatBytes = 16)
+  )
   tlUcieDie1.clockNode := clockSourceNode
   val ram = LazyModule(
     new TLRAM(
       AddressSet(params.tlParams.ADDRESS, params.tlParams.addressRange),
-      beatBytes = params.tlParams.BEAT_BYTES,
-    ),
+      beatBytes = params.tlParams.BEAT_BYTES
+    )
   )
 
   // CSR node
-  //tlUcieDie1.regNode.node := csrfuzz.node
+  // tlUcieDie1.regNode.node := csrfuzz.node
   // connect data nodes
   tlUcieDie1.uciTL.managerNode := TLSourceShrinker(
-    params.tlParams.sourceIDWidth,
+    params.tlParams.sourceIDWidth
   ) := fuzz.node
   ram.node := tlUcieDie1.uciTL.clientNode
   lazy val module = new Impl
@@ -92,7 +97,7 @@ class UciLoopbackTest extends AnyFlatSpec with ChiselScalatestTester {
   implicit val p: Parameters = Parameters.empty
   it should "finish request and response before timeout" in {
     test(new UciTLTestHarness()).withAnnotations(
-      Seq(VcsBackendAnnotation, WriteFsdbAnnotation),
+      Seq(VcsBackendAnnotation, WriteFsdbAnnotation)
     ) { c => // .withAnnotations(Seq(VcsBackendAnnotation, WriteVcdAnnotation))
 
       println("start Uci Loopback Test")

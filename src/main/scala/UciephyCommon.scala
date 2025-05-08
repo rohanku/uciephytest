@@ -6,28 +6,56 @@ import chisel3.util.random._
 import chisel3.experimental.BundleLiterals._
 import chisel3.experimental.VecLiterals._
 import freechips.rocketchip.prci._
-import freechips.rocketchip.subsystem.{BaseSubsystem, PBUS, SBUS, CacheBlockBytes, TLBusWrapperLocation}
+import freechips.rocketchip.subsystem.{
+  BaseSubsystem,
+  PBUS,
+  SBUS,
+  CacheBlockBytes,
+  TLBusWrapperLocation
+}
 import org.chipsalliance.cde.config.{Parameters, Field, Config}
 import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.regmapper.{HasRegMap, RegField, RegWriteFn, RegReadFn, RegFieldDesc}
+import freechips.rocketchip.regmapper.{
+  HasRegMap,
+  RegField,
+  RegWriteFn,
+  RegReadFn,
+  RegFieldDesc
+}
 import freechips.rocketchip.tilelink._
-import uciephytest.phy.{TxDriver, TxLane, ClkDiv4, RstSync, Shuffler32, ClkRx, DriverControlIO, Phy, TxLaneDigitalCtlIO}
+import uciephytest.phy.{
+  TxDriver,
+  TxLane,
+  ClkDiv4,
+  RstSync,
+  Shuffler32,
+  ClkRx,
+  DriverControlIO,
+  Phy,
+  TxLaneDigitalCtlIO
+}
 import freechips.rocketchip.util.{AsyncQueue}
 import testchipip.soc.{OBUS}
 import edu.berkeley.cs.ucie.digital.tilelink._
 import edu.berkeley.cs.ucie.digital.interfaces.{FdiParams, RdiParams, AfeParams}
 import edu.berkeley.cs.ucie.digital.protocol.{ProtocolLayerParams}
 import edu.berkeley.cs.ucie.digital.sideband.{SidebandParams}
-import edu.berkeley.cs.ucie.digital.logphy.{LinkTrainingParams, TransmitPattern, RegisterRWIO, RegisterRW}
+import edu.berkeley.cs.ucie.digital.logphy.{
+  LinkTrainingParams,
+  TransmitPattern,
+  RegisterRWIO,
+  RegisterRW
+}
 
 case class UciephyCommonParams(
-  bitCounterWidth: Int = 64,
-  address: BigInt = 0x4000,
-  managerWhere: TLBusWrapperLocation = PBUS,
-  sim: Boolean = false
+    bitCounterWidth: Int = 64,
+    address: BigInt = 0x4000,
+    managerWhere: TLBusWrapperLocation = PBUS,
+    sim: Boolean = false
 )
 
-case object UciephyCommonKey extends Field[Option[Seq[UciephyCommonParams]]](None)
+case object UciephyCommonKey
+    extends Field[Option[Seq[UciephyCommonParams]]](None)
 
 class UciephyCommonTLIO extends Bundle {
   val refClkInP = Input(Bool())
@@ -52,21 +80,33 @@ class UciephyCommonTLIO extends Bundle {
   val txDataDebug = Output(Bool())
 }
 
-class UciephyCommonTL(params: UciephyCommonParams, beatBytes: Int)(implicit p: Parameters) extends ClockSinkDomain(ClockSinkParameters())(p) {
+class UciephyCommonTL(params: UciephyCommonParams, beatBytes: Int)(implicit
+    p: Parameters
+) extends ClockSinkDomain(ClockSinkParameters())(p) {
   def toRegFieldRw[T <: Data](r: T, name: String): RegField = {
-        RegField(r.getWidth, r.asUInt, RegWriteFn((valid, data) => {
-          when (valid) {
-            r := data.asTypeOf(r)
-          }
-          true.B
-        }), Some(RegFieldDesc(name, "")))
-      }
+    RegField(
+      r.getWidth,
+      r.asUInt,
+      RegWriteFn((valid, data) => {
+        when(valid) {
+          r := data.asTypeOf(r)
+        }
+        true.B
+      }),
+      Some(RegFieldDesc(name, ""))
+    )
+  }
   def toRegFieldR[T <: Data](r: T, name: String): RegField = {
-        RegField.r(r.getWidth, r.asUInt, RegFieldDesc(name, ""))
-      }
+    RegField.r(r.getWidth, r.asUInt, RegFieldDesc(name, ""))
+  }
   override lazy val desiredName = "UciephyCommonTL"
   val device = new SimpleDevice("uciephycommon", Seq("ucbbar,uciephycommon"))
-  val node = TLRegisterNode(Seq(AddressSet(params.address, 4096-1)), device, "reg/control", beatBytes=beatBytes)
+  val node = TLRegisterNode(
+    Seq(AddressSet(params.address, 4096 - 1)),
+    device,
+    "reg/control",
+    beatBytes = beatBytes
+  )
 
   val topIO = BundleBridgeSource(() => new UciephyCommonTLIO)
 
@@ -120,16 +160,22 @@ class UciephyCommonTL(params: UciephyCommonParams, beatBytes: Int)(implicit p: P
 
       val txReset = txFsmRst.valid || reset.asBool
       val txState = withReset(txReset) { RegInit(TxTestState.idle) }
-      val txPacketsEnqueued = withReset(txReset) { RegInit(0.U(params.bitCounterWidth.W)) }
+      val txPacketsEnqueued = withReset(txReset) {
+        RegInit(0.U(params.bitCounterWidth.W))
+      }
       val inputBufferAddrReg = withReset(txReset) { RegInit(0.U(5.W)) }
       val maxPackets = 32.U
-      val txManualRepeatPeriodFinal = Mux(txManualRepeatPeriod === 0.U || txManualRepeatPeriod > maxPackets, maxPackets, txManualRepeatPeriod)
+      val txManualRepeatPeriodFinal = Mux(
+        txManualRepeatPeriod === 0.U || txManualRepeatPeriod > maxPackets,
+        maxPackets,
+        txManualRepeatPeriod
+      )
       val txLfsr = Module(
         new FibonacciLFSR(
           2 * Phy.SerdesRatio,
           taps = LFSR.tapsMaxPeriod.get(2 * Phy.SerdesRatio).get.head,
-          step = Phy.SerdesRatio,
-        ),
+          step = Phy.SerdesRatio
+        )
       )
       txLfsr.io.seed.bits := txLfsrSeed.asTypeOf(txLfsr.io.seed.bits)
       txLfsr.io.seed.valid := txReset
@@ -142,7 +188,7 @@ class UciephyCommonTL(params: UciephyCommonParams, beatBytes: Int)(implicit p: P
       val rstSync = Module(new RstSync(params.sim))
       rstSync.io.rstbAsync := !reset.asBool
       rstSync.io.clk := txLane.io.divclk
-      txFifo.io.enq.bits:= 0.U
+      txFifo.io.enq.bits := 0.U
       txFifo.io.enq.valid := false.B
       txFifo.io.enq_clock := clock
       txFifo.io.enq_reset := reset
@@ -150,12 +196,12 @@ class UciephyCommonTL(params: UciephyCommonParams, beatBytes: Int)(implicit p: P
       txFifo.io.deq_reset := !rstSync.io.rstbSync.asBool
       txFifo.io.deq.ready := true.B
 
-      when (txFifo.io.deq.valid) {
+      when(txFifo.io.deq.valid) {
         shuffler.io.din := txFifo.io.deq.bits
-      } .otherwise {
+      }.otherwise {
         shuffler.io.din := 0.U
       }
-      shuffler.io.permutation :=txctl.shuffler
+      shuffler.io.permutation := txctl.shuffler
 
       txLane.io.dll_reset := txctl.dll_reset
       txLane.io.dll_resetb := !txctl.dll_reset
@@ -170,15 +216,15 @@ class UciephyCommonTL(params: UciephyCommonParams, beatBytes: Int)(implicit p: P
       // TX logic
       switch(txState) {
         is(TxTestState.idle) {
-          when (txExecute.valid) {
+          when(txExecute.valid) {
             txState := TxTestState.run
           }
         }
         is(TxTestState.run) {
-          switch (txTestMode) {
-            is (TxTestMode.manual) {
+          switch(txTestMode) {
+            is(TxTestMode.manual) {
               // Only send the next packet if we still need to send more bits.
-              switch (txDataMode) {
+              switch(txDataMode) {
                 is(DataMode.finite) {
                   txFifo.io.enq.valid := txPacketsEnqueued < txPacketsToSend
                 }
@@ -187,8 +233,8 @@ class UciephyCommonTL(params: UciephyCommonParams, beatBytes: Int)(implicit p: P
                 }
               }
             }
-            is (TxTestMode.lfsr) {
-              switch (txDataMode) {
+            is(TxTestMode.lfsr) {
+              switch(txDataMode) {
                 is(DataMode.finite) {
                   txFifo.io.enq.valid := txPacketsEnqueued < txPacketsToSend
                 }
@@ -198,31 +244,38 @@ class UciephyCommonTL(params: UciephyCommonParams, beatBytes: Int)(implicit p: P
               }
             }
           }
-          when (txFifo.io.enq.valid) {
+          when(txFifo.io.enq.valid) {
             switch(txTestMode) {
-              is (TxTestMode.manual) {
-                txFifo.io.enq.bits := data.asTypeOf(Vec(32, UInt(32.W)))(inputBufferAddrReg)
+              is(TxTestMode.manual) {
+                txFifo.io.enq.bits := data.asTypeOf(Vec(32, UInt(32.W)))(
+                  inputBufferAddrReg
+                )
               }
-              is (TxTestMode.lfsr) {
+              is(TxTestMode.lfsr) {
                 txFifo.io.enq.bits := Reverse(txLfsr.io.out.asUInt)(31, 0)
               }
             }
           }
 
-          when (txFifo.io.enq.valid && txFifo.io.enq.ready) {
-            txPacketsEnqueued := Mux(txPacketsEnqueued < VecInit(Seq.fill(txPacketsEnqueued.getWidth)(true.B)).asUInt, txPacketsEnqueued + 1.U, txPacketsEnqueued)
+          when(txFifo.io.enq.valid && txFifo.io.enq.ready) {
+            txPacketsEnqueued := Mux(
+              txPacketsEnqueued < VecInit(
+                Seq.fill(txPacketsEnqueued.getWidth)(true.B)
+              ).asUInt,
+              txPacketsEnqueued + 1.U,
+              txPacketsEnqueued
+            )
             inputBufferAddrReg := (inputBufferAddrReg + 1.U) % txManualRepeatPeriodFinal
-            when (txTestMode === TxTestMode.lfsr) {
+            when(txTestMode === TxTestMode.lfsr) {
               txLfsr.io.increment := true.B
             }
           }
 
-          when (!txFifo.io.enq.valid) {
+          when(!txFifo.io.enq.valid) {
             txState := TxTestState.done
           }
         }
-        is(TxTestState.done) {
-        }
+        is(TxTestState.done) {}
       }
 
       val refclkrx = Module(new ClkRx(params.sim))
@@ -248,14 +301,14 @@ class UciephyCommonTL(params: UciephyCommonParams, beatBytes: Int)(implicit p: P
       val rxClkDiv = Module(new ClkDiv4(params.sim))
       rxClkDiv.io.clk := io.rxClkIn
       rxClkDiv.io.resetb := !reset.asBool
-      
+
       val drivers = Seq(
-           (io.testPllClkInP, io.testPllClkOutP),
-           (testPllClkNDiv.io.clkout_2, io.testPllClkOutP),
-           (io.pllClkInP, io.pllClkOutP),
-           (pllClkNDiv.io.clkout_2, io.pllClkOutP),
-           (io.rxClkIn, io.rxClkOut),
-           (rxClkDiv.io.clkout_2, io.rxClkOutDivided)
+        (io.testPllClkInP, io.testPllClkOutP),
+        (testPllClkNDiv.io.clkout_2, io.testPllClkOutP),
+        (io.pllClkInP, io.pllClkOutP),
+        (pllClkNDiv.io.clkout_2, io.pllClkOutP),
+        (io.rxClkIn, io.rxClkOut),
+        (rxClkDiv.io.clkout_2, io.rxClkOutDivided)
       ).zipWithIndex
       for (((input, output), i) <- drivers) {
         val driver = Module(new TxDriver(params.sim)).suggestName(s"driver_$i")
@@ -273,25 +326,27 @@ class UciephyCommonTL(params: UciephyCommonParams, beatBytes: Int)(implicit p: P
         toRegFieldR(txPacketsEnqueued, "txPacketsSent"),
         toRegFieldRw(txManualRepeatPeriod, "txManualRepeatPeriod"),
         toRegFieldRw(txPacketsToSend, "txPacketsToSend"),
-        toRegFieldR(txState, "txTestState"),
+        toRegFieldR(txState, "txTestState")
       ) ++ (0 until driverctl.length).map((i: Int) => {
-          toRegFieldRw(driverctl(i), s"driverctl_${i}")
+        toRegFieldRw(driverctl(i), s"driverctl_${i}")
       }) ++ Seq(
         toRegFieldRw(txctl.dll_reset, s"dll_reset"),
         toRegFieldRw(txctl.driver, s"txctl_driver"),
-        toRegFieldRw(txctl.skew, s"txctl_skew"),
-        ) ++ (0 until 32).map((j: Int) => 
-        toRegFieldRw(txctl.shuffler(j), s"txctl_shuffler_$j"),
-        ) ++ Seq(
-        toRegFieldR(txLane.io.dll_code, s"dllCode"),
+        toRegFieldRw(txctl.skew, s"txctl_skew")
+      ) ++ (0 until 32).map((j: Int) =>
+        toRegFieldRw(txctl.shuffler(j), s"txctl_shuffler_$j")
+      ) ++ Seq(
+        toRegFieldR(txLane.io.dll_code, s"dllCode")
       )
 
-      node.regmap(mmioRegs.zipWithIndex.map({ case (f, i) => {
-      i * 8 -> Seq(f)} }): _*)
+      node.regmap(mmioRegs.zipWithIndex.map({
+        case (f, i) => {
+          i * 8 -> Seq(f)
+        }
+      }): _*)
     }
   }
 }
-
 
 trait CanHavePeripheryUciephyCommon { this: BaseSubsystem =>
   private val portName = "uciephycommon"
@@ -301,13 +356,25 @@ trait CanHavePeripheryUciephyCommon { this: BaseSubsystem =>
 
   val uciephy_common = p(UciephyCommonKey) match {
     case Some(params) => {
-      val uciephy_common = params.map(x => LazyModule(new UciephyCommonTL(x, sbus.beatBytes)(p)))
+      val uciephy_common =
+        params.map(x => LazyModule(new UciephyCommonTL(x, sbus.beatBytes)(p)))
 
-      lazy val uciephy_tlbus = params.map(x => locateTLBusWrapper(x.managerWhere))
+      lazy val uciephy_tlbus =
+        params.map(x => locateTLBusWrapper(x.managerWhere))
 
-      for ((((ucie, ucie_params), tlbus), n) <- uciephy_common.zip(params).zip(uciephy_tlbus).zipWithIndex){
+      for (
+        (((ucie, ucie_params), tlbus), n) <- uciephy_common
+          .zip(params)
+          .zip(uciephy_tlbus)
+          .zipWithIndex
+      ) {
         ucie.clockNode := sbus.fixedClockNode
-        sbus.coupleTo(s"uciephycommon{$n}") { ucie.node := TLBuffer() := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := TLBuffer() := _ }
+        sbus.coupleTo(s"uciephycommon{$n}") {
+          ucie.node := TLBuffer() := TLFragmenter(
+            sbus.beatBytes,
+            sbus.blockBytes
+          ) := TLBuffer() := _
+        }
       }
       Some(uciephy_common)
     }
@@ -315,10 +382,12 @@ trait CanHavePeripheryUciephyCommon { this: BaseSubsystem =>
   }
 }
 
-class WithUciephyCommon(params: Seq[UciephyCommonParams]) extends Config((site, here, up) => {
-  case UciephyCommonKey => Some(params)
-})
+class WithUciephyCommon(params: Seq[UciephyCommonParams])
+    extends Config((site, here, up) => { case UciephyCommonKey =>
+      Some(params)
+    })
 
-class WithUciephyCommonSim extends Config((site, here, up) => {
-  case UciephyCommonKey => up(UciephyCommonKey, site).map(u => u.map(_.copy(sim = true)))
-})
+class WithUciephyCommonSim
+    extends Config((site, here, up) => { case UciephyCommonKey =>
+      up(UciephyCommonKey, site).map(u => u.map(_.copy(sim = true)))
+    })

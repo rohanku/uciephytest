@@ -50,38 +50,38 @@ class TxLane(sim: Boolean = false) extends RawModule {
   verilogBlackBox.io.clkp := io.clkp
   verilogBlackBox.io.clkn := io.clkn
 
-  verilogBlackBox.io.din_0 :=  io.din(0)
-  verilogBlackBox.io.din_1 :=  io.din(1)
-  verilogBlackBox.io.din_2 :=  io.din(2)
-  verilogBlackBox.io.din_3 :=  io.din(3)
-  verilogBlackBox.io.din_4 :=  io.din(4)
-  verilogBlackBox.io.din_5 :=  io.din(5)
-  verilogBlackBox.io.din_6 :=  io.din(6)
-  verilogBlackBox.io.din_7 :=  io.din(7)
-  verilogBlackBox.io.din_8 :=  io.din(8)
-  verilogBlackBox.io.din_9 :=  io.din(9)
-  verilogBlackBox.io.din_10 :=  io.din(10)
-  verilogBlackBox.io.din_11 :=  io.din(11)
-  verilogBlackBox.io.din_12 :=  io.din(12)
-  verilogBlackBox.io.din_13 :=  io.din(13)
-  verilogBlackBox.io.din_14 :=  io.din(14)
-  verilogBlackBox.io.din_15 :=  io.din(15)
-  verilogBlackBox.io.din_16 :=  io.din(16)
-  verilogBlackBox.io.din_17 :=  io.din(17)
-  verilogBlackBox.io.din_18 :=  io.din(18)
-  verilogBlackBox.io.din_19 :=  io.din(19)
-  verilogBlackBox.io.din_20 :=  io.din(20)
-  verilogBlackBox.io.din_21 :=  io.din(21)
-  verilogBlackBox.io.din_22 :=  io.din(22)
-  verilogBlackBox.io.din_23 :=  io.din(23)
-  verilogBlackBox.io.din_24 :=  io.din(24)
-  verilogBlackBox.io.din_25 :=  io.din(25)
-  verilogBlackBox.io.din_26 :=  io.din(26)
-  verilogBlackBox.io.din_27 :=  io.din(27)
-  verilogBlackBox.io.din_28 :=  io.din(28)
-  verilogBlackBox.io.din_29 :=  io.din(29)
-  verilogBlackBox.io.din_30 :=  io.din(30)
-  verilogBlackBox.io.din_31 :=  io.din(31)
+  verilogBlackBox.io.din_0 := io.din(0)
+  verilogBlackBox.io.din_1 := io.din(1)
+  verilogBlackBox.io.din_2 := io.din(2)
+  verilogBlackBox.io.din_3 := io.din(3)
+  verilogBlackBox.io.din_4 := io.din(4)
+  verilogBlackBox.io.din_5 := io.din(5)
+  verilogBlackBox.io.din_6 := io.din(6)
+  verilogBlackBox.io.din_7 := io.din(7)
+  verilogBlackBox.io.din_8 := io.din(8)
+  verilogBlackBox.io.din_9 := io.din(9)
+  verilogBlackBox.io.din_10 := io.din(10)
+  verilogBlackBox.io.din_11 := io.din(11)
+  verilogBlackBox.io.din_12 := io.din(12)
+  verilogBlackBox.io.din_13 := io.din(13)
+  verilogBlackBox.io.din_14 := io.din(14)
+  verilogBlackBox.io.din_15 := io.din(15)
+  verilogBlackBox.io.din_16 := io.din(16)
+  verilogBlackBox.io.din_17 := io.din(17)
+  verilogBlackBox.io.din_18 := io.din(18)
+  verilogBlackBox.io.din_19 := io.din(19)
+  verilogBlackBox.io.din_20 := io.din(20)
+  verilogBlackBox.io.din_21 := io.din(21)
+  verilogBlackBox.io.din_22 := io.din(22)
+  verilogBlackBox.io.din_23 := io.din(23)
+  verilogBlackBox.io.din_24 := io.din(24)
+  verilogBlackBox.io.din_25 := io.din(25)
+  verilogBlackBox.io.din_26 := io.din(26)
+  verilogBlackBox.io.din_27 := io.din(27)
+  verilogBlackBox.io.din_28 := io.din(28)
+  verilogBlackBox.io.din_29 := io.din(29)
+  verilogBlackBox.io.din_30 := io.din(30)
+  verilogBlackBox.io.din_31 := io.din(31)
 
   io.dout := verilogBlackBox.io.dout
   io.divclk := verilogBlackBox.io.divclk
@@ -90,16 +90,16 @@ class TxLane(sim: Boolean = false) extends RawModule {
   puCtlTherm := (1.U << io.ctl.driver.pu_ctl) - 1.U
   val pdCtlbTherm = Wire(UInt(64.W))
   pdCtlbTherm := ~((1.U << io.ctl.driver.pd_ctl) - 1.U)
-  verilogBlackBox.io.pu_ctl_0  := puCtlTherm(0)
-  verilogBlackBox.io.pu_ctl_1  := puCtlTherm(1)
-  verilogBlackBox.io.pu_ctl_2  := puCtlTherm(2)
-  verilogBlackBox.io.pu_ctl_3  := puCtlTherm(3)
-  verilogBlackBox.io.pu_ctl_4  := puCtlTherm(4)
-  verilogBlackBox.io.pu_ctl_5  := puCtlTherm(5)
-  verilogBlackBox.io.pu_ctl_6  := puCtlTherm(6)
-  verilogBlackBox.io.pu_ctl_7  := puCtlTherm(7)
-  verilogBlackBox.io.pu_ctl_8  := puCtlTherm(8)
-  verilogBlackBox.io.pu_ctl_9  := puCtlTherm(9)
+  verilogBlackBox.io.pu_ctl_0 := puCtlTherm(0)
+  verilogBlackBox.io.pu_ctl_1 := puCtlTherm(1)
+  verilogBlackBox.io.pu_ctl_2 := puCtlTherm(2)
+  verilogBlackBox.io.pu_ctl_3 := puCtlTherm(3)
+  verilogBlackBox.io.pu_ctl_4 := puCtlTherm(4)
+  verilogBlackBox.io.pu_ctl_5 := puCtlTherm(5)
+  verilogBlackBox.io.pu_ctl_6 := puCtlTherm(6)
+  verilogBlackBox.io.pu_ctl_7 := puCtlTherm(7)
+  verilogBlackBox.io.pu_ctl_8 := puCtlTherm(8)
+  verilogBlackBox.io.pu_ctl_9 := puCtlTherm(9)
   verilogBlackBox.io.pu_ctl_10 := puCtlTherm(10)
   verilogBlackBox.io.pu_ctl_11 := puCtlTherm(11)
   verilogBlackBox.io.pu_ctl_12 := puCtlTherm(12)
@@ -130,16 +130,16 @@ class TxLane(sim: Boolean = false) extends RawModule {
   verilogBlackBox.io.pu_ctl_37 := puCtlTherm(37)
   verilogBlackBox.io.pu_ctl_38 := puCtlTherm(38)
   verilogBlackBox.io.pu_ctl_39 := puCtlTherm(39)
-  verilogBlackBox.io.pd_ctlb_0  := pdCtlbTherm(0)
-  verilogBlackBox.io.pd_ctlb_1  := pdCtlbTherm(1)
-  verilogBlackBox.io.pd_ctlb_2  := pdCtlbTherm(2)
-  verilogBlackBox.io.pd_ctlb_3  := pdCtlbTherm(3)
-  verilogBlackBox.io.pd_ctlb_4  := pdCtlbTherm(4)
-  verilogBlackBox.io.pd_ctlb_5  := pdCtlbTherm(5)
-  verilogBlackBox.io.pd_ctlb_6  := pdCtlbTherm(6)
-  verilogBlackBox.io.pd_ctlb_7  := pdCtlbTherm(7)
-  verilogBlackBox.io.pd_ctlb_8  := pdCtlbTherm(8)
-  verilogBlackBox.io.pd_ctlb_9  := pdCtlbTherm(9)
+  verilogBlackBox.io.pd_ctlb_0 := pdCtlbTherm(0)
+  verilogBlackBox.io.pd_ctlb_1 := pdCtlbTherm(1)
+  verilogBlackBox.io.pd_ctlb_2 := pdCtlbTherm(2)
+  verilogBlackBox.io.pd_ctlb_3 := pdCtlbTherm(3)
+  verilogBlackBox.io.pd_ctlb_4 := pdCtlbTherm(4)
+  verilogBlackBox.io.pd_ctlb_5 := pdCtlbTherm(5)
+  verilogBlackBox.io.pd_ctlb_6 := pdCtlbTherm(6)
+  verilogBlackBox.io.pd_ctlb_7 := pdCtlbTherm(7)
+  verilogBlackBox.io.pd_ctlb_8 := pdCtlbTherm(8)
+  verilogBlackBox.io.pd_ctlb_9 := pdCtlbTherm(9)
   verilogBlackBox.io.pd_ctlb_10 := pdCtlbTherm(10)
   verilogBlackBox.io.pd_ctlb_11 := pdCtlbTherm(11)
   verilogBlackBox.io.pd_ctlb_12 := pdCtlbTherm(12)
@@ -274,18 +274,20 @@ class TxLane(sim: Boolean = false) extends RawModule {
     verilogBlackBox.io.dll_code_3,
     verilogBlackBox.io.dll_code_2,
     verilogBlackBox.io.dll_code_1,
-    verilogBlackBox.io.dll_code_0,
+    verilogBlackBox.io.dll_code_0
   )
 }
 
-
-class VerilogTxLane(sim: Boolean = false) extends BlackBox with HasBlackBoxInline {
+class VerilogTxLane(sim: Boolean = false)
+    extends BlackBox
+    with HasBlackBoxInline {
   val io = IO(new VerilogTxLaneIO)
 
   override val desiredName = "tx_lane"
 
   if (sim) {
-    setInline("tx_lane.v",
+    setInline(
+      "tx_lane.v",
       """
 module tx_lane (
   inout vdd,
@@ -573,10 +575,10 @@ module tx_lane (
   assign dll_code_4 = 1'b0;
 
 endmodule
-      """.stripMargin)
+      """.stripMargin
+    )
   }
 }
-
 
 class VerilogTxLaneIO extends Bundle {
   val dll_reset = Input(Bool())
@@ -791,7 +793,6 @@ class VerilogTxLaneIO extends Bundle {
   val dll_code_4 = Output(Bool())
 }
 
-
 class TxDriverIO extends Bundle {
   val din = Input(Bool())
   val dout = Output(Bool())
@@ -808,16 +809,16 @@ class TxDriver(sim: Boolean = false) extends RawModule {
   puCtlTherm := (1.U << io.ctl.pu_ctl) - 1.U
   val pdCtlbTherm = Wire(UInt(64.W))
   pdCtlbTherm := ~((1.U << io.ctl.pd_ctl) - 1.U)
-  verilogBlackBox.io.pu_ctl_0  := puCtlTherm(0)
-  verilogBlackBox.io.pu_ctl_1  := puCtlTherm(1)
-  verilogBlackBox.io.pu_ctl_2  := puCtlTherm(2)
-  verilogBlackBox.io.pu_ctl_3  := puCtlTherm(3)
-  verilogBlackBox.io.pu_ctl_4  := puCtlTherm(4)
-  verilogBlackBox.io.pu_ctl_5  := puCtlTherm(5)
-  verilogBlackBox.io.pu_ctl_6  := puCtlTherm(6)
-  verilogBlackBox.io.pu_ctl_7  := puCtlTherm(7)
-  verilogBlackBox.io.pu_ctl_8  := puCtlTherm(8)
-  verilogBlackBox.io.pu_ctl_9  := puCtlTherm(9)
+  verilogBlackBox.io.pu_ctl_0 := puCtlTherm(0)
+  verilogBlackBox.io.pu_ctl_1 := puCtlTherm(1)
+  verilogBlackBox.io.pu_ctl_2 := puCtlTherm(2)
+  verilogBlackBox.io.pu_ctl_3 := puCtlTherm(3)
+  verilogBlackBox.io.pu_ctl_4 := puCtlTherm(4)
+  verilogBlackBox.io.pu_ctl_5 := puCtlTherm(5)
+  verilogBlackBox.io.pu_ctl_6 := puCtlTherm(6)
+  verilogBlackBox.io.pu_ctl_7 := puCtlTherm(7)
+  verilogBlackBox.io.pu_ctl_8 := puCtlTherm(8)
+  verilogBlackBox.io.pu_ctl_9 := puCtlTherm(9)
   verilogBlackBox.io.pu_ctl_10 := puCtlTherm(10)
   verilogBlackBox.io.pu_ctl_11 := puCtlTherm(11)
   verilogBlackBox.io.pu_ctl_12 := puCtlTherm(12)
@@ -848,16 +849,16 @@ class TxDriver(sim: Boolean = false) extends RawModule {
   verilogBlackBox.io.pu_ctl_37 := puCtlTherm(37)
   verilogBlackBox.io.pu_ctl_38 := puCtlTherm(38)
   verilogBlackBox.io.pu_ctl_39 := puCtlTherm(39)
-  verilogBlackBox.io.pd_ctlb_0  := pdCtlbTherm(0)
-  verilogBlackBox.io.pd_ctlb_1  := pdCtlbTherm(1)
-  verilogBlackBox.io.pd_ctlb_2  := pdCtlbTherm(2)
-  verilogBlackBox.io.pd_ctlb_3  := pdCtlbTherm(3)
-  verilogBlackBox.io.pd_ctlb_4  := pdCtlbTherm(4)
-  verilogBlackBox.io.pd_ctlb_5  := pdCtlbTherm(5)
-  verilogBlackBox.io.pd_ctlb_6  := pdCtlbTherm(6)
-  verilogBlackBox.io.pd_ctlb_7  := pdCtlbTherm(7)
-  verilogBlackBox.io.pd_ctlb_8  := pdCtlbTherm(8)
-  verilogBlackBox.io.pd_ctlb_9  := pdCtlbTherm(9)
+  verilogBlackBox.io.pd_ctlb_0 := pdCtlbTherm(0)
+  verilogBlackBox.io.pd_ctlb_1 := pdCtlbTherm(1)
+  verilogBlackBox.io.pd_ctlb_2 := pdCtlbTherm(2)
+  verilogBlackBox.io.pd_ctlb_3 := pdCtlbTherm(3)
+  verilogBlackBox.io.pd_ctlb_4 := pdCtlbTherm(4)
+  verilogBlackBox.io.pd_ctlb_5 := pdCtlbTherm(5)
+  verilogBlackBox.io.pd_ctlb_6 := pdCtlbTherm(6)
+  verilogBlackBox.io.pd_ctlb_7 := pdCtlbTherm(7)
+  verilogBlackBox.io.pd_ctlb_8 := pdCtlbTherm(8)
+  verilogBlackBox.io.pd_ctlb_9 := pdCtlbTherm(9)
   verilogBlackBox.io.pd_ctlb_10 := pdCtlbTherm(10)
   verilogBlackBox.io.pd_ctlb_11 := pdCtlbTherm(11)
   verilogBlackBox.io.pd_ctlb_12 := pdCtlbTherm(12)
@@ -975,17 +976,20 @@ class VerilogTxDriverIO extends Bundle {
   val pd_ctlb_37 = Input(Bool())
   val pd_ctlb_38 = Input(Bool())
   val pd_ctlb_39 = Input(Bool())
-  val en = Input(Bool()) 
-  val en_b = Input(Bool()) 
+  val en = Input(Bool())
+  val en_b = Input(Bool())
 }
 
-class VerilogTxDriver(sim: Boolean = false) extends BlackBox with HasBlackBoxInline {
+class VerilogTxDriver(sim: Boolean = false)
+    extends BlackBox
+    with HasBlackBoxInline {
   val io = IO(new VerilogTxDriverIO)
 
   override val desiredName = "tx_driver"
 
   if (sim) {
-    setInline("tx_driver.v",
+    setInline(
+      "tx_driver.v",
       """
 module tx_driver (
    input din,
@@ -1296,7 +1300,7 @@ class UciePll(sim: Boolean = false) extends RawModule {
     verilogBlackBox.io.d_fcw_debug_3,
     verilogBlackBox.io.d_fcw_debug_2,
     verilogBlackBox.io.d_fcw_debug_1,
-    verilogBlackBox.io.d_fcw_debug_0,
+    verilogBlackBox.io.d_fcw_debug_0
   )
   io.d_sar_debug := Cat(
     verilogBlackBox.io.d_sar_debug_7,
@@ -1306,7 +1310,7 @@ class UciePll(sim: Boolean = false) extends RawModule {
     verilogBlackBox.io.d_sar_debug_3,
     verilogBlackBox.io.d_sar_debug_2,
     verilogBlackBox.io.d_sar_debug_1,
-    verilogBlackBox.io.d_sar_debug_0,
+    verilogBlackBox.io.d_sar_debug_0
   )
   verilogBlackBox.io.d_digital_reset := io.d_digital_reset
   verilogBlackBox.io.d_kp_0 := io.d_kp(0)
@@ -1384,12 +1388,15 @@ class UciePll(sim: Boolean = false) extends RawModule {
   verilogBlackBox.io.d_accumulator_reset_31 := io.d_accumulator_reset(31)
 }
 
-class VerilogUciePll(sim: Boolean = false) extends BlackBox with HasBlackBoxInline {
+class VerilogUciePll(sim: Boolean = false)
+    extends BlackBox
+    with HasBlackBoxInline {
   val io = IO(new VerilogUciePllIO)
 
   override val desiredName = "ucie_pll"
   if (sim) {
-    setInline("ucie_pll.v",
+    setInline(
+      "ucie_pll.v",
       """
 module ucie_pll (
    inout vdd,
