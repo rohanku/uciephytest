@@ -606,7 +606,7 @@ class RxAfeCtl extends Module {
       }
     }
     is (RxAfeCtlState.sBaSel) {
-      state := RxAfeCtlState.sB
+      state := RxAfeCtlState.sA
       ctr := 0.U
     }
   }

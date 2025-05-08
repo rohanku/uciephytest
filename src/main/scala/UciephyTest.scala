@@ -788,7 +788,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         toRegFieldRw(testTarget, "testTarget"),
         toRegFieldRw(txTestMode, "txTestMode"),
         toRegFieldRw(txDataMode, "txDataMode"),
-      ) ++ (0 until params.numLanes).map((i: Int) => {
+      ) ++ (0 until params.numLanes + 1).map((i: Int) => {
         toRegFieldRw(txLfsrSeed(i), s"txLfsrSeed_$i")
       }) ++ Seq(
         RegField.w(1, txFsmRst, RegFieldDesc("txFsmRst", "")),
@@ -809,9 +809,9 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       ) ++ Seq(
         toRegFieldR(test.io.mmio.txTestState, "txTestState"),
         toRegFieldRw(rxDataMode, s"rxDataMode"),
-      ) ++ (0 until params.numLanes).map((i: Int) => {
+      ) ++ (0 until params.numLanes + 1).map((i: Int) => {
           toRegFieldRw(rxLfsrSeed(i), s"rxLfsrSeed_$i")
-      }) ++ (0 until params.numLanes).map((i: Int) => {
+      }) ++ (0 until params.numLanes + 2).map((i: Int) => {
         toRegFieldR(test.io.mmio.rxBitErrors(i), s"rxBitErrors_$i")
       }) ++ Seq(
         RegField.w(1, rxFsmRst, RegFieldDesc("rxFsmRst", "")),

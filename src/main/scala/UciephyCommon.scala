@@ -20,13 +20,6 @@ import edu.berkeley.cs.ucie.digital.protocol.{ProtocolLayerParams}
 import edu.berkeley.cs.ucie.digital.sideband.{SidebandParams}
 import edu.berkeley.cs.ucie.digital.logphy.{LinkTrainingParams, TransmitPattern, RegisterRWIO, RegisterRW}
 
-class UciephyCommonIO extends Bundle {
-}
-
-class UciephyCommon(sim: Boolean = false) extends RawModule {
-  val io = IO(new UciephyCommonIO)
-}
-
 case class UciephyCommonParams(
   bitCounterWidth: Int = 64,
   address: BigInt = 0x4000,
@@ -53,6 +46,9 @@ class UciephyCommonTLIO extends Bundle {
   val testPllClkInN = Input(Bool())
   val testPllClkOutP = Output(Bool())
   val testPllClkOutN = Output(Bool())
+  val rxClkIn = Input(Bool())
+  val rxClkOut = Output(Bool())
+  val rxClkOutDivided = Output(Bool())
   val txDataDebug = Output(Bool())
 }
 
@@ -80,8 +76,8 @@ class UciephyCommonTL(params: UciephyCommonParams, beatBytes: Int)(implicit p: P
     withClockAndReset(clock, reset) {
       val io = topIO.out(0)._1
       // MMIO registers.
-      // Test PLL P, Test PLL N, UCIe PLL P, UCIe PLL N, RX CLK N
-      val driverctl = RegInit(VecInit(Seq.fill(5)({
+      // Test PLL P/N, UCIe PLL P/N, RX CLK P/N
+      val driverctl = RegInit(VecInit(Seq.fill(6)({
         val w = Wire(new DriverControlIO)
         w.pu_ctl := 0.U
         w.pd_ctl := 0.U
@@ -248,15 +244,21 @@ class UciephyCommonTL(params: UciephyCommonParams, beatBytes: Int)(implicit p: P
       val pllClkNDiv = Module(new ClkDiv4(params.sim))
       pllClkNDiv.io.clk := io.pllClkInN
       pllClkNDiv.io.resetb := !reset.asBool
+
+      val rxClkDiv = Module(new ClkDiv4(params.sim))
+      rxClkDiv.io.clk := io.rxClkIn
+      rxClkDiv.io.resetb := !reset.asBool
       
       val drivers = Seq(
            (io.testPllClkInP, io.testPllClkOutP),
            (testPllClkNDiv.io.clkout_2, io.testPllClkOutP),
            (io.pllClkInP, io.pllClkOutP),
-           (pllClkNDiv.io.clkout_2, io.pllClkOutP)
+           (pllClkNDiv.io.clkout_2, io.pllClkOutP),
+           (io.rxClkIn, io.rxClkOut),
+           (rxClkDiv.io.clkout_2, io.rxClkOutDivided)
       ).zipWithIndex
       for (((input, output), i) <- drivers) {
-        val driver = Module(new TxDriver(params.sim))
+        val driver = Module(new TxDriver(params.sim)).suggestName(s"driver_$i")
         driver.io.din := input
         output := driver.io.dout
         driver.io.ctl := driverctl(i)
