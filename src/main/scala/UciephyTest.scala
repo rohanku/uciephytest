@@ -1113,9 +1113,9 @@ trait CanHavePeripheryUciephyTest { this: BaseSubsystem =>
         ucie.clockNode := sbus.fixedClockNode
         ucie.uciTL.clockNode := sbus.fixedClockNode
         pbus.coupleTo(s"uciephytest{$n}") { ucie.node := TLBuffer() := TLFragmenter(pbus.beatBytes, pbus.blockBytes) := TLBuffer() := _ }
-        sbus.coupleTo(s"ucie_tl_man_port{$n}") {
-            ucie.uciTL.managerNode := TLWidthWidget(sbus.beatBytes) := TLBuffer() := TLSourceShrinker(ucie_params.tlParams.sourceIDWidth) := TLFragmenter(sbus.beatBytes, p(CacheBlockBytes)) := TLBuffer() := _
-        } //manager node because SBUS is making request?
+        // sbus.coupleTo(s"ucie_tl_man_port{$n}") {
+        //     ucie.uciTL.managerNode := TLWidthWidget(sbus.beatBytes) := TLBuffer() := TLSourceShrinker(ucie_params.tlParams.sourceIDWidth) := TLFragmenter(sbus.beatBytes, p(CacheBlockBytes)) := TLBuffer() := _
+        // } //manager node because SBUS is making request?
         sbus.coupleFrom(s"ucie_tl_cl_port{$n}") { _ := TLBuffer() := TLWidthWidget(sbus.beatBytes) := TLBuffer() := ucie.uciTL.clientNode }
         sbus.coupleTo(s"ucie_tl_ctrl_port{$n}") { ucie.uciTL.regNode.node := TLWidthWidget(sbus.beatBytes) := TLFragmenter(sbus.beatBytes, sbus.blockBytes) := TLBuffer() := _ }
       }
