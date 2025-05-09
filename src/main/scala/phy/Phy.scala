@@ -575,14 +575,23 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   for (lane <- 0 until numLanes + 2) {
     val rxLane = Module(new RxDataLane(sim))
     val rxLaneAfeCtl = Module(new RxAfeCtl())
+    val doutRegP =
+      withClockAndReset(rxClkDiv.io.clkout_3.asClock, !rstSyncRx.io.rstbSync) {
+        ShiftRegister(
+          rxLane.io.dout,
+          2,
+          0.U.asTypeOf(rxLane.io.dout),
+          true.B
+        )
+      }
     val doutRegN = withClockAndReset(
       (!rxClkDiv.io.clkout_3).asClock,
       !rstSyncRx.io.rstbSync
     ) {
-      RegNext(rxLane.io.dout)
+      RegNext(doutRegP)
     }
     val rxctlWire = io.rxctl(lane)
-    val doutEnq = Mux(rxctlWire.sample_negedge, doutRegN, rxLane.io.dout)
+    val doutEnq = Mux(rxctlWire.sample_negedge, doutRegN, doutRegP)
     if (lane < numLanes) {
       rxLane.suggestName(s"rxdata$lane")
       rxLane.io.din := io.top.rxData(lane)
