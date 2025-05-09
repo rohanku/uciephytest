@@ -32,7 +32,9 @@ import uciephytest.phy.{
   ClkRx,
   DriverControlIO,
   Phy,
-  TxLaneDigitalCtlIO
+  TxLaneDigitalCtlIO,
+  DiffBuffer,
+  SingleEndedBuffer
 }
 import freechips.rocketchip.util.{AsyncQueue}
 import testchipip.soc.{OBUS}
@@ -75,6 +77,7 @@ class UciephyCommonTLIO extends Bundle {
   val testPllClkOutP = Output(Bool())
   val testPllClkOutN = Output(Bool())
   val rxClkIn = Input(Bool())
+  val rxClkInDivided = Input(Bool())
   val rxClkOut = Output(Bool())
   val rxClkOutDivided = Output(Bool())
   val txDataDebug = Output(Bool())
@@ -206,8 +209,6 @@ class UciephyCommonTL(params: UciephyCommonParams, beatBytes: Int)(implicit
       txLane.io.dll_reset := txctl.dll_reset
       txLane.io.dll_resetb := !txctl.dll_reset
       txLane.io.ser_resetb := !reset.asBool
-      txLane.io.clkp := io.pllClkInP
-      txLane.io.clkn := io.pllClkInP
       txLane.io.din := shuffler.io.dout.asTypeOf(txLane.io.din)
       io.txDataDebug := txLane.io.dout
       txLane.io.ctl.driver := txctl.driver
@@ -281,37 +282,74 @@ class UciephyCommonTL(params: UciephyCommonParams, beatBytes: Int)(implicit
       val refclkrx = Module(new ClkRx(params.sim))
       refclkrx.io.vip := io.refClkInP
       refclkrx.io.vin := io.refClkInN
-      io.refClkOutP := refclkrx.io.vop
-      io.refClkOutN := refclkrx.io.von
+      val refclkbuf = Module(new DiffBuffer(params.sim))
+      refclkbuf.io.vinp := refclkrx.io.vop
+      refclkbuf.io.vinn := refclkrx.io.von
+      io.refClkOutP := refclkbuf.io.voutp
+      io.refClkOutN := refclkbuf.io.voutn
 
       val bpclkrx = Module(new ClkRx(params.sim))
       bpclkrx.io.vip := io.bypassClkInP
       bpclkrx.io.vin := io.bypassClkInN
-      io.bypassClkOutP := bpclkrx.io.vop
-      io.bypassClkOutN := bpclkrx.io.von
+      val bpclkbuf = Module(new DiffBuffer(params.sim))
+      bpclkbuf.io.vinp := bpclkrx.io.vop
+      bpclkbuf.io.vinn := bpclkrx.io.von
+      io.bypassClkOutP := bpclkbuf.io.voutp
+      io.bypassClkOutN := bpclkbuf.io.voutn
 
-      val testPllClkNDiv = Module(new ClkDiv4(params.sim))
-      testPllClkNDiv.io.clk := io.testPllClkInN
-      testPllClkNDiv.io.resetb := !reset.asBool
+      val testPllClkPBuf0 = Module(new SingleEndedBuffer(params.sim))
+      val testPllClkPBuf1 = Module(new SingleEndedBuffer(params.sim))
+      val testPllClkPBuf2 = Module(new SingleEndedBuffer(params.sim))
+      val testPllClkNBuf0 = Module(new SingleEndedBuffer(params.sim))
+      val testPllClkNBuf1 = Module(new SingleEndedBuffer(params.sim))
+      val testPllClkNBuf2 = Module(new SingleEndedBuffer(params.sim))
+      testPllClkPBuf0.io.vin := io.testPllClkInP
+      testPllClkPBuf1.io.vin := testPllClkPBuf0.io.vout
+      testPllClkPBuf2.io.vin := testPllClkPBuf1.io.vout
+      testPllClkNBuf0.io.vin := io.testPllClkInN
+      testPllClkNBuf1.io.vin := testPllClkNBuf0.io.vout
+      testPllClkNBuf2.io.vin := testPllClkNBuf1.io.vout
+
+      val uciePllClkBuf0 = Module(new DiffBuffer(params.sim))
+      val uciePllClkBuf1 = Module(new DiffBuffer(params.sim))
+      uciePllClkBuf0.io.vinp := io.pllClkInP
+      uciePllClkBuf0.io.vinn := io.pllClkInN
+      uciePllClkBuf1.io.vinp := uciePllClkBuf0.io.voutp
+      uciePllClkBuf1.io.vinn := uciePllClkBuf0.io.voutn
+      txLane.io.clkp := uciePllClkBuf1.io.voutp
+      txLane.io.clkn := uciePllClkBuf1.io.voutn
 
       val pllClkNDiv = Module(new ClkDiv4(params.sim))
-      pllClkNDiv.io.clk := io.pllClkInN
+      pllClkNDiv.io.clk := uciePllClkBuf0.io.voutn
       pllClkNDiv.io.resetb := !reset.asBool
 
-      val rxClkDiv = Module(new ClkDiv4(params.sim))
-      rxClkDiv.io.clk := io.rxClkIn
-      rxClkDiv.io.resetb := !reset.asBool
+      val rxClkPBuf0 = Module(new SingleEndedBuffer(params.sim))
+      val rxClkPBuf1 = Module(new SingleEndedBuffer(params.sim))
+      val rxClkPBuf2 = Module(new SingleEndedBuffer(params.sim))
+      val rxClkPBuf3 = Module(new SingleEndedBuffer(params.sim))
+      val rxClkNBuf0 = Module(new SingleEndedBuffer(params.sim))
+      val rxClkNBuf1 = Module(new SingleEndedBuffer(params.sim))
+      val rxClkNBuf2 = Module(new SingleEndedBuffer(params.sim))
+      val rxClkNBuf3 = Module(new SingleEndedBuffer(params.sim))
+      rxClkPBuf0.io.vin := io.rxClkIn
+      rxClkPBuf1.io.vin := rxClkPBuf0.io.vout
+      rxClkPBuf2.io.vin := rxClkPBuf1.io.vout
+      rxClkPBuf3.io.vin := rxClkPBuf2.io.vout
+      rxClkNBuf0.io.vin := io.rxClkInDivided
+      rxClkNBuf1.io.vin := rxClkNBuf0.io.vout
+      rxClkNBuf2.io.vin := rxClkNBuf1.io.vout
+      rxClkNBuf3.io.vin := rxClkNBuf2.io.vout
 
       val drivers = Seq(
-        (io.testPllClkInP, io.testPllClkOutP),
-        (testPllClkNDiv.io.clkout_2, io.testPllClkOutP),
-        (io.pllClkInP, io.pllClkOutP),
-        (pllClkNDiv.io.clkout_2, io.pllClkOutP),
-        (io.rxClkIn, io.rxClkOut),
-        (rxClkDiv.io.clkout_2, io.rxClkOutDivided)
+        (testPllClkPBuf2.io.vout, io.testPllClkOutP, "testPllClkPDriver"),
+        (testPllClkNBuf2.io.vout, io.testPllClkOutN, "testPllClkNDriver"),
+        (uciePllClkBuf0.io.voutp, io.pllClkOutP, "pllClkPDriver"),
+        (pllClkNDiv.io.clkout_2, io.pllClkOutN, "pllClkNDriver"),
+        (rxClkPBuf3.io.vout, io.rxClkOut, "rxClkDriver"),
+        (rxClkNBuf3.io.vout, io.rxClkOutDivided, "rxClkDivDriver")
       ).zipWithIndex
-      for (((input, output), i) <- drivers) {
-        val driver = Module(new TxDriver(params.sim)).suggestName(s"driver_$i")
+      for (((input, output, name), i) <- drivers) {
+        val driver = Module(new TxDriver(params.sim)).suggestName(name)
         driver.io.din := input
         output := driver.io.dout
         driver.io.ctl := driverctl(i)

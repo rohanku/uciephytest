@@ -144,6 +144,9 @@ class UciephyDebugIO() extends Bundle {
   // Main PLL differential clock.
   val pllClkP = Bool()
   val pllClkN = Bool()
+  // RX clock
+  val rxClk = Bool()
+  val rxClkDiv = Bool()
 }
 
 // bufferDepthPerLane: log2(# of bits stored per lane)

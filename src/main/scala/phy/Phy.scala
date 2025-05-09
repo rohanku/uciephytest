@@ -317,6 +317,11 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
     rxclkbuf3.io.vin := rxclkbuf2.io.vout
     rxclkbuf4.io.vin := rxclkbuf3.io.vout
   }
+  val rxClkPClkDiv = Module(new ClkDiv4(sim))
+  rxClkPClkDiv.io.clk := rxClkP.io.clkout
+  rxClkPClkDiv.io.resetb := !reset.asBool
+  io.top.debug.rxClk := rxClkP.io.clkout
+  io.top.debug.rxClkDiv := rxClkPClkDiv.io.clkout_2
 
   val pll = Module(new UciePll(sim))
   pll.io.vclk_ref := io.top.refClkP.asBool
