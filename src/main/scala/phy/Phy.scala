@@ -302,20 +302,17 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   val rxclkbuf2r = Module(new SingleEndedBuffer(sim))
   val rxclkbuf3s =
     (0 until numLanes + 2).map(i => Module(new SingleEndedBuffer(sim)))
-  val rxclkbuf4s =
-    (0 until numLanes + 2).map(i => Module(new SingleEndedBuffer(sim)))
   rxclkbuf0.io.vin := rxClkP.io.clkout
   rxclkbuf1.io.vin := rxclkbuf0.io.vout
   rxclkbuf2l.io.vin := rxclkbuf1.io.vout
   rxclkbuf2r.io.vin := rxclkbuf1.io.vout
-  for (((rxclkbuf3, rxclkbuf4), i) <- rxclkbuf3s.zip(rxclkbuf4s).zipWithIndex) {
+  for ((rxclkbuf3, i) <- rxclkbuf3s.zipWithIndex) {
     val rxclkbuf2 = if (i < 8) {
       rxclkbuf2l
     } else {
       rxclkbuf2r
     }
     rxclkbuf3.io.vin := rxclkbuf2.io.vout
-    rxclkbuf4.io.vin := rxclkbuf3.io.vout
   }
   val rxClkPClkDiv = Module(new ClkDiv4(sim))
   rxClkPClkDiv.io.clk := rxClkP.io.clkout
@@ -613,7 +610,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
     rxLaneAfeCtl.io.opCycles := rxctlWire.afeOpCycles
     rxLaneAfeCtl.io.overlapCycles := rxctlWire.afeOverlapCycles
     rxLane.io.ctl.afe := rxLaneAfeCtl.io.afe
-    rxLane.io.clk := rxclkbuf4s(lane).io.vout.asClock
+    rxLane.io.clk := rxclkbuf3s(lane).io.vout.asClock
     rxLane.io.resetb := !reset.asBool
   }
 

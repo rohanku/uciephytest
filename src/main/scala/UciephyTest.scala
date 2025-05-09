@@ -861,8 +861,15 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       txWriteChunk.ready := true.B
       rxFsmRst.ready := true.B
 
-      test.io.mmio.txDataChunkIn.bits := Cat(txDataChunkIn1, txDataChunkIn0)
-      test.io.mmio.txDataChunkIn.valid := txWriteChunk.valid
+      test.io.mmio.txDataChunkIn.bits := ShiftRegister(
+        Cat(txDataChunkIn1, txDataChunkIn0),
+        2,
+        0.U,
+        true.B
+      )
+      test.io.mmio.txDataChunkIn.valid := ShiftRegister(txWriteChunk.valid, 2, 0.U.asTypeOf(txWriteChunk.valid), true.B)
+      test.io.mmio.txDataLaneGroup := ShiftRegister(txDataLaneGroup, 2, 0.U.asTypeOf(txDataLaneGroup), true.B)
+      test.io.mmio.txDataOffset := ShiftRegister(txDataOffset, 2, 0.U.asTypeOf(txDataOffset), true.B)
 
       test.io.mmio.testTarget := testTarget
       test.io.mmio.txTestMode := txTestMode
@@ -875,8 +882,6 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       test.io.mmio.txClkPEn := txClkPEn
       test.io.mmio.txClkNEn := txClkPEn
       test.io.mmio.txTrackEn := txTrackEn
-      test.io.mmio.txDataLaneGroup := txDataLaneGroup
-      test.io.mmio.txDataOffset := txDataOffset
       test.io.mmio.rxDataMode := rxDataMode
       test.io.mmio.rxLfsrSeed := rxLfsrSeed
       test.io.mmio.rxFsmRst := rxFsmRst.valid
