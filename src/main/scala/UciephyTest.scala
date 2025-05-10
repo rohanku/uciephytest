@@ -505,7 +505,7 @@ class UciephyTest(
         }
       }
 
-      when(loadedFirstChunk && !tx_valid) {
+      when((io.mmio.txTestMode === TxTestMode.lfsr || loadedFirstChunk) && !tx_valid) {
         txState := TxTestState.done
       }
     }
