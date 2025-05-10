@@ -606,12 +606,12 @@ class UciephyTest(
           rxPacketsReceived
         )
       }
-      for (lane <- 0 until numLanes + 2) {
+      for (lane <- 0 until numLanes + 3) {
         val rawData = if (lane < numLanes) {
           io.phy.rx.bits.data(lane)
         } else if (lane == numLanes) {
           io.phy.rx.bits.valid
-        } else if (lane == numLanes) {
+        } else if (lane == numLanes + 1) {
           io.phy.rx.bits.track
         } else {
           io.phy.rx_loopback.bits
@@ -640,6 +640,13 @@ class UciephyTest(
           // Compare valid against intended waveform.
           if (lane == numLanes) {
             rxErrorMask(lane) := newData(31, 0) ^ "h0f0f_0f0f".U
+          }
+          if (lane == numLanes + 2) {
+            rxLfsrs(numLanes).io.increment := true.B
+            val lfsrData = newData(31, 0)
+            rxErrorMask(numLanes + 1) := newData(31, 0) ^ Reverse(
+              rxLfsrs(numLanes).io.out.asUInt
+            )(31, 0)
           }
         }
       }
