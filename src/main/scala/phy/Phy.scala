@@ -115,45 +115,51 @@ class ClkMux(sim: Boolean = false) extends BlackBox with HasBlackBoxInline {
   }
 }
 
-class RstSyncIO extends Bundle {
+class UcieRstSyncIO extends Bundle {
   val clk = Input(Bool())
   val rstbAsync = Input(Bool())
   val rstbSync = Output(Bool())
 }
 
-class RstSync(sim: Boolean = true) extends BlackBox with HasBlackBoxInline {
-  val io = IO(new RstSyncIO)
+class UcieRstSync(sim: Boolean = true) extends BlackBox with HasBlackBoxInline {
+  val io = IO(new UcieRstSyncIO)
 
   if (sim) {
     setInline(
-      "RstSync.v",
-      """module RstSync(
+      "UcieRstSync.v",
+      """module UcieRstSync(
       | input clk,
       | input rstbAsync,
-      | output reg rstbSync
+      | output rstbSync
       |);
+      | reg [2:0] ff;
       | always @(negedge rstbAsync) begin
-      |   rstbSync <= rstbAsync;
+      |   ff <= 3'd0;
       | end
       | always @(posedge clk) begin
-      |   rstbSync <= rstbAsync;
+      |   ff[0] <= rstbAsync;
+      |   ff[1] <= ff[0];
+      |   ff[2] <= ff[1];
       | end
+      | assign rstbSync = ff[2];
       |endmodule
       """.stripMargin
     )
   } else {
     setInline(
-      "RstSync.v",
-      """module RstSync(
+      "UcieRstSync.v",
+      """module UcieRstSync(
       | input clk,
       | input rstbAsync,
       | output rstbSync
       |);
-      | wire rstb_int0, rstb_int1, rstb_int2;
-      | b15fqn003hn1n04x5 xinst0(.clk(clk), .d(1'b1), .o(rstb_int0), .rb(rstbAsync));
-      | b15lyn083hn1n04x5 xinst1(.clkb(clk), .d(rstb_int0), .o(rstb_int1), .rb(rstbAsync));
-      | b15lyn003hn1n16x5 xinst2(.clk(clk), .d(rstb_int1), .o(rstb_int2), .rb(rstbAsync));
-      | b15bfn000an1n80a5 xinst3(.a(rstb_int2), .o(rstbSync));
+      | wire rstb_int0, rstb_int1, rstb_int2, rstb_int3, constant_one;
+      | b15tihi00ah1n03x5 tie_1_cell(.o(constant_one));
+      | b15fqn003ah1n04x5 ff0(.clk(clk), .d(constant_one), .o(rstb_int0), .rb(rstbAsync));
+      | b15fqn003ah1n8x5 ff1(.clk(clk), .d(rstb_int0), .o(rstb_int1), .rb(rstbAsync));
+      | b15fqn003ah1n16x5 ff2(.clk(clk), .d(rstb_int1), .o(rstb_int2), .rb(rstbAsync));
+      | b15bfn000ah1n32x5 outputbuf0(.a(rstb_int2), .o(rstb_int3));
+      | b15bfn000ah1n80a5 outputbuf1(.a(rstb_int3), .o(rstbSync));
       |endmodule
       """.stripMargin
     )
@@ -429,7 +435,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   val txClkDiv = Module(new ClkDiv4(sim))
   txClkDiv.io.clk := txclkbuf4.io.voutp
   txClkDiv.io.resetb := !reset.asBool
-  val rstSyncTx = Module(new RstSync(sim))
+  val rstSyncTx = Module(new UcieRstSync(sim))
   rstSyncTx.io.rstbAsync := !reset.asBool
   rstSyncTx.io.clk := txClkDiv.io.clkout_3
 
@@ -483,7 +489,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   val rxClkDiv = Module(new ClkDiv4(sim))
   rxClkDiv.io.clk := rxclkbuf1.io.vout
   rxClkDiv.io.resetb := !reset.asBool
-  val rstSyncRx = Module(new RstSync(sim))
+  val rstSyncRx = Module(new UcieRstSync(sim))
   rstSyncRx.io.rstbAsync := !reset.asBool
   rstSyncRx.io.clk := rxClkDiv.io.clkout_3
 
@@ -662,7 +668,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   )
   val loopbackShuffler = Module(new Shuffler32)
   val txLoopbackLane = Module(new TxLane(sim))
-  val rstSyncTxLoopback = Module(new RstSync(sim))
+  val rstSyncTxLoopback = Module(new UcieRstSync(sim))
   rstSyncTxLoopback.io.rstbAsync := !reset.asBool
   rstSyncTxLoopback.io.clk := txLoopbackLane.io.divclk
   txLoopbackFifo.io.enq <> io.test.tx_loopback
@@ -697,7 +703,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   val rxLoopbackFifo = Module(
     new AsyncQueue(UInt(Phy.SerdesRatio.W), Phy.QueueParams)
   )
-  val rstSyncRxLoopback = Module(new RstSync(sim))
+  val rstSyncRxLoopback = Module(new UcieRstSync(sim))
   rstSyncRxLoopback.io.rstbAsync := !reset.asBool
   rstSyncRxLoopback.io.clk := rxLoopbackLane.io.divclk
   rxLoopbackFifo.io.enq.valid := true.B
