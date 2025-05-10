@@ -4,6 +4,7 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental.dataview._
 import freechips.rocketchip.util.{AsyncQueue, AsyncQueueParams}
+import uciephytest.{CommonPhyBumpsIO, PhyDebugBumpsIO};
 
 object Phy {
   val SerdesRatio = 32
@@ -22,6 +23,23 @@ class RxIO(numLanes: Int = 16) extends Bundle {
   val data = Vec(numLanes, Bits(Phy.SerdesRatio.W))
   val valid = Bits(Phy.SerdesRatio.W)
   val track = Bits(Phy.SerdesRatio.W)
+}
+
+class PhyBumpsIO(numLanes: Int = 16) extends Bundle {
+  val txData = Output(Vec(numLanes, Bool()))
+  val txValid = Output(Bool())
+  val txTrack = Output(Bool())
+  val txClkP = Output(Clock())
+  val txClkN = Output(Clock())
+  val rxData = Input(Vec(numLanes, Bool()))
+  val rxValid = Input(Bool())
+  val rxTrack = Input(Bool())
+  val rxClkP = Input(Clock())
+  val rxClkN = Input(Clock())
+  val sbTxClk = Output(Clock())
+  val sbTxData = Output(Bool())
+  val sbRxClk = Input(Clock())
+  val sbRxData = Input(Bool())
 }
 
 class PhyToTestIO(numLanes: Int = 16) extends Bundle {
@@ -240,7 +258,9 @@ class PhyIO(numLanes: Int = 16) extends Bundle {
 
   // TOP INTERFACE
   // =====================
-  val top = new uciephytest.UciephyTestTLIO(numLanes)
+  val top = new PhyBumpsIO(numLanes)
+  val common = new CommonPhyBumpsIO
+  val debug = new PhyDebugBumpsIO
 }
 
 class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
@@ -317,15 +337,15 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   val rxClkPClkDiv = Module(new ClkDiv4(sim))
   rxClkPClkDiv.io.clk := rxClkP.io.clkout
   rxClkPClkDiv.io.resetb := !reset.asBool
-  io.top.debug.rxClk := rxClkP.io.clkout
-  io.top.debug.rxClkDiv := rxClkPClkDiv.io.clkout_2
+  io.debug.rxClk := rxClkP.io.clkout
+  io.debug.rxClkDivided := rxClkPClkDiv.io.clkout_2
 
   val pll = Module(new UciePll(sim))
-  pll.io.vclk_ref := io.top.refClkP.asBool
-  pll.io.vclk_refb := io.top.refClkN.asBool
+  pll.io.vclk_ref := io.common.refClkP.asBool
+  pll.io.vclk_refb := io.common.refClkN.asBool
   pll.io.dref_low := io.pllCtl.dref_low
   pll.io.dref_high := io.pllCtl.dref_high
-  pll.io.vrdac_ref := io.top.pllRdacVref
+  pll.io.vrdac_ref := io.common.pllRdacVref
   pll.io.dcoarse := io.pllCtl.dcoarse
   pll.io.dvco_reset := io.pllCtl.vco_reset
   pll.io.dvco_resetn := !io.pllCtl.vco_reset
@@ -335,17 +355,15 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   pll.io.d_ki := io.pllCtl.d_ki
   pll.io.d_clol := io.pllCtl.d_clol
   pll.io.d_ol_fcw := io.pllCtl.d_ol_fcw
-  io.top.debug.pllClkP := pll.io.vp_out
-  io.top.debug.pllClkN := pll.io.vn_out
   io.pllOutput.d_fcw_debug := pll.io.d_fcw_debug
   io.pllOutput.d_sar_debug := pll.io.d_sar_debug
 
   val testPll = Module(new UciePll(sim))
-  testPll.io.vclk_ref := io.top.refClkP.asBool
-  testPll.io.vclk_refb := io.top.refClkN.asBool
+  testPll.io.vclk_ref := io.common.refClkP.asBool
+  testPll.io.vclk_refb := io.common.refClkN.asBool
   testPll.io.dref_low := io.testPllCtl.dref_low
   testPll.io.dref_high := io.testPllCtl.dref_high
-  testPll.io.vrdac_ref := io.top.testPllRdacVref
+  testPll.io.vrdac_ref := io.common.pllRdacVref
   testPll.io.dcoarse := io.testPllCtl.dcoarse
   testPll.io.dvco_reset := io.testPllCtl.vco_reset
   testPll.io.dvco_resetn := !io.testPllCtl.vco_reset
@@ -355,26 +373,24 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   testPll.io.d_ki := io.testPllCtl.d_ki
   testPll.io.d_clol := io.testPllCtl.d_clol
   testPll.io.d_ol_fcw := io.testPllCtl.d_ol_fcw
-  io.top.debug.testPllClkP := testPll.io.vp_out
-  io.top.debug.testPllClkN := testPll.io.vn_out
+  io.debug.testPllClkP := testPll.io.vp_out
   io.testPllOutput.d_fcw_debug := testPll.io.d_fcw_debug
   io.testPllOutput.d_sar_debug := testPll.io.d_sar_debug
-  io.top.debug.testPllClkP := testPll.io.vp_out
   val testPllClkDiv = Module(new ClkDiv4(sim))
   testPllClkDiv.io.clk := testPll.io.vn_out
   testPllClkDiv.io.resetb := !reset.asBool
-  io.top.debug.testPllClkN := testPllClkDiv.io.clkout_2
+  io.debug.testPllClkN := testPllClkDiv.io.clkout_2
 
   val clkMuxP = Module(new ClkMux(sim))
   clkMuxP.io.in0 := pll.io.vp_out
-  clkMuxP.io.in1 := io.top.bypassClkP.asBool
+  clkMuxP.io.in1 := io.common.bypassClkP.asBool
   clkMuxP.io.mux0_en_0 := !io.pllBypassEn
   clkMuxP.io.mux0_en_1 := io.pllBypassEn
   clkMuxP.io.mux1_en_0 := false.B
   clkMuxP.io.mux1_en_1 := false.B
   val clkMuxN = Module(new ClkMux)
   clkMuxN.io.in0 := pll.io.vn_out
-  clkMuxN.io.in1 := io.top.bypassClkN.asBool
+  clkMuxN.io.in1 := io.common.bypassClkN.asBool
   clkMuxN.io.mux0_en_0 := !io.pllBypassEn
   clkMuxN.io.mux0_en_1 := io.pllBypassEn
   clkMuxN.io.mux1_en_0 := false.B
@@ -407,6 +423,8 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   txclkbuf5ll.io.vinn := txclkbuf4.io.voutn
   txclkbuf5lr.io.vinp := txclkbuf4.io.voutp
   txclkbuf5lr.io.vinn := txclkbuf4.io.voutn
+  io.debug.pllClkP := txclkbuf0.io.voutp
+  io.debug.pllClkN := txclkbuf0.io.voutn
 
   val txClkDiv = Module(new ClkDiv4(sim))
   txClkDiv.io.clk := txclkbuf4.io.voutp

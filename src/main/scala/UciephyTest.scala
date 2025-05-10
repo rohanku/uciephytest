@@ -32,7 +32,8 @@ import uciephytest.phy.{
   RxLaneCtlIO,
   DriverControlIO,
   TxSkewControlIO,
-  RxAfeIO
+  RxAfeIO,
+  PhyBumpsIO,
 }
 import freechips.rocketchip.util.{AsyncQueueParams}
 import testchipip.soc.{OBUS}
@@ -115,40 +116,8 @@ object TxTestState extends ChiselEnum {
 }
 
 class UciephyTestTLIO(numLanes: Int = 16) extends Bundle {
-  val txData = Output(Vec(numLanes, Bool()))
-  val txValid = Output(Bool())
-  val txTrack = Output(Bool())
-  val refClkP = Input(Clock())
-  val refClkN = Input(Clock())
-  val sbClk = Input(Clock())
-  val txClkP = Output(Clock())
-  val txClkN = Output(Clock())
-  val bypassClkP = Input(Clock())
-  val bypassClkN = Input(Clock())
-  val rxData = Input(Vec(numLanes, Bool()))
-  val rxValid = Input(Bool())
-  val rxTrack = Input(Bool())
-  val rxClkP = Input(Clock())
-  val rxClkN = Input(Clock())
-  val sbTxClk = Output(Clock())
-  val sbTxData = Output(Bool())
-  val sbRxClk = Input(Clock())
-  val sbRxData = Input(Bool())
-  val pllRdacVref = Input(Bool())
-  val testPllRdacVref = Input(Bool())
-  val debug = Output(new UciephyDebugIO())
-}
-
-class UciephyDebugIO() extends Bundle {
-  // Test PLL differential clock.
-  val testPllClkP = Bool()
-  val testPllClkN = Bool()
-  // Main PLL differential clock.
-  val pllClkP = Bool()
-  val pllClkN = Bool()
-  // RX clock
-  val rxClk = Bool()
-  val rxClkDiv = Bool()
+  val phy = new PhyBumpsIO(numLanes)
+  val common = new CommonBumpsIO
 }
 
 // bufferDepthPerLane: log2(# of bits stored per lane)
@@ -255,6 +224,14 @@ class UciephyTest(
   val maxBitCount = VecInit(Seq.fill(bitCounterWidth)(true.B)).asUInt
   val maxSramPackets = 1.U << (bufferDepthPerLane - 5).U;
 
+  // Add shift registers to buffer reads/writes.
+  val txDataChunkInValid = ShiftRegister(io.mmio.txDataChunkIn.valid, 2, false.B, true.B)
+  val txDataChunkInBits = ShiftRegister(io.mmio.txDataChunkIn.bits, 2, 0.U, true.B)
+  val txDataLaneGroup = ShiftRegister(io.mmio.txDataLaneGroup, 2, 0.U, true.B)
+  val txDataOffset = ShiftRegister(io.mmio.txDataOffset, 2, 0.U, true.B)
+  val rxDataLane = ShiftRegister(io.mmio.rxDataLane, 2, 0.U, true.B)
+  val rxDataOffset = ShiftRegister(io.mmio.rxDataOffset, 2, 0.U, true.B)
+
   // TX registers
   val txReset = io.mmio.txFsmRst || reset.asBool
   val txState = withReset(txReset) { RegInit(TxTestState.idle) }
@@ -323,20 +300,37 @@ class UciephyTest(
     SyncReadMem(1 << (bufferDepthPerLane - 5), UInt(128.W))
   )
   val inputBufferAddr = Wire(UInt((bufferDepthPerLane - 5).W))
-  inputBufferAddr := io.mmio.txDataOffset
+  inputBufferAddr := txDataOffset
   val inputRdPorts =
     (0 until numSrams).map(i => inputBuffer(i)(inputBufferAddr))
   val inputWrPorts =
-    (0 until numSrams).map(i => inputBuffer(i)(io.mmio.txDataOffset))
+    (0 until numSrams).map(i => inputBuffer(i)(txDataOffset))
   val outputBuffer = (0 until numSrams).map(i =>
     SyncReadMem(1 << (bufferDepthPerLane - 5), UInt(128.W))
   )
   val outputBufferAddr = Wire(UInt(log2Ceil(1 << (bufferDepthPerLane - 5)).W))
-  outputBufferAddr := io.mmio.rxDataOffset
+  outputBufferAddr := rxPacketsReceived
+  val toWrite = (0 until numSrams).map(i => {
+    val wire = Wire(Vec(4, UInt(32.W)))
+    for (i <- 0 until 4) {
+      wire(i) := 0.U
+    }
+    wire
+  })
+  val shouldWrite = Wire(Bool())
+  shouldWrite := false.B
+  val outputBufferAddrDelayed = ShiftRegister(outputBufferAddr, 2, 0.U, true.B)
+  val toWriteDelayed = toWrite.map(w => ShiftRegister(w, 2, 0.U.asTypeOf(w), true.B))
+  val shouldWriteDelayed = ShiftRegister(shouldWrite, 2, false.B, true.B)
   val outputRdPorts =
-    (0 until numSrams).map(i => outputBuffer(i)(io.mmio.rxDataOffset))
+    (0 until numSrams).map(i => outputBuffer(i)(rxDataOffset))
   val outputWrPorts =
-    (0 until numSrams).map(i => outputBuffer(i)(outputBufferAddr))
+    (0 until numSrams).map(i => outputBuffer(i)(outputBufferAddrDelayed))
+  when (shouldWriteDelayed) {
+    for (i <- 0 until numSrams) {
+      outputWrPorts(i) := toWriteDelayed(i).asTypeOf(outputWrPorts(i))
+    }
+  }
 
   io.mmio.txPacketsSent := txPacketsEnqueued
   io.mmio.txDataChunkIn.ready := txState === TxTestState.idle
@@ -352,9 +346,9 @@ class UciephyTest(
   io.mmio.rxSignature := rxSignature
   io.mmio.rxDataChunk := 0.U
   for (i <- 0 until numSrams) {
-    when(i.U === io.mmio.rxDataLane >> 2.U) {
+    when(i.U === rxDataLane >> 2.U) {
       io.mmio.rxDataChunk := outputRdPorts(i).asTypeOf(Vec(4, UInt(32.W)))(
-        io.mmio.rxDataLane(1,0)
+        rxDataLane(1,0)
       )
     }
   }
@@ -391,10 +385,10 @@ class UciephyTest(
   // TX logic
   switch(txState) {
     is(TxTestState.idle) {
-      when(io.mmio.txDataChunkIn.valid) {
+      when(txDataChunkInValid) {
         for (i <- 0 until numSrams) {
           when(i.U === io.mmio.txDataLaneGroup) {
-            inputWrPorts(i) := io.mmio.txDataChunkIn.bits
+            inputWrPorts(i) := txDataChunkInBits
           }
         }
       }
@@ -598,18 +592,11 @@ class UciephyTest(
         rxReceiveOffset +& Phy.SerdesRatio.U - startIdx >= 32.U
       val shouldProcessPacket =
         fullPacketReceived && (io.mmio.rxDataMode === DataMode.infinite || rxPacketsReceived < io.mmio.rxPacketsToReceive)
-      val shouldWrite = rxPacketsReceived < maxSramPackets && fullPacketReceived
+      shouldWrite := rxPacketsReceived < maxSramPackets && fullPacketReceived
       val dataMask = Wire(UInt(64.W))
       dataMask := ((1.U << (Phy.SerdesRatio.U - startIdx)) - 1.U) << rxReceiveOffset
       val keepMask = Wire(UInt(64.W))
       keepMask := ~dataMask
-      val toWrite = (0 until numSrams).map(i => {
-        val wire = Wire(Vec(4, UInt(32.W)))
-        for (i <- 0 until 4) {
-          wire(i) := 0.U
-        }
-        wire
-      })
       when(shouldProcessPacket) {
         rxPacketsReceived := Mux(
           rxPacketsReceived < VecInit(
@@ -654,12 +641,6 @@ class UciephyTest(
           if (lane == numLanes) {
             rxErrorMask(lane) := newData(31, 0) ^ "h0f0f_0f0f".U
           }
-        }
-      }
-      when(shouldWrite) {
-        outputBufferAddr := rxPacketsReceived
-        for (i <- 0 until numSrams) {
-          outputWrPorts(i) := toWrite(i).asTypeOf(outputWrPorts(i))
         }
       }
     }
@@ -726,12 +707,21 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
   class UciephyTestImpl extends Impl {
     val io = IO(new Bundle {})
     withClockAndReset(clock, reset) {
+      val io = topIO.out(0)._1
       // TEST HARNESS
       val test = Module(
         new UciephyTest(
           params.bufferDepthPerLane,
           params.numLanes,
           params.bitCounterWidth
+        )
+      )
+
+      // COMMON COMPONENTS
+      val common = Module(
+        new UciephyCommon(
+          params.bitCounterWidth,
+          params.sim
         )
       )
 
@@ -845,6 +835,50 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
         w
       })
 
+      // UCIe common.
+      // Test PLL P/N, UCIe PLL P/N, RX CLK P/N
+      val commonDriverctl = RegInit(VecInit(Seq.fill(6)({
+        val w = Wire(new DriverControlIO)
+        w.pu_ctl := 0.U
+        w.pd_ctl := 0.U
+        w.en := false.B
+        w.en_b := true.B
+        w
+      })))
+      val commonTxctl = RegInit({
+        val w = Wire(new TxLaneDigitalCtlIO)
+        w.dll_reset := true.B
+        w.driver.pu_ctl := 0.U
+        w.driver.pd_ctl := 0.U
+        w.driver.en := false.B
+        w.driver.en_b := true.B
+        w.skew.dll_en := false.B
+        w.skew.ocl := false.B
+        w.skew.delay := 0.U
+        w.skew.mux_en := "b00000011".U
+        w.skew.band_ctrl := "b01".U
+        w.skew.mix_en := 0.U
+        w.skew.nen_out := 20.U
+        w.skew.pen_out := 22.U
+        for (i <- 0 until 32) {
+          w.shuffler(i) := i.U(5.W)
+        }
+        w.sample_negedge := false.B
+        w.delay := 0.U
+        w
+      })
+
+      val commonTxTestMode = RegInit(TxTestMode.manual)
+      val commonTxDataMode = RegInit(DataMode.finite)
+      val commonTxLfsrSeed = RegInit(1.U(64.W))
+      val commonTxFsmRst = Wire(DecoupledIO(UInt(1.W)))
+      val commonTxExecute = Wire(DecoupledIO(UInt(1.W)))
+      commonTxFsmRst.ready := true.B
+      commonTxExecute.ready := true.B
+      val commonTxManualRepeatPeriod = RegInit(0.U(6.W))
+      val commonTxPacketsToSend = RegInit(0.U(params.bitCounterWidth.W))
+      val commonData = RegInit(VecInit(Seq.fill(16)(0.U(64.W))))
+
       // UCIe logphy related
       val ucieStack = RegInit(false.B)
       val maxPatternCountWidth =
@@ -863,15 +897,10 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       txWriteChunk.ready := true.B
       rxFsmRst.ready := true.B
 
-      test.io.mmio.txDataChunkIn.bits := ShiftRegister(
-        Cat(txDataChunkIn1, txDataChunkIn0),
-        2,
-        0.U,
-        true.B
-      )
-      test.io.mmio.txDataChunkIn.valid := ShiftRegister(txWriteChunk.valid, 2, 0.U.asTypeOf(txWriteChunk.valid), true.B)
-      test.io.mmio.txDataLaneGroup := ShiftRegister(txDataLaneGroup, 2, 0.U.asTypeOf(txDataLaneGroup), true.B)
-      test.io.mmio.txDataOffset := ShiftRegister(txDataOffset, 2, 0.U.asTypeOf(txDataOffset), true.B)
+      test.io.mmio.txDataChunkIn.bits := Cat(txDataChunkIn1, txDataChunkIn0)
+      test.io.mmio.txDataChunkIn.valid := txWriteChunk.valid
+      test.io.mmio.txDataLaneGroup := txDataLaneGroup
+      test.io.mmio.txDataOffset := txDataOffset
 
       test.io.mmio.testTarget := testTarget
       test.io.mmio.txTestMode := txTestMode
@@ -891,6 +920,17 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       test.io.mmio.rxPauseCounters := rxPauseCounters
       test.io.mmio.rxDataLane := rxDataLane
       test.io.mmio.rxDataOffset := rxDataOffset
+
+      common.io.driverctl := commonDriverctl
+      common.io.txctl := commonTxctl
+      common.io.txTestMode := commonTxTestMode
+      common.io.txDataMode := commonTxDataMode
+      common.io.txLfsrSeed := commonTxLfsrSeed
+      common.io.txFsmRst := commonTxFsmRst.valid
+      common.io.txExecute := commonTxExecute.valid
+      common.io.txManualRepeatPeriod := commonTxManualRepeatPeriod
+      common.io.txPacketsToSend := commonTxPacketsToSend
+      common.io.data := commonData
 
       // PHY
       val phy = Module(new Phy(params.numLanes, params.sim))
@@ -955,7 +995,10 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       outputValid := uciTL.module.io.train.get.outputValid
       errorCounts := uciTL.module.io.train.get.errorCounts
 
-      topIO.out(0)._1 <> phy.io.top
+      common.io.phy <> phy.io.common
+      common.io.debug <> phy.io.debug
+      io.phy <> phy.io.top
+      io.common <> common.io.top
 
       phy.io.pllBypassEn := pllBypassEn
       phy.io.txctl := txctl
@@ -1052,6 +1095,28 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
           toRegFieldRw(rxctl(i).delay, s"rx_delay_$i")
         )
       }) ++ Seq(
+        toRegFieldRw(commonTxTestMode, "commonTxTestMode"),
+        toRegFieldRw(commonTxDataMode, "commonTxDataMode"),
+        toRegFieldRw(commonTxLfsrSeed, s"commonTxLfsrSeed"),
+        RegField.w(1, commonTxFsmRst, RegFieldDesc("commonTxFsmRst", "")),
+        RegField.w(1, commonTxExecute, RegFieldDesc("commonTxExecute", "")),
+        toRegFieldR(common.io.txPacketsEnqueued, "commonTxPacketsSent"),
+        toRegFieldRw(commonTxManualRepeatPeriod, "commonTxManualRepeatPeriod"),
+        toRegFieldRw(commonTxPacketsToSend, "commonTxPacketsToSend"),
+        toRegFieldR(common.io.txState, "commonTxTestState")
+      ) ++ (0 until 16).map((i: Int) => {
+        toRegFieldRw(commonData(i), s"commonData_${i}")
+      }) ++ (0 until commonDriverctl.length).map((i: Int) => {
+        toRegFieldRw(commonDriverctl(i), s"commonDriverctl_${i}")
+      }) ++ Seq(
+        toRegFieldRw(commonTxctl.dll_reset, s"dll_reset"),
+        toRegFieldRw(commonTxctl.driver, s"commonTxctl_driver"),
+        toRegFieldRw(commonTxctl.skew, s"commonTxctl_skew")
+      ) ++ (0 until 32).map((j: Int) =>
+        toRegFieldRw(commonTxctl.shuffler(j), s"commonTxctl_shuffler_$j")
+      ) ++ Seq(
+        toRegFieldR(common.io.dllCode, s"commonDllCode")
+      ) ++ Seq(
         RegField.w(1, ucieStack, RegFieldDesc("ucieStack", "")),
         RegField.r(1, outputValid, RegFieldDesc("outputValid", ""))
       ) ++ (0 until params.numLanes).map((i: Int) => {
