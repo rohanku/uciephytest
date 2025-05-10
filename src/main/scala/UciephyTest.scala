@@ -489,7 +489,7 @@ class UciephyTest(
         }
       }
 
-      when(tx_valid && io.phy.tx.ready) {
+      when(tx_valid && Mux(io.mmio.testTarget === TestTarget.mainband, io.phy.tx.ready, io.phy.tx_loopback.ready)) {
         txPacketsEnqueued := Mux(
           txPacketsEnqueued < VecInit(
             Seq.fill(txPacketsEnqueued.getWidth)(true.B)
