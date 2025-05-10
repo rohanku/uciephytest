@@ -27,7 +27,7 @@ import uciephytest.phy.{
   TxDriver,
   TxLane,
   ClkDiv4,
-  RstSync,
+  UcieRstSync,
   Shuffler32,
   ClkRx,
   DriverControlIO,
@@ -138,7 +138,7 @@ class UciephyCommon(bitCounterWidth: Int = 64, sim: Boolean = false) extends Mod
   val txFifo = Module(new AsyncQueue(UInt(32.W), Phy.QueueParams))
   val shuffler = Module(new Shuffler32)
   val txLane = Module(new TxLane(sim))
-  val rstSync = Module(new RstSync(sim))
+  val rstSync = Module(new UcieRstSync(sim))
   rstSync.io.rstbAsync := !reset.asBool
   rstSync.io.clk := txLane.io.divclk
   txFifo.io.enq.bits := 0.U
