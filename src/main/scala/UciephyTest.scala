@@ -403,7 +403,7 @@ class UciephyTest(
           // Need to load first chunk ahead of time so that we can constantly send data.
           when(loadedFirstChunk) {
             // Increment address when packet is enqueued.
-            when(io.phy.tx.ready) {
+            when(Mux(io.mmio.testTarget === TestTarget.mainband, io.phy.tx.ready, io.phy.tx_loopback.ready)) {
               inputBufferAddr := (inputBufferAddrReg + 1.U) % txManualRepeatPeriod
             }.otherwise {
               inputBufferAddr := inputBufferAddrReg % txManualRepeatPeriod
@@ -551,7 +551,7 @@ class UciephyTest(
   }
 
   // Check valid streak after each packet is dequeued.
-  when(io.phy.rx.ready & io.phy.rx.valid) {
+  when(Mux(io.mmio.testTarget === TestTarget.mainband, io.phy.rx.ready & io.phy.rx.valid, io.phy.rx_loopback.ready & io.phy.rx_loopback.valid)) {
 
     // Find correct start index if recording hasn't started already.
     for (i <- Phy.SerdesRatio - 1 to 0 by -1) {
