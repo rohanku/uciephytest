@@ -458,24 +458,21 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   for (lane <- 0 to numLanes + 3) {
     val data = if (lane < numLanes) {
       Cat(
-        enqDataDelayed2.data(lane),
+        io.test.tx.bits.data(lane),
         enqDataDelayed.data(lane),
-        io.test.tx.bits.data(lane)
+        enqDataDelayed2.data(lane)
       )
     } else if (lane == numLanes) {
-      Cat(enqDataDelayed2.valid, enqDataDelayed.valid, io.test.tx.bits.valid)
-      io.test.tx.bits.valid
+      Cat(io.test.tx.bits.valid, enqDataDelayed.valid, enqDataDelayed2.valid)
     } else if (lane == numLanes + 1) {
-      Cat(enqDataDelayed2.clkp, enqDataDelayed.clkp, io.test.tx.bits.clkp)
-      io.test.tx.bits.clkp
+      Cat(io.test.tx.bits.clkp, enqDataDelayed.clkp, enqDataDelayed2.clkp)
     } else if (lane == numLanes + 2) {
-      Cat(enqDataDelayed2.clkn, enqDataDelayed.clkn, io.test.tx.bits.clkn)
-      io.test.tx.bits.clkn
+      Cat(io.test.tx.bits.clkn, enqDataDelayed.clkn, enqDataDelayed2.clkn)
     } else {
-      Cat(enqDataDelayed2.track, enqDataDelayed.track, io.test.tx.bits.track)
-      io.test.tx.bits.track
+      Cat(io.test.tx.bits.track, enqDataDelayed.track, enqDataDelayed2.track)
     }
-    val delayedData = (data >> io.txctl(lane).delay)(31, 0)
+
+    val delayedData = (data << io.txctl(lane).delay)(95, 64)
     if (lane < numLanes) {
       txFifo.io.enq.bits.data(lane) := delayedData
     } else if (lane == numLanes) {
@@ -504,9 +501,36 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   rxFifo.io.deq_reset := reset
   rxFifo.io.deq.ready := io.test.rx.ready
   io.test.rx.valid := rxFifo.io.deq.valid
-  io.test.rx.bits.data := rxFifo.io.deq.bits.data
-  io.test.rx.bits.valid := rxFifo.io.deq.bits.valid
-  io.test.rx.bits.track := rxFifo.io.deq.bits.track
+
+  val deqDataDelayed = Reg(new RxIO(numLanes))
+  val deqDataDelayed2 = Reg(new RxIO(numLanes))
+  when(rxFifo.io.deq.valid && rxFifo.io.deq.ready) {
+    deqDataDelayed := rxFifo.io.deq.bits
+    deqDataDelayed2 := deqDataDelayed
+  }
+
+  for (lane <- 0 to numLanes + 1) {
+    val data = if (lane < numLanes) {
+      Cat(
+        rxFifo.io.deq.bits.data(lane),
+        deqDataDelayed.data(lane),
+        deqDataDelayed2.data(lane)
+      )
+    } else if (lane == numLanes) {
+      Cat(rxFifo.io.deq.bits.valid, deqDataDelayed.valid, deqDataDelayed2.valid)
+    } else {
+      Cat(rxFifo.io.deq.bits.track, deqDataDelayed.track, deqDataDelayed2.track)
+    }
+
+    val delayedData = (data << io.rxctl(lane).delay)(95, 64)
+    if (lane < numLanes) {
+      io.test.rx.bits.data(lane) := delayedData
+    } else if (lane == numLanes) {
+      io.test.rx.bits.valid := delayedData
+    } else {
+      io.test.rx.bits.track := delayedData
+    }
+  }
 
   // TODO: separate clock divider for async FIFO and its reset synchronizer
 
@@ -647,14 +671,12 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   val rstSyncTxLoopback = Module(new UcieRstSync(sim))
   rstSyncTxLoopback.io.rstbAsync := !reset.asBool
   rstSyncTxLoopback.io.clk := txLoopbackLane.io.divclk
-  txLoopbackFifo.io.enq.bits := 0.U
-  txLoopbackFifo.io.enq.valid := io.test.tx_loopback.valid
+  txLoopbackFifo.io.enq <> io.test.tx_loopback
   txLoopbackFifo.io.enq_clock := clock
   txLoopbackFifo.io.enq_reset := reset
   txLoopbackFifo.io.deq_clock := txLoopbackLane.io.divclk.asClock
   txLoopbackFifo.io.deq_reset := !rstSyncTxLoopback.io.rstbSync.asBool
   txLoopbackFifo.io.deq.ready := true.B
-  io.test.tx_loopback.ready := txLoopbackFifo.io.enq.ready
 
   when(txLoopbackFifo.io.deq.valid) {
     loopbackShuffler.io.din := txLoopbackFifo.io.deq.bits
@@ -689,9 +711,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   rxLoopbackFifo.io.deq_clock := clock
   rxLoopbackFifo.io.enq_clock := rxLoopbackLane.io.divclk.asClock
   rxLoopbackFifo.io.deq_reset := reset
-  rxLoopbackFifo.io.deq.ready := io.test.rx_loopback.ready
-  io.test.rx_loopback.valid := rxLoopbackFifo.io.deq.valid
-  io.test.rx_loopback.bits := rxLoopbackFifo.io.deq.bits
+  rxLoopbackFifo.io.deq <> io.test.rx_loopback
   rxLoopbackLane.io.din := txLoopbackLane.io.dout
   rxLoopbackFifo.io.enq.bits := rxLoopbackLane.io.dout
   rxLoopbackLane.io.ctl.zen := io.rxctl(numLanes + 4).zen
