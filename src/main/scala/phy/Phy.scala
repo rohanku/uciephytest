@@ -108,7 +108,8 @@ class ClkMux(sim: Boolean = false) extends BlackBox with HasBlackBoxInline {
       | input mux1_en_0, mux1_en_1,
       | output out, outb
       |);
-      | assert property (@posedge in0 or @posedge in1) (mux0_en_0 ^ mux0_en_1);
+      | assert property (@(posedge in0 or posedge in1) disable iff ((mux0_en_0 ^ mux0_en_1) == 1'bX) mux0_en_0 ^ mux0_en_1);
+      | assert property (@(posedge in0 or posedge in1) disable iff (!(mux1_en_0 | mux1_en_1) == 1'bX) !(mux1_en_0 | mux1_en_1));
       | assign out = mux0_en_0 && ~mux0_en_1 ? in0 : (~mux0_en_0 && mux0_en_1 ? in1 : 1'b0);
       |endmodule
       """.stripMargin

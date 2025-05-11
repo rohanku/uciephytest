@@ -186,7 +186,7 @@ class VerilogRxDataLane(sim: Boolean = false)
 
   if (sim) {
     setInline(
-      "rx_data_lane.v",
+      "rx_data_lane.sv",
       """
 module rx_data_lane (
    inout vdd,
@@ -261,6 +261,8 @@ module rx_data_lane (
    input vref_sel_5,
    input vref_sel_6
 );
+  assert property (disable iff (reset) sel_a ? a_en : b_en);
+  assert property (@(posedge clkin) disable iff (reset) (!sel_a) |-> ##[1:100] sel_a or (sel_a) |-> ##[1:100] !sel_a);
   reg rstbSync;
   always @(negedge rstb) begin
     rstbSync <= rstb;
@@ -429,7 +431,7 @@ class VerilogRxClkLane(sim: Boolean = false)
 
   if (sim) {
     setInline(
-      "rx_clock_lane.v",
+      "rx_clock_lane.sv",
       """
 module rx_clock_lane (
    inout vdd,
@@ -470,6 +472,8 @@ module rx_clock_lane (
    input vref_sel_5,
    input vref_sel_6
 );
+  assert property (disable iff (reset) sel_a ? a_en : b_en);
+  assert property (@(posedge clkin) disable iff (reset) (!sel_a) |-> ##[1:100] sel_a or (sel_a) |-> ##[1:100] !sel_a);
   assign clkout = clkin;
 endmodule
       """
