@@ -315,8 +315,9 @@ class UciephyTest(
   })
   val shouldWrite = Wire(Bool())
   shouldWrite := false.B
-  val outputBufferAddrDelayed = ShiftRegister(outputBufferAddr, 2, 0.U, true.B)
-  val toWriteDelayed = toWrite.map(w => ShiftRegister(w, 2, 0.U.asTypeOf(w), true.B))
+  val outputBufferAddrDelayed = ShiftRegister(outputBufferAddr, 2, true.B)
+  val toWriteDelayed = toWrite.map(w => ShiftRegister(w, 2, true.B))
+  // Needs to default to false.
   val shouldWriteDelayed = ShiftRegister(shouldWrite, 2, false.B, true.B)
   val outputRdPorts =
     (0 until numSrams).map(i => outputBuffer(i)(io.mmio.rxDataOffset))
@@ -686,14 +687,19 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
     val io = IO(new Bundle {})
     withClockAndReset(clock, reset) {
       val io = topIO.out(0)._1
+
+      val phyTestReset = ShiftRegister(reset, 2, true.B)
+
       // TEST HARNESS
-      val test = Module(
-        new UciephyTest(
-          params.bufferDepthPerLane,
-          params.numLanes,
-          params.bitCounterWidth
+      val test = withReset(phyTestReset) {
+        Module(
+          new UciephyTest(
+            params.bufferDepthPerLane,
+            params.numLanes,
+            params.bitCounterWidth
+          )
         )
-      )
+      }
 
       // COMMON COMPONENTS
       val common = Module(

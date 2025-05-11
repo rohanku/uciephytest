@@ -592,7 +592,6 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
         ShiftRegister(
           shuffler.io.dout.asTypeOf(txLane.io.din),
           2,
-          0.U.asTypeOf(txLane.io.din),
           true.B
         )
       }
@@ -627,7 +626,6 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
         ShiftRegister(
           rxLane.io.dout,
           2,
-          0.U.asTypeOf(rxLane.io.dout),
           true.B
         )
       }
