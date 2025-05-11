@@ -334,6 +334,8 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   rxclkbuf2r.io.vin := rxclkbuf1.io.vout
   for ((rxclkbuf3, i) <- rxclkbuf3s.zipWithIndex) {
     val rxclkbuf2 = if (i < 8) {
+      rxclkbuf2r
+    } else if (i < 16) {
       rxclkbuf2l
     } else {
       rxclkbuf2r

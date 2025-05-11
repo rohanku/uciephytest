@@ -228,14 +228,6 @@ class UciephyTest(
   val maxBitCount = VecInit(Seq.fill(bitCounterWidth)(true.B)).asUInt
   val maxSramPackets = 1.U << (bufferDepthPerLane - 5).U;
 
-  // Add shift registers to buffer reads/writes.
-  val txDataChunkInValid = ShiftRegister(io.mmio.txDataChunkIn.valid, 2, false.B, true.B)
-  val txDataChunkInBits = ShiftRegister(io.mmio.txDataChunkIn.bits, 2, 0.U, true.B)
-  val txDataLaneGroup = ShiftRegister(io.mmio.txDataLaneGroup, 2, 0.U, true.B)
-  val txDataOffset = ShiftRegister(io.mmio.txDataOffset, 2, 0.U, true.B)
-  val rxDataLane = ShiftRegister(io.mmio.rxDataLane, 2, 0.U, true.B)
-  val rxDataOffset = ShiftRegister(io.mmio.rxDataOffset, 2, 0.U, true.B)
-
   // TX registers
   val txReset = io.mmio.txFsmRst || reset.asBool
   val txState = withReset(txReset) { RegInit(TxTestState.idle) }
@@ -304,11 +296,11 @@ class UciephyTest(
     SyncReadMem(1 << (bufferDepthPerLane - 5), UInt(128.W))
   )
   val inputBufferAddr = Wire(UInt((bufferDepthPerLane - 5).W))
-  inputBufferAddr := txDataOffset
+  inputBufferAddr := io.mmio.txDataOffset
   val inputRdPorts =
     (0 until numSrams).map(i => inputBuffer(i)(inputBufferAddr))
   val inputWrPorts =
-    (0 until numSrams).map(i => inputBuffer(i)(txDataOffset))
+    (0 until numSrams).map(i => inputBuffer(i)(io.mmio.txDataOffset))
   val outputBuffer = (0 until numSrams).map(i =>
     SyncReadMem(1 << (bufferDepthPerLane - 5), UInt(128.W))
   )
@@ -327,7 +319,7 @@ class UciephyTest(
   val toWriteDelayed = toWrite.map(w => ShiftRegister(w, 2, 0.U.asTypeOf(w), true.B))
   val shouldWriteDelayed = ShiftRegister(shouldWrite, 2, false.B, true.B)
   val outputRdPorts =
-    (0 until numSrams).map(i => outputBuffer(i)(rxDataOffset))
+    (0 until numSrams).map(i => outputBuffer(i)(io.mmio.rxDataOffset))
   val outputWrPorts =
     (0 until numSrams).map(i => outputBuffer(i)(outputBufferAddrDelayed))
   when (shouldWriteDelayed) {
@@ -350,9 +342,9 @@ class UciephyTest(
   io.mmio.rxSignature := rxSignature
   io.mmio.rxDataChunk := 0.U
   for (i <- 0 until numSrams) {
-    when(i.U === rxDataLane >> 2.U) {
+    when(i.U === io.mmio.rxDataLane >> 2.U) {
       io.mmio.rxDataChunk := outputRdPorts(i).asTypeOf(Vec(4, UInt(32.W)))(
-        rxDataLane(1,0)
+        io.mmio.rxDataLane(1,0)
       )
     }
   }
@@ -377,10 +369,10 @@ class UciephyTest(
   // TX logic
   switch(txState) {
     is(TxTestState.idle) {
-      when(txDataChunkInValid) {
+      when(io.mmio.txDataChunkIn.valid) {
         for (i <- 0 until numSrams) {
           when(i.U === io.mmio.txDataLaneGroup) {
-            inputWrPorts(i) := txDataChunkInBits
+            inputWrPorts(i) := io.mmio.txDataChunkIn.bits
           }
         }
       }
@@ -885,42 +877,42 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       txWriteChunk.ready := true.B
       rxFsmRst.ready := true.B
 
-      test.io.mmio.txDataChunkIn.bits := Cat(txDataChunkIn1, txDataChunkIn0)
-      test.io.mmio.txDataChunkIn.valid := txWriteChunk.valid
-      test.io.mmio.txDataLaneGroup := txDataLaneGroup
-      test.io.mmio.txDataOffset := txDataOffset
+      test.io.mmio.txDataChunkIn.bits := ShiftRegister(Cat(txDataChunkIn1, txDataChunkIn0), 2, true.B)
+      test.io.mmio.txDataChunkIn.valid := ShiftRegister(txWriteChunk.valid, 2, true.B)
+      test.io.mmio.txDataLaneGroup := ShiftRegister(txDataLaneGroup, 2, true.B)
+      test.io.mmio.txDataOffset := ShiftRegister(txDataOffset, 2, true.B)
 
-      test.io.mmio.testTarget := testTarget
-      test.io.mmio.txTestMode := txTestMode
-      test.io.mmio.txDataMode := txDataMode
-      test.io.mmio.txLfsrSeed := txLfsrSeed
+      test.io.mmio.testTarget := ShiftRegister(testTarget, 2, true.B)
+      test.io.mmio.txTestMode := ShiftRegister(txTestMode, 2, true.B)
+      test.io.mmio.txDataMode := ShiftRegister(txDataMode, 2, true.B)
+      test.io.mmio.txLfsrSeed := ShiftRegister(txLfsrSeed, 2, true.B)
       test.io.mmio.txFsmRst := txFsmRst.valid
       test.io.mmio.txExecute := txExecute.valid
-      test.io.mmio.txManualRepeatPeriod := txManualRepeatPeriod
-      test.io.mmio.txPacketsToSend := txPacketsToSend
-      test.io.mmio.txClkP := txClkP
-      test.io.mmio.txClkN := txClkN
-      test.io.mmio.txValid := txValid
-      test.io.mmio.txTrack := txTrack
-      test.io.mmio.rxDataMode := rxDataMode
-      test.io.mmio.rxLfsrSeed := rxLfsrSeed
-      test.io.mmio.rxLfsrValid := rxLfsrValid
+      test.io.mmio.txManualRepeatPeriod := ShiftRegister(txManualRepeatPeriod, 2, true.B)
+      test.io.mmio.txPacketsToSend := ShiftRegister(txPacketsToSend, 2, true.B)
+      test.io.mmio.txClkP := ShiftRegister(txClkP, 2, true.B)
+      test.io.mmio.txClkN := ShiftRegister(txClkN, 2, true.B)
+      test.io.mmio.txValid := ShiftRegister(txValid, 2, true.B)
+      test.io.mmio.txTrack := ShiftRegister(txTrack, 2, true.B)
+      test.io.mmio.rxDataMode := ShiftRegister(rxDataMode, 2, true.B)
+      test.io.mmio.rxLfsrSeed := ShiftRegister(rxLfsrSeed, 2, true.B)
+      test.io.mmio.rxLfsrValid := ShiftRegister(rxLfsrValid, 2, true.B)
       test.io.mmio.rxFsmRst := rxFsmRst.valid
-      test.io.mmio.rxPacketsToReceive := rxPacketsToReceive
-      test.io.mmio.rxPauseCounters := rxPauseCounters
-      test.io.mmio.rxDataLane := rxDataLane
-      test.io.mmio.rxDataOffset := rxDataOffset
+      test.io.mmio.rxPacketsToReceive := ShiftRegister(rxPacketsToReceive, 2, true.B)
+      test.io.mmio.rxPauseCounters := ShiftRegister(rxPauseCounters, 2, true.B)
+      test.io.mmio.rxDataLane := ShiftRegister(rxDataLane, 2, true.B)
+      test.io.mmio.rxDataOffset := ShiftRegister(rxDataOffset, 2, true.B)
 
-      common.io.driverctl := commonDriverctl
-      common.io.txctl := commonTxctl
-      common.io.txTestMode := commonTxTestMode
-      common.io.txDataMode := commonTxDataMode
-      common.io.txLfsrSeed := commonTxLfsrSeed
+      common.io.driverctl := ShiftRegister(commonDriverctl, 2, true.B)
+      common.io.txctl := ShiftRegister(commonTxctl, 2, true.B)
+      common.io.txTestMode := ShiftRegister(commonTxTestMode, 2, true.B)
+      common.io.txDataMode := ShiftRegister(commonTxDataMode, 2, true.B)
+      common.io.txLfsrSeed := ShiftRegister(commonTxLfsrSeed, 2, true.B)
       common.io.txFsmRst := commonTxFsmRst.valid
       common.io.txExecute := commonTxExecute.valid
-      common.io.txManualRepeatPeriod := commonTxManualRepeatPeriod
-      common.io.txPacketsToSend := commonTxPacketsToSend
-      common.io.data := commonData
+      common.io.txManualRepeatPeriod := ShiftRegister(commonTxManualRepeatPeriod, 2, true.B)
+      common.io.txPacketsToSend := ShiftRegister(commonTxPacketsToSend, 2, true.B)
+      common.io.data := ShiftRegister(commonData, 2, true.B)
 
       // PHY
       val phy = Module(new Phy(params.numLanes, params.sim))
@@ -990,11 +982,11 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       io.phy <> phy.io.top
       io.common <> common.io.top
 
-      phy.io.pllBypassEn := pllBypassEn
-      phy.io.txctl := txctl
-      phy.io.pllCtl := pllCtl
-      phy.io.testPllCtl := testPllCtl
-      phy.io.rxctl := rxctl
+      phy.io.pllBypassEn := ShiftRegister(pllBypassEn, 2, true.B)
+      phy.io.txctl := ShiftRegister(txctl, 2, true.B)
+      phy.io.pllCtl := ShiftRegister(pllCtl, 2, true.B)
+      phy.io.testPllCtl := ShiftRegister(testPllCtl, 2, true.B)
+      phy.io.rxctl := ShiftRegister(rxctl, 2, true.B)
 
       var mmioRegs = Seq(
         toRegFieldRw(testTarget, "testTarget"),
