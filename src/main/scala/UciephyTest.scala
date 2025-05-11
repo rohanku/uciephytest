@@ -154,12 +154,14 @@ class UciephyTestMMIO(
   val txManualRepeatPeriod = Input(UInt((bufferDepthPerLane - 5 + 1).W))
   // The number of packets to send during transmission.
   val txPacketsToSend = Input(UInt(bitCounterWidth.W))
-  // Enable clock P signal.
-  val txClkPEn = Input(Bool())
-  // Enable clock P signal.
-  val txClkNEn = Input(Bool())
-  // Enable track signal.
-  val txTrackEn = Input(Bool())
+  // Clock P signal value.
+  val txClkP = Input(UInt(32.W))
+  // Clock P signal.
+  val txClkN = Input(UInt(32.W))
+  // Valid signal.
+  val txValid = Input(UInt(32.W))
+  // Track signal.
+  val txTrack = Input(UInt(32.W))
   // Data chunk lane group in input buffer. Each lane group consists of 4 adjacent lanes (e.g. 0, 1, 2, 3).
   // Lane numLanes is valid, numLanes + 1 is track, numLanes + 2 is loopback.
   val txDataLaneGroup = Input(UInt(log2Ceil((numLanes + 2) / 4 + 1).W))
@@ -361,20 +363,8 @@ class UciephyTest(
   // Needs to always be true to send clock and track even when data isn't valid.
   io.phy.tx.valid := true.B
 
-  // clkp = 101010...
-  io.phy.tx.bits.clkp := Mux(
-    io.mmio.txClkPEn,
-    VecInit((0 until Phy.SerdesRatio / 2).flatMap(_ => Seq(true.B, false.B)))
-      .asTypeOf(io.phy.tx.bits.clkp),
-    VecInit(Seq.fill(Phy.SerdesRatio)(false.B)).asUInt
-  )
-  // clkn = 010101...
-  io.phy.tx.bits.clkn := Mux(
-    io.mmio.txClkNEn,
-    VecInit((0 until Phy.SerdesRatio / 2).flatMap(_ => Seq(false.B, true.B)))
-      .asTypeOf(io.phy.tx.bits.clkn),
-    VecInit(Seq.fill(Phy.SerdesRatio)(false.B)).asUInt
-  )
+  io.phy.tx.bits.clkp := io.mmio.txClkP
+  io.phy.tx.bits.clkn := io.mmio.txClkN
 
   io.phy.tx_loopback.bits := 0.U
 
@@ -463,21 +453,8 @@ class UciephyTest(
                     txLfsrs(lane).io.out.asUInt
                   )(31, 0).asTypeOf(io.phy.tx.bits.data(lane))
                 }
-                io.phy.tx.bits.valid := VecInit(
-                  (0 until Phy.SerdesRatio / 8).flatMap(_ =>
-                    Seq.fill(4)(true.B) ++ Seq.fill(4)(false.B)
-                  )
-                ).asUInt
-                // track = trackEn ? 101010... : 000000...
-                io.phy.tx.bits.track := Mux(
-                  io.mmio.txTrackEn,
-                  io.phy.tx.bits.clkp,
-                  VecInit(
-                    (0 until Phy.SerdesRatio / 2).flatMap(_ =>
-                      Seq(false.B, false.B)
-                    )
-                  ).asTypeOf(io.phy.tx.bits.track)
-                )
+                io.phy.tx.bits.valid := io.mmio.txValid
+                io.phy.tx.bits.track := io.mmio.txTrack
               }
               is(TestTarget.loopback) {
                 io.phy.tx_loopback.bits := Reverse(
@@ -750,9 +727,10 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
         RegInit(0.U(test.io.mmio.txManualRepeatPeriod.getWidth.W))
       val txPacketsToSend =
         RegInit(0.U(test.io.mmio.txPacketsToSend.getWidth.W))
-      val txClkPEn = RegInit(false.B)
-      val txClkNEn = RegInit(false.B)
-      val txTrackEn = RegInit(false.B)
+      val txClkP = RegInit(0.U(32.W))
+      val txClkN = RegInit(0.U(32.W))
+      val txValid = RegInit(0.U(32.W))
+      val txTrack = RegInit(0.U(32.W))
       val txDataLaneGroup =
         RegInit(0.U(test.io.mmio.txDataLaneGroup.getWidth.W))
       val txDataOffset = RegInit(0.U(test.io.mmio.txDataOffset.getWidth.W))
@@ -917,9 +895,10 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       test.io.mmio.txExecute := txExecute.valid
       test.io.mmio.txManualRepeatPeriod := txManualRepeatPeriod
       test.io.mmio.txPacketsToSend := txPacketsToSend
-      test.io.mmio.txClkPEn := txClkPEn
-      test.io.mmio.txClkNEn := txClkPEn
-      test.io.mmio.txTrackEn := txTrackEn
+      test.io.mmio.txClkP := txClkP
+      test.io.mmio.txClkN := txClkN
+      test.io.mmio.txValid := txValid
+      test.io.mmio.txTrack := txTrack
       test.io.mmio.rxDataMode := rxDataMode
       test.io.mmio.rxLfsrSeed := rxLfsrSeed
       test.io.mmio.rxFsmRst := rxFsmRst.valid
@@ -1026,9 +1005,9 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
         toRegFieldR(test.io.mmio.txPacketsSent, "txPacketsSent"),
         toRegFieldRw(txManualRepeatPeriod, "txManualRepeatPeriod"),
         toRegFieldRw(txPacketsToSend, "txPacketsToSend"),
-        toRegFieldRw(txClkPEn, "txClkPEn"),
-        toRegFieldRw(txClkNEn, "txClkNEn"),
-        toRegFieldRw(txTrackEn, "txTrackEn"),
+        toRegFieldRw(txClkP, "txClkP"),
+        toRegFieldRw(txClkN, "txClkN"),
+        toRegFieldRw(txTrack, "txTrack"),
         toRegFieldRw(txDataLaneGroup, "txDataLaneGroup"),
         toRegFieldRw(txDataOffset, "txDataOffset"),
         toRegFieldRw(txDataChunkIn0, "txDataChunkIn0"),
@@ -1122,7 +1101,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       ) ++ (0 until 32).map((j: Int) =>
         toRegFieldRw(commonTxctl.shuffler(j), s"commonTxctl_shuffler_$j")
       ) ++ Seq(
-        toRegFieldR(common.io.dllCode, s"commonDllCode")
+        toRegFieldR(common.io.dllCode, s"commonDllCode"),
+        toRegFieldRw(txValid, "txValid"),
       ) ++ Seq(
         RegField.w(1, ucieStack, RegFieldDesc("ucieStack", "")),
         RegField.r(1, outputValid, RegFieldDesc("outputValid", ""))

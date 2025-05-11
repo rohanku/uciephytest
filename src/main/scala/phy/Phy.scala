@@ -394,7 +394,7 @@ class Phy(numLanes: Int = 16, sim: Boolean = false) extends Module {
   clkMuxP.io.mux0_en_1 := io.pllBypassEn
   clkMuxP.io.mux1_en_0 := false.B
   clkMuxP.io.mux1_en_1 := false.B
-  val clkMuxN = Module(new ClkMux)
+  val clkMuxN = Module(new ClkMux(sim))
   clkMuxN.io.in0 := pll.io.vn_out
   clkMuxN.io.in1 := io.common.bypassClkN.asBool
   clkMuxN.io.mux0_en_0 := !io.pllBypassEn
