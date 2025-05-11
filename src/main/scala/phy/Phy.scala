@@ -101,13 +101,14 @@ class ClkMux(sim: Boolean = false) extends BlackBox with HasBlackBoxInline {
 
   if (sim) {
     setInline(
-      "ucie_clkmux.v",
+      "ucie_clkmux.sv",
       """module ucie_clkmux(
       | input in0, in1,
       | input mux0_en_0, mux0_en_1,
       | input mux1_en_0, mux1_en_1,
       | output out, outb
       |);
+      | assert property (@posedge in0 or @posedge in1) (mux0_en_0 ^ mux0_en_1);
       | assign out = mux0_en_0 && ~mux0_en_1 ? in0 : (~mux0_en_0 && mux0_en_1 ? in1 : 1'b0);
       |endmodule
       """.stripMargin
