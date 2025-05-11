@@ -180,6 +180,8 @@ class UciephyTestMMIO(
   val rxDataMode = Input(DataMode())
   // Seed of the RX LFSR used for detecting bit errors. Should be the same as the TX seed of the transmitting chiplet.
   val rxLfsrSeed = Input(Vec(numLanes + 1, UInt((2 * Phy.SerdesRatio).W)))
+  // Expected valid signal in LFSR mode.
+  val rxLfsrValid = Input(UInt(32.W))
   // Resets the RX FSM (i.e. resetting the number of bits received and the offset within the output
   // buffer to 0).
   val rxFsmRst = Input(Bool())
@@ -616,7 +618,7 @@ class UciephyTest(
           }
           // Compare valid against intended waveform.
           if (lane == numLanes) {
-            rxErrorMask(lane) := newData(31, 0) ^ "h0f0f_0f0f".U
+            rxErrorMask(lane) := newData(31, 0) ^ io.mmio.rxLfsrValid
           }
           if (lane == numLanes + 2) {
             rxLfsrs(numLanes).io.increment := true.B
@@ -744,6 +746,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
           )
         )
       )
+      val rxLfsrValid = RegInit(0.U(32.W))
       val rxFsmRst = Wire(DecoupledIO(UInt(1.W)))
       val rxPacketsToReceive =
         RegInit(0.U(test.io.mmio.rxPacketsToReceive.getWidth.W))
@@ -901,6 +904,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       test.io.mmio.txTrack := txTrack
       test.io.mmio.rxDataMode := rxDataMode
       test.io.mmio.rxLfsrSeed := rxLfsrSeed
+      test.io.mmio.rxLfsrValid := rxLfsrValid
       test.io.mmio.rxFsmRst := rxFsmRst.valid
       test.io.mmio.rxPacketsToReceive := rxPacketsToReceive
       test.io.mmio.rxPauseCounters := rxPauseCounters
@@ -1103,6 +1107,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       ) ++ Seq(
         toRegFieldR(common.io.dllCode, s"commonDllCode"),
         toRegFieldRw(txValid, "txValid"),
+        toRegFieldRw(rxLfsrValid, "rxLfsrValid"),
       ) ++ Seq(
         RegField.w(1, ucieStack, RegFieldDesc("ucieStack", "")),
         RegField.r(1, outputValid, RegFieldDesc("outputValid", ""))
