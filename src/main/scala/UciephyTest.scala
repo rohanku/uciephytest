@@ -926,24 +926,17 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       val phy = Module(new Phy(params.numLanes, params.sim))
       when(ucieStack) {
 
-        phy.io.test.tx <> uciTL.module.io.phyAfe.get.tx.map(f => {
-          val x = Wire(chiselTypeOf(phy.io.test.tx.bits))
-          x.data := f.data
-          x.valid := f.valid.asTypeOf(x.valid)
-          // clkp = 101010...
-          x.clkp := VecInit(
-            (0 until Phy.SerdesRatio / 2).flatMap(_ => Seq(true.B, false.B))
-          ).asTypeOf(x.clkp)
-          // clkn = 010101...
-          x.clkn := VecInit(
-            (0 until Phy.SerdesRatio / 2).flatMap(_ => Seq(false.B, true.B))
-          ).asTypeOf(x.clkn)
-          // track = 000000... (for now)
-          x.track := VecInit(
-            (0 until Phy.SerdesRatio / 2).flatMap(_ => Seq(false.B, false.B))
-          ).asTypeOf(x.track)
-          x
-        })
+        phy.io.test.tx.bits.clkp := txClk
+        phy.io.test.tx.bits.clkn := txClkN
+        phy.io.test.tx.bits.track := txTrack
+        phy.io.test.tx.bits.valid := 
+        
+
+        val uciTLValid = uciTL.module.io.phyAfe.get.tx.valid 
+        phy.io.test.tx.bits.data := Mux(uciTLValid, uciTL.module.io.phyAfe.get.tx.bits.data, 0.U)
+        phy.io.test.tx.bits.valid := Mux(uciTLValid, uciTL.module.io.phyAfe.get.tx.bits.valid.asTypeOf(phy.io.test.tx.bits.valid), 0.U)
+        phy.io.test.tx.valid := true.B
+        uciTL.module.io.phyAfe.get.tx.ready := phy.io.test.tx.ready
 
         phy.io.test.rx.map(f => {
           val x = Wire(chiselTypeOf(uciTL.module.io.phyAfe.get.rx.bits))
@@ -951,8 +944,6 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
           x.valid := f.valid.asTypeOf(x.valid)
           x
         }) <> uciTL.module.io.phyAfe.get.rx
-
-        // TODO: delete txRst and rxRst from uciedigital
 
         phy.io.sideband.txClk := uciTL.module.io.txSbAfe.clk
         phy.io.sideband.txData := uciTL.module.io.txSbAfe.data

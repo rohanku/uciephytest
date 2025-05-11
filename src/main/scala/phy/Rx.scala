@@ -261,8 +261,11 @@ module rx_data_lane (
    input vref_sel_5,
    input vref_sel_6
 );
-  assert property (disable iff (reset) sel_a ? a_en : b_en);
-  assert property (@(posedge clkin) disable iff (reset) (!sel_a) |-> ##[1:100] sel_a or (sel_a) |-> ##[1:100] !sel_a);
+  assert property (@(posedge clk) disable iff (!rstb) sel_a ? a_en : b_en);
+  assert property (@(posedge clk) disable iff (!rstb) !(a_en & a_pc));
+  assert property (@(posedge clk) disable iff (!rstb) !(b_en & b_pc));
+  assert property (@(posedge clk) disable iff (!rstb) (!a_pc) |-> ##[1:100] a_pc);
+  assert property (@(posedge clk) disable iff (!rstb) (!b_pc) |-> ##[1:100] b_pc);
   reg rstbSync;
   always @(negedge rstb) begin
     rstbSync <= rstb;
@@ -472,8 +475,11 @@ module rx_clock_lane (
    input vref_sel_5,
    input vref_sel_6
 );
-  assert property (disable iff (reset) sel_a ? a_en : b_en);
-  assert property (@(posedge clkin) disable iff (reset) (!sel_a) |-> ##[1:100] sel_a or (sel_a) |-> ##[1:100] !sel_a);
+  assert property (@(posedge clkin) sel_a ? a_en : b_en);
+  assert property (@(posedge clkin) !(a_en & a_pc));
+  assert property (@(posedge clkin) !(b_en & b_pc));
+  assert property (@(posedge clkin) (!a_pc) |-> ##[1:100] a_pc);
+  assert property (@(posedge clkin) (!b_pc) |-> ##[1:100] b_pc);
   assign clkout = clkin;
 endmodule
       """
