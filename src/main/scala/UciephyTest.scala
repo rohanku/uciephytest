@@ -892,8 +892,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       test.io.mmio.txTestMode := ShiftRegister(txTestMode, 2, true.B)
       test.io.mmio.txDataMode := ShiftRegister(txDataMode, 2, true.B)
       test.io.mmio.txLfsrSeed := ShiftRegister(txLfsrSeed, 2, true.B)
-      test.io.mmio.txFsmRst := txFsmRst.valid
-      test.io.mmio.txExecute := txExecute.valid
+      test.io.mmio.txFsmRst := ShiftRegister(txFsmRst.valid, 2, true.B)
+      test.io.mmio.txExecute := ShiftRegister(txExecute.valid, 2, true.B)
       test.io.mmio.txManualRepeatPeriod := ShiftRegister(txManualRepeatPeriod, 2, true.B)
       test.io.mmio.txPacketsToSend := ShiftRegister(txPacketsToSend, 2, true.B)
       test.io.mmio.txClkP := ShiftRegister(txClkP, 2, true.B)
@@ -903,7 +903,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       test.io.mmio.rxDataMode := ShiftRegister(rxDataMode, 2, true.B)
       test.io.mmio.rxLfsrSeed := ShiftRegister(rxLfsrSeed, 2, true.B)
       test.io.mmio.rxLfsrValid := ShiftRegister(rxLfsrValid, 2, true.B)
-      test.io.mmio.rxFsmRst := rxFsmRst.valid
+      test.io.mmio.rxFsmRst := ShiftRegister(rxFsmRst.valid, 2, true.B)
       test.io.mmio.rxPacketsToReceive := ShiftRegister(rxPacketsToReceive, 2, true.B)
       test.io.mmio.rxPauseCounters := ShiftRegister(rxPauseCounters, 2, true.B)
       test.io.mmio.rxDataLane := ShiftRegister(rxDataLane, 2, true.B)
@@ -914,8 +914,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       common.io.txTestMode := ShiftRegister(commonTxTestMode, 2, true.B)
       common.io.txDataMode := ShiftRegister(commonTxDataMode, 2, true.B)
       common.io.txLfsrSeed := ShiftRegister(commonTxLfsrSeed, 2, true.B)
-      common.io.txFsmRst := commonTxFsmRst.valid
-      common.io.txExecute := commonTxExecute.valid
+      common.io.txFsmRst := ShiftRegister(commonTxFsmRst.valid, 2, true.B)
+      common.io.txExecute := ShiftRegister(commonTxExecute.valid, 2, true.B)
       common.io.txManualRepeatPeriod := ShiftRegister(commonTxManualRepeatPeriod, 2, true.B)
       common.io.txPacketsToSend := ShiftRegister(commonTxPacketsToSend, 2, true.B)
       common.io.data := ShiftRegister(commonData, 2, true.B)
@@ -1004,7 +1004,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
         RegField.w(1, txFsmRst, RegFieldDesc("txFsmRst", "")),
         RegField.w(1, txExecute, RegFieldDesc("txExecute", "")),
         RegField.w(1, txWriteChunk, RegFieldDesc("txWriteChunk", "")),
-        toRegFieldR(test.io.mmio.txPacketsSent, "txPacketsSent"),
+        toRegFieldR(ShiftRegister(test.io.mmio.txPacketsSent, 2, true.B), "txPacketsSent"),
         toRegFieldRw(txManualRepeatPeriod, "txManualRepeatPeriod"),
         toRegFieldRw(txPacketsToSend, "txPacketsToSend"),
         toRegFieldRw(txClkP, "txClkP"),
@@ -1014,24 +1014,24 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
         toRegFieldRw(txDataOffset, "txDataOffset"),
         toRegFieldRw(txDataChunkIn0, "txDataChunkIn0"),
         toRegFieldRw(txDataChunkIn1, "txDataChunkIn1"),
-        toRegFieldR(test.io.mmio.txDataChunkOut(63, 0), "txDataChunkOut0"),
-        toRegFieldR(test.io.mmio.txDataChunkOut(127, 64), "txDataChunkOut1")
+        toRegFieldR(ShiftRegister(test.io.mmio.txDataChunkOut(63, 0), 2, true.B), "txDataChunkOut0"),
+        toRegFieldR(ShiftRegister(test.io.mmio.txDataChunkOut(127, 64), 2, true.B), "txDataChunkOut1")
       ) ++ Seq(
-        toRegFieldR(test.io.mmio.txTestState, "txTestState"),
+        toRegFieldR(ShiftRegister(test.io.mmio.txTestState, 2, true.B), "txTestState"),
         toRegFieldRw(rxDataMode, s"rxDataMode")
       ) ++ (0 until params.numLanes + 1).map((i: Int) => {
         toRegFieldRw(rxLfsrSeed(i), s"rxLfsrSeed_$i")
       }) ++ (0 until params.numLanes + 2).map((i: Int) => {
-        toRegFieldR(test.io.mmio.rxBitErrors(i), s"rxBitErrors_$i")
+        toRegFieldR(ShiftRegister(test.io.mmio.rxBitErrors(i), 2, true.B), s"rxBitErrors_$i")
       }) ++ Seq(
         RegField.w(1, rxFsmRst, RegFieldDesc("rxFsmRst", "")),
         toRegFieldRw(rxPacketsToReceive, "rxPacketsToReceive"),
         toRegFieldRw(rxPauseCounters, "rxPauseCounters"),
-        toRegFieldR(test.io.mmio.rxPacketsReceived, "rxPacketsReceived"),
-        toRegFieldR(test.io.mmio.rxSignature, "rxSignature"),
+        toRegFieldR(ShiftRegister(test.io.mmio.rxPacketsReceived, 2, true.B), "rxPacketsReceived"),
+        toRegFieldR(ShiftRegister(test.io.mmio.rxSignature, 2, true.B), "rxSignature"),
         toRegFieldRw(rxDataLane, "rxDataLane"),
         toRegFieldRw(rxDataOffset, "rxDataOffset"),
-        toRegFieldR(test.io.mmio.rxDataChunk, "rxDataChunk"),
+        toRegFieldR(ShiftRegister(test.io.mmio.rxDataChunk, 2, true.B), "rxDataChunk"),
         toRegFieldRw(pllCtl.dref_low, "pll_dref_low"),
         toRegFieldRw(pllCtl.dref_high, "pll_dref_high"),
         toRegFieldRw(pllCtl.dcoarse, "pll_dcoarse"),
@@ -1055,8 +1055,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
         ),
         toRegFieldRw(testPllCtl.vco_reset, "test_pll_vco_reset"),
         toRegFieldRw(testPllCtl.digital_reset, "test_pll_digital_reset"),
-        toRegFieldR(phy.io.pllOutput, "pllOutput"),
-        toRegFieldR(phy.io.testPllOutput, "testPllOutput"),
+        toRegFieldR(ShiftRegister(phy.io.pllOutput, 2, true.B), "pllOutput"),
+        toRegFieldR(ShiftRegister(phy.io.testPllOutput, 2, true.B), "testPllOutput"),
         toRegFieldRw(pllBypassEn, "pllBypassEn")
       ) ++ (0 until params.numLanes + 5).flatMap((i: Int) => {
         Seq(
@@ -1068,7 +1068,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
         ) ++ Seq(
           toRegFieldRw(txctl(i).sample_negedge, s"txctl_${i}_sample_negedge"),
           toRegFieldRw(txctl(i).delay, s"txctl_${i}_delay"),
-          toRegFieldR(phy.io.dllCode(i), s"dllCode_$i")
+          toRegFieldR(ShiftRegister(phy.io.dllCode(i), 2, true.B), s"dllCode_$i")
         )
       }) ++ (0 until params.numLanes + 5).flatMap((i: Int) => {
         Seq(
@@ -1088,10 +1088,10 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
         toRegFieldRw(commonTxLfsrSeed, s"commonTxLfsrSeed"),
         RegField.w(1, commonTxFsmRst, RegFieldDesc("commonTxFsmRst", "")),
         RegField.w(1, commonTxExecute, RegFieldDesc("commonTxExecute", "")),
-        toRegFieldR(common.io.txPacketsEnqueued, "commonTxPacketsSent"),
+        toRegFieldR(ShiftRegister(common.io.txPacketsEnqueued, 2, true.B), "commonTxPacketsSent"),
         toRegFieldRw(commonTxManualRepeatPeriod, "commonTxManualRepeatPeriod"),
         toRegFieldRw(commonTxPacketsToSend, "commonTxPacketsToSend"),
-        toRegFieldR(common.io.txState, "commonTxTestState")
+        toRegFieldR(ShiftRegister(common.io.txState, 2, true.B), "commonTxTestState")
       ) ++ (0 until 16).map((i: Int) => {
         toRegFieldRw(commonData(i), s"commonData_${i}")
       }) ++ (0 until commonDriverctl.length).map((i: Int) => {
@@ -1103,7 +1103,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       ) ++ (0 until 32).map((j: Int) =>
         toRegFieldRw(commonTxctl.shuffler(j), s"commonTxctl_shuffler_$j")
       ) ++ Seq(
-        toRegFieldR(common.io.dllCode, s"commonDllCode"),
+        toRegFieldR(ShiftRegister(common.io.dllCode, 2, true.B), s"commonDllCode"),
         toRegFieldRw(txValid, "txValid"),
         toRegFieldRw(rxLfsrValid, "rxLfsrValid"),
       ) ++ Seq(
