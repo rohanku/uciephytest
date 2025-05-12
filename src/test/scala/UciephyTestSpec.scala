@@ -15,12 +15,11 @@ class UciephyTestHarness(bufferDepthPerLane: Int = 10, numLanes: Int = 2)
   io.mmio <> test.io.mmio
   val phy = Module(new uciephytest.phy.Phy(numLanes, sim = true))
   test.io.phy <> phy.io.test
-  phy.io.top.refClkP := clock
-  phy.io.top.refClkN := (!clock.asBool).asClock
-  phy.io.top.testPllRdacVref := true.B
-  phy.io.top.pllRdacVref := true.B
-  phy.io.top.bypassClkP := clock
-  phy.io.top.bypassClkN := (!clock.asBool).asClock
+  phy.io.common.refClkP := clock
+  phy.io.common.refClkN := (!clock.asBool).asClock
+  phy.io.common.pllRdacVref := true.B
+  phy.io.common.bypassClkP := clock
+  phy.io.common.bypassClkN := (!clock.asBool).asClock
   phy.io.top.rxClkP := phy.io.top.txClkP
   phy.io.top.rxClkN := phy.io.top.txClkN
   phy.io.top.rxData := phy.io.top.txData
@@ -28,8 +27,6 @@ class UciephyTestHarness(bufferDepthPerLane: Int = 10, numLanes: Int = 2)
   phy.io.top.rxTrack := phy.io.top.txTrack
   phy.io.top.sbRxData := phy.io.top.sbTxData
   phy.io.top.sbRxClk := phy.io.top.sbTxClk
-  phy.io.top.sbClk := clock
-  phy.io.top.pllRdacVref := false.B
   phy.io.sideband.txData := false.B
   phy.io.sideband.txClk := false.B
   phy.io.txctl := DontCare
@@ -59,7 +56,7 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
         c.reset.poke(false.B)
 
         // Set up TX
-        c.io.mmio.txClkPEn.poke(true.B)
+        c.io.mmio.txClkP.poke("h0f0f0f0f".U)
         c.io.mmio.txDataChunkIn.initSource()
         c.io.mmio.txDataChunkIn.setSourceClock(c.clock)
         c.io.shufflerCtl.poke(
@@ -272,7 +269,7 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
         c.reset.poke(false.B)
 
         // Set up TX
-        c.io.mmio.txClkPEn.poke(true.B)
+        c.io.mmio.txClkP.poke("h0f0f0f0f".U)
         c.io.mmio.txDataChunkIn.initSource()
         c.io.mmio.txDataChunkIn.setSourceClock(c.clock)
         c.io.shufflerCtl.poke(
@@ -389,7 +386,7 @@ class UciephyTestSpec extends AnyFlatSpec with ChiselScalatestTester {
         c.reset.poke(false.B)
 
         // Set up TX
-        c.io.mmio.txClkPEn.poke(true.B)
+        c.io.mmio.txClkP.poke("h0f0f0f0f".U)
         c.io.mmio.txDataChunkIn.initSource()
         c.io.shufflerCtl.poke(
           Vec.Lit(

@@ -926,11 +926,9 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       val phy = Module(new Phy(params.numLanes, params.sim))
       when(ucieStack) {
 
-        phy.io.test.tx.bits.clkp := txClk
+        phy.io.test.tx.bits.clkp := txClkP
         phy.io.test.tx.bits.clkn := txClkN
         phy.io.test.tx.bits.track := txTrack
-        phy.io.test.tx.bits.valid := 
-        
 
         val uciTLValid = uciTL.module.io.phyAfe.get.tx.valid 
         phy.io.test.tx.bits.data := Mux(uciTLValid, uciTL.module.io.phyAfe.get.tx.bits.data, 0.U)
