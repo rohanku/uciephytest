@@ -99,68 +99,81 @@ class UciLoopbackTester(implicit p: Parameters) extends LazyModule {
     inwardQueueDepth = 2,
     outwardQueueDepth = 2,
     dataWidth_arg = 256),
-    onchipAddr = Some(0x1000000000L))
+    onchipAddr = Some(0x1000000000L), sim = true)
   val delay = 0.0
   val txns = 100
 
   // Create clock source
-  val clockSourceNode = ClockSourceNode(Seq(ClockSourceParameters()))
+  val clockSourceNode1 = ClockSourceNode(Seq(ClockSourceParameters()))
+  val clockSourceNode2 = ClockSourceNode(Seq(ClockSourceParameters()))
 
-  val tester = LazyModule(new TileLinkTester)
+  val regTester = LazyModule(new TileLinkTester)
+  val ucieTester = LazyModule(new TileLinkTester)
+  val phyTester = LazyModule(new TileLinkTester)
   val tlUcieDie1 = LazyModule(
     new UciephyTestTL(params = params, beatBytes = 16)
   )
-  tlUcieDie1.clockNode := clockSourceNode
-  tlUcieDie1.node := tester.node
+  tlUcieDie1.clockNode := clockSourceNode1
+  tlUcieDie1.uciTL.clockNode := clockSourceNode2
+  tlUcieDie1.node := phyTester.node
   tlUcieDie1.uciTL.managerNode := TLSourceShrinker(
     params.tlParams.sourceIDWidth
-  ) := tester.node
-  ram.node := tlUcieDie1.uciTL.clientNode
+  ) := ucieTester.node
+  tlUcieDie1.uciTL.regNode.node := regTester.node
   val ram = LazyModule(
     new TLRAM(
       AddressSet(params.tlParams.ADDRESS, params.tlParams.addressRange),
       beatBytes = params.tlParams.BEAT_BYTES
     )
   )
+  ram.node := tlUcieDie1.uciTL.clientNode
+  // Extract UCIe module IO from Diplomacy
+  val uciephyTestTLIO = BundleBridgeSink[uciephytest.UciephyTestTLIO]()
+  uciephyTestTLIO := tlUcieDie1.topIO
+
   lazy val module = new Impl
   class Impl extends LazyModuleImp(this) {
     val io = IO(new Bundle {
       val uci_clock = Input(new ClockBundle(ClockBundleParameters()))
-      val tester = new TesterIO
+      val harness = new UciTLTestHarnessIO
     })
 
-    tester.io.out(0)._1 <> io.tester
+    regTester.module.io <> io.harness.regTester
+    ucieTester.module.io <> io.harness.ucieTester
+    phyTester.module.io <> io.harness.phyTester
     // connect IOs
-    io.uci_clock <> clockSourceNode.out(0)._1
-    val ucieIO = tlUcieDie1.out(0)._1
-    phy.io.common.refClkP := clock
-    phy.io.common.refClkN := (!clock.asBool).asClock
-    phy.io.common.pllRdacVref := true.B
-    phy.io.common.bypassClkP := clock
-    phy.io.common.bypassClkN := (!clock.asBool).asClock
-    phy.io.top.rxClkP := phy.io.top.txClkP
-    phy.io.top.rxClkN := phy.io.top.txClkN
-    phy.io.top.rxData := phy.io.top.txData
-    phy.io.top.rxValid := phy.io.top.txValid
-    phy.io.top.rxTrack := phy.io.top.txTrack
-    phy.io.top.sbRxData := phy.io.top.sbTxData
-    phy.io.top.sbRxClk := phy.io.top.sbTxClk
-    phy.io.sideband.txData := false.B
-    phy.io.sideband.txClk := false.B
-
+    io.uci_clock <> clockSourceNode1.out(0)._1
+    io.uci_clock <> clockSourceNode2.out(0)._1
+    val ucieIO = uciephyTestTLIO.in(0)._1
+    ucieIO.common.phy.refClkP := clock.asBool
+    ucieIO.common.phy.refClkN := !clock.asBool
+    ucieIO.common.phy.pllRdacVref := true.B
+    ucieIO.common.phy.bypassClkP := clock.asBool
+    ucieIO.common.phy.bypassClkN := !clock.asBool
+    ucieIO.phy.rxClkP := ucieIO.phy.txClkP
+    ucieIO.phy.rxClkN := ucieIO.phy.txClkN
+    ucieIO.phy.rxValid := ucieIO.phy.txValid
+    ucieIO.phy.rxTrack := ucieIO.phy.txTrack
+    ucieIO.phy.rxData := ucieIO.phy.txData
+    ucieIO.phy.sbRxClk := ucieIO.phy.sbTxClk
+    ucieIO.phy.sbRxData := ucieIO.phy.sbTxData
   }
 }
 
+class UciTLTestHarnessIO(implicit val p: Parameters) extends Bundle {
+    val regTester = new TesterIO
+    val ucieTester = new TesterIO
+    val phyTester = new TesterIO
+}
+
 class UciTLTestHarness(implicit val p: Parameters) extends Module {
-  val io = IO(new Bundle { 
-    val success = Output(Bool()) 
-    val tester = new TesterIO
-  })
+  val io = IO(new UciTLTestHarnessIO)
   val tester = Module(LazyModule(new UciLoopbackTester).module)
-  tester.io <> io.tester
+  tester.io.harness.regTester <> io.regTester
+  tester.io.harness.ucieTester <> io.ucieTester
+  tester.io.harness.phyTester <> io.phyTester
   tester.io.uci_clock.clock := clock
   tester.io.uci_clock.reset := reset
-  io.success := tester.io.finished
 
   // Dummy plusarg to avoid breaking verilator builds with emulator.cc
   val useless_plusarg = PlusArg("useless_plusarg", width = 1)
@@ -172,49 +185,63 @@ class UciLoopbackTest extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "UciLoopback"
   val txns = 2
   val timeout = 100000
-  implicit val p: Parameters = Parameters.empty
+  implicit val p: Parameters = new Config((site, here, up) => {
+    case TesterParamsKey => new TesterParams(maxInflight = 1, beatBytes = 16)
+  })
+
   it should "finish request and response before timeout" in {
     test(new UciTLTestHarness()).withAnnotations(
-      Seq(VcsBackendAnnotation, WriteFsdbAnnotation)
-    ) { c => // .withAnnotations(Seq(VcsBackendAnnotation, WriteVcdAnnotation))
+      Seq(VcsBackendAnnotation, WriteVcdAnnotation)
+    ) { c => 
 
       println("start Uci Loopback Test")
       c.reset.poke(true.B)
       c.clock.step(3)
       c.reset.poke(false.B)
-      c.io.tester.req.initSource()
-      c.io.tester.req.setSourceClock(c.clock)
-      c.io.tester.resp.initSink()
-      c.io.tester.resp.setSourceClock(c.clock)
-      c.io.tester.req.enqueueNow((new TesterReq).Lit(
+      c.io.regTester.req.initSource()
+      c.io.regTester.req.setSourceClock(c.clock)
+      c.io.regTester.resp.initSink()
+      c.io.regTester.resp.setSinkClock(c.clock)
+      c.io.ucieTester.req.initSource()
+      c.io.ucieTester.req.setSourceClock(c.clock)
+      c.io.ucieTester.resp.initSink()
+      c.io.ucieTester.resp.setSinkClock(c.clock)
+      while (c.io.regTester.req.ready.peek().litValue != 1) {
+        c.clock.step()
+      }
+      c.io.phyTester.req.enqueueNow((new TesterReq).Lit(
         _.addr -> "h22438".U,
         _.data -> 1.U,
         _.id -> 0.U,
         _.is_write -> true.B,
       ))
       c.clock.step(10)
-      c.io.tester.req.enqueueNow((new TesterReq).Lit(
-        _.addr -> "1580000000".U,
+      c.io.phyTester.req.enqueueNow((new TesterReq).Lit(
+        _.addr -> "h224E8".U,
         _.data -> 1.U,
         _.id -> 1.U,
         _.is_write -> true.B,
       ))
       c.clock.step(10)
-      c.io.tester.req.enqueueNow((new TesterReq).Lit(
-        _.addr -> "1580000000".U,
-        _.data -> 0.U,
+      c.io.ucieTester.req.enqueueNow((new TesterReq).Lit(
+        _.addr -> "h1580000000".U,
+        _.data -> 1.U,
         _.id -> 2.U,
+        _.is_write -> true.B,
+      ))
+      c.clock.step(10)
+      c.io.ucieTester.req.enqueueNow((new TesterReq).Lit(
+        _.addr -> "h1580000000".U,
+        _.data -> 0.U,
+        _.id -> 3.U,
         _.is_write -> false.B,
       ))
       c.clock.step(10)
-      c.io.tester.resp.expectDequeue((new TesterResp).Lit(
+      c.clock.setTimeout(timeout + 10)
+      c.io.ucieTester.resp.expectDequeue((new TesterResp).Lit(
         _.data -> 1.U,
         _.id -> 2.U,
       ))
-      c.clock.setTimeout(timeout + 10)
-      c.clock.step(timeout)
-      c.io.success.expect(true.B)
-      println("Uci Loopback Test finished? " + c.io.success.peek())
     }
   }
 }

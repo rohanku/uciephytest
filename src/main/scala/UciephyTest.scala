@@ -875,6 +875,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       val patternUICount = RegInit(0.U(maxPatternCountWidth.W))
       val triggerNew = new RegisterRW(false.B, "triggerNew")
       val triggerExit = new RegisterRW(false.B, "triggerExit")
+      val pllLockTrigger = new RegisterRW(false.B, "pllLockTrigger")
       val outputValid = RegInit(false.B)
       val errorCounts = RegInit(
         VecInit(Seq.fill(params.afeParams.mbLanes)(0.U(maxPatternCountWidth.W)))
@@ -931,7 +932,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
         phy.io.test.tx.bits.track := txTrack
 
         val uciTLValid = uciTL.module.io.phyAfe.get.tx.valid 
-        phy.io.test.tx.bits.data := Mux(uciTLValid, uciTL.module.io.phyAfe.get.tx.bits.data, 0.U)
+        phy.io.test.tx.bits.data := Mux(uciTLValid, uciTL.module.io.phyAfe.get.tx.bits.data, VecInit(Seq.fill(16)(0.U(32.W))))
         phy.io.test.tx.bits.valid := Mux(uciTLValid, uciTL.module.io.phyAfe.get.tx.bits.valid.asTypeOf(phy.io.test.tx.bits.valid), 0.U)
         phy.io.test.tx.valid := true.B
         uciTL.module.io.phyAfe.get.tx.ready := phy.io.test.tx.ready
@@ -971,6 +972,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       uciTL.module.io.train.get.patternUICount := patternUICount
       triggerNew.connect(uciTL.module.io.train.get.triggerNew)
       triggerExit.connect(uciTL.module.io.train.get.triggerExit)
+      pllLockTrigger.connect(uciTL.module.io.train.get.pllLockTrigger)
       outputValid := uciTL.module.io.train.get.outputValid
       errorCounts := uciTL.module.io.train.get.errorCounts
 
@@ -1130,6 +1132,17 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
             true.B
           }),
           RegFieldDesc("triggerExit", "exit triggered")
+        ),
+        RegField(
+          1,
+          RegReadFn(pllLockTrigger.reg.asUInt),
+          RegWriteFn((wen, data) => {
+            when(wen) {
+              pllLockTrigger.reg := data.asBool
+            }
+            true.B
+          }),
+          RegFieldDesc("pllLockTrigger", "pll lock triggered")
         )
       )
 
