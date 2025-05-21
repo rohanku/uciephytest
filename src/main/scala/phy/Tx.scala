@@ -695,256 +695,232 @@ class TxLaneDllIO extends Bundle {
 class TxLaneDll(sim: Boolean = false) extends RawModule {
   val io = IO(new TxLaneDllIO)
 
-  if (sim) {
-    val ctr = withClockAndReset(io.vinp.asClock, io.reset) { RegInit(0.U((log2Ceil(Phy.SerdesRatio) - 1).W)) }
-    ctr := ctr + 1.U
-
-    val divClock = withClockAndReset(io.vinp.asClock, io.reset) { RegInit(false.B) }
-    when (ctr === 0.U) {
-      divClock := !divClock
-    }
-
-    val shiftReg = withClockAndReset(io.vinp.asClock, io.reset) { RegInit(0.U(Phy.SerdesRatio.W)) }
-    shiftReg := shiftReg >> 1.U
-    when (ctr === 0.U && !divClock) {
-      shiftReg := io.din.asTypeOf(shiftReg)
-    }
-
-    io.divclk := divClock.asClock
-    io.dout := shiftReg(0)
-
-    io.driver_ctl <> 0.U.asTypeOf(io.driver_ctl)
-    io.clocking_ctl <> 0.U.asTypeOf(io.clocking_ctl)
-    io.dll_code := 0.U
-    io.dll_codeb := ~(0.U(5.W))
-  } else {
-    val verilogBlackBox = Module(new VerilogTxLaneDll)
-    verilogBlackBox.io.vinp := io.vinp
-    verilogBlackBox.io.vinn := io.vinn
-    verilogBlackBox.io.datapath_resetb := !io.reset
-    verilogBlackBox.io.dll_reset := io.reset
-    verilogBlackBox.io.din_0 :=  io.din.din_0
-    verilogBlackBox.io.din_1 :=  io.din.din_1
-    verilogBlackBox.io.din_2 :=  io.din.din_2
-    verilogBlackBox.io.din_3 :=  io.din.din_3
-    verilogBlackBox.io.din_4 :=  io.din.din_4
-    verilogBlackBox.io.din_5 :=  io.din.din_5
-    verilogBlackBox.io.din_6 :=  io.din.din_6
-    verilogBlackBox.io.din_7 :=  io.din.din_7
-    verilogBlackBox.io.din_8 :=  io.din.din_8
-    verilogBlackBox.io.din_9 :=  io.din.din_9
-    verilogBlackBox.io.din_10 := io.din.din_10
-    verilogBlackBox.io.din_11 := io.din.din_11
-    verilogBlackBox.io.din_12 := io.din.din_12
-    verilogBlackBox.io.din_13 := io.din.din_13
-    verilogBlackBox.io.din_14 := io.din.din_14
-    verilogBlackBox.io.din_15 := io.din.din_15
-    io.dout := verilogBlackBox.io.dout
-    io.divclk := verilogBlackBox.io.divclk
-    val puCtlTherm = Wire(UInt(64.W))
-    puCtlTherm := (1.U << io.driver_ctl.pu_ctl) - 1.U
-    val pdCtlbTherm = Wire(UInt(64.W))
-    pdCtlbTherm := ~((1.U << io.driver_ctl.pd_ctl) - 1.U)
-    verilogBlackBox.io.pu_ctl_0  := puCtlTherm(0)
-    verilogBlackBox.io.pu_ctl_1  := puCtlTherm(1)
-    verilogBlackBox.io.pu_ctl_2  := puCtlTherm(2)
-    verilogBlackBox.io.pu_ctl_3  := puCtlTherm(3)
-    verilogBlackBox.io.pu_ctl_4  := puCtlTherm(4)
-    verilogBlackBox.io.pu_ctl_5  := puCtlTherm(5)
-    verilogBlackBox.io.pu_ctl_6  := puCtlTherm(6)
-    verilogBlackBox.io.pu_ctl_7  := puCtlTherm(7)
-    verilogBlackBox.io.pu_ctl_8  := puCtlTherm(8)
-    verilogBlackBox.io.pu_ctl_9  := puCtlTherm(9)
-    verilogBlackBox.io.pu_ctl_10 := puCtlTherm(10)
-    verilogBlackBox.io.pu_ctl_11 := puCtlTherm(11)
-    verilogBlackBox.io.pu_ctl_12 := puCtlTherm(12)
-    verilogBlackBox.io.pu_ctl_13 := puCtlTherm(13)
-    verilogBlackBox.io.pu_ctl_14 := puCtlTherm(14)
-    verilogBlackBox.io.pu_ctl_15 := puCtlTherm(15)
-    verilogBlackBox.io.pu_ctl_16 := puCtlTherm(16)
-    verilogBlackBox.io.pu_ctl_17 := puCtlTherm(17)
-    verilogBlackBox.io.pu_ctl_18 := puCtlTherm(18)
-    verilogBlackBox.io.pu_ctl_19 := puCtlTherm(19)
-    verilogBlackBox.io.pu_ctl_20 := puCtlTherm(20)
-    verilogBlackBox.io.pu_ctl_21 := puCtlTherm(21)
-    verilogBlackBox.io.pu_ctl_22 := puCtlTherm(22)
-    verilogBlackBox.io.pu_ctl_23 := puCtlTherm(23)
-    verilogBlackBox.io.pu_ctl_24 := puCtlTherm(24)
-    verilogBlackBox.io.pu_ctl_25 := puCtlTherm(25)
-    verilogBlackBox.io.pu_ctl_26 := puCtlTherm(26)
-    verilogBlackBox.io.pu_ctl_27 := puCtlTherm(27)
-    verilogBlackBox.io.pu_ctl_28 := puCtlTherm(28)
-    verilogBlackBox.io.pu_ctl_29 := puCtlTherm(29)
-    verilogBlackBox.io.pu_ctl_30 := puCtlTherm(30)
-    verilogBlackBox.io.pu_ctl_31 := puCtlTherm(31)
-    verilogBlackBox.io.pu_ctl_32 := puCtlTherm(32)
-    verilogBlackBox.io.pu_ctl_33 := puCtlTherm(33)
-    verilogBlackBox.io.pu_ctl_34 := puCtlTherm(34)
-    verilogBlackBox.io.pu_ctl_35 := puCtlTherm(35)
-    verilogBlackBox.io.pu_ctl_36 := puCtlTherm(36)
-    verilogBlackBox.io.pu_ctl_37 := puCtlTherm(37)
-    verilogBlackBox.io.pu_ctl_38 := puCtlTherm(38)
-    verilogBlackBox.io.pu_ctl_39 := puCtlTherm(39)
-    verilogBlackBox.io.pu_ctl_40 := puCtlTherm(40)
-    verilogBlackBox.io.pu_ctl_41 := puCtlTherm(41)
-    verilogBlackBox.io.pu_ctl_42 := puCtlTherm(42)
-    verilogBlackBox.io.pu_ctl_43 := puCtlTherm(43)
-    verilogBlackBox.io.pu_ctl_44 := puCtlTherm(44)
-    verilogBlackBox.io.pu_ctl_45 := puCtlTherm(45)
-    verilogBlackBox.io.pu_ctl_46 := puCtlTherm(46)
-    verilogBlackBox.io.pu_ctl_47 := puCtlTherm(47)
-    verilogBlackBox.io.pd_ctlb_0  := pdCtlbTherm(0)
-    verilogBlackBox.io.pd_ctlb_1  := pdCtlbTherm(1)
-    verilogBlackBox.io.pd_ctlb_2  := pdCtlbTherm(2)
-    verilogBlackBox.io.pd_ctlb_3  := pdCtlbTherm(3)
-    verilogBlackBox.io.pd_ctlb_4  := pdCtlbTherm(4)
-    verilogBlackBox.io.pd_ctlb_5  := pdCtlbTherm(5)
-    verilogBlackBox.io.pd_ctlb_6  := pdCtlbTherm(6)
-    verilogBlackBox.io.pd_ctlb_7  := pdCtlbTherm(7)
-    verilogBlackBox.io.pd_ctlb_8  := pdCtlbTherm(8)
-    verilogBlackBox.io.pd_ctlb_9  := pdCtlbTherm(9)
-    verilogBlackBox.io.pd_ctlb_10 := pdCtlbTherm(10)
-    verilogBlackBox.io.pd_ctlb_11 := pdCtlbTherm(11)
-    verilogBlackBox.io.pd_ctlb_12 := pdCtlbTherm(12)
-    verilogBlackBox.io.pd_ctlb_13 := pdCtlbTherm(13)
-    verilogBlackBox.io.pd_ctlb_14 := pdCtlbTherm(14)
-    verilogBlackBox.io.pd_ctlb_15 := pdCtlbTherm(15)
-    verilogBlackBox.io.pd_ctlb_16 := pdCtlbTherm(16)
-    verilogBlackBox.io.pd_ctlb_17 := pdCtlbTherm(17)
-    verilogBlackBox.io.pd_ctlb_18 := pdCtlbTherm(18)
-    verilogBlackBox.io.pd_ctlb_19 := pdCtlbTherm(19)
-    verilogBlackBox.io.pd_ctlb_20 := pdCtlbTherm(20)
-    verilogBlackBox.io.pd_ctlb_21 := pdCtlbTherm(21)
-    verilogBlackBox.io.pd_ctlb_22 := pdCtlbTherm(22)
-    verilogBlackBox.io.pd_ctlb_23 := pdCtlbTherm(23)
-    verilogBlackBox.io.pd_ctlb_24 := pdCtlbTherm(24)
-    verilogBlackBox.io.pd_ctlb_25 := pdCtlbTherm(25)
-    verilogBlackBox.io.pd_ctlb_26 := pdCtlbTherm(26)
-    verilogBlackBox.io.pd_ctlb_27 := pdCtlbTherm(27)
-    verilogBlackBox.io.pd_ctlb_28 := pdCtlbTherm(28)
-    verilogBlackBox.io.pd_ctlb_29 := pdCtlbTherm(29)
-    verilogBlackBox.io.pd_ctlb_30 := pdCtlbTherm(30)
-    verilogBlackBox.io.pd_ctlb_31 := pdCtlbTherm(31)
-    verilogBlackBox.io.pd_ctlb_32 := pdCtlbTherm(32)
-    verilogBlackBox.io.pd_ctlb_33 := pdCtlbTherm(33)
-    verilogBlackBox.io.pd_ctlb_34 := pdCtlbTherm(34)
-    verilogBlackBox.io.pd_ctlb_35 := pdCtlbTherm(35)
-    verilogBlackBox.io.pd_ctlb_36 := pdCtlbTherm(36)
-    verilogBlackBox.io.pd_ctlb_37 := pdCtlbTherm(37)
-    verilogBlackBox.io.pd_ctlb_38 := pdCtlbTherm(38)
-    verilogBlackBox.io.pd_ctlb_39 := pdCtlbTherm(39)
-    verilogBlackBox.io.pd_ctlb_40 := pdCtlbTherm(40)
-    verilogBlackBox.io.pd_ctlb_41 := pdCtlbTherm(41)
-    verilogBlackBox.io.pd_ctlb_42 := pdCtlbTherm(42)
-    verilogBlackBox.io.pd_ctlb_43 := pdCtlbTherm(43)
-    verilogBlackBox.io.pd_ctlb_44 := pdCtlbTherm(44)
-    verilogBlackBox.io.pd_ctlb_45 := pdCtlbTherm(45)
-    verilogBlackBox.io.pd_ctlb_46 := pdCtlbTherm(46)
-    verilogBlackBox.io.pd_ctlb_47 := pdCtlbTherm(47)
-    verilogBlackBox.io.en := io.driver_ctl.en
-    verilogBlackBox.io.en_b := io.driver_ctl.en_b
-    verilogBlackBox.io.band_ctrl_0 := io.clocking_ctl.pi.band_ctrl(0)
-    verilogBlackBox.io.band_ctrl_1 := io.clocking_ctl.pi.band_ctrl(1)
-    verilogBlackBox.io.band_ctrlb_0 := io.clocking_ctl.pi.band_ctrlb(0)
-    verilogBlackBox.io.band_ctrlb_1 := io.clocking_ctl.pi.band_ctrlb(1)
-    verilogBlackBox.io.mix_en_0 := io.clocking_ctl.pi.mix_en(0)
-    verilogBlackBox.io.mix_en_1 := io.clocking_ctl.pi.mix_en(1)
-    verilogBlackBox.io.mix_en_2 := io.clocking_ctl.pi.mix_en(2)
-    verilogBlackBox.io.mix_en_3 := io.clocking_ctl.pi.mix_en(3)
-    verilogBlackBox.io.mix_en_4 := io.clocking_ctl.pi.mix_en(4)
-    verilogBlackBox.io.mix_en_5 := io.clocking_ctl.pi.mix_en(5)
-    verilogBlackBox.io.mix_en_6 := io.clocking_ctl.pi.mix_en(6)
-    verilogBlackBox.io.mix_en_7 := io.clocking_ctl.pi.mix_en(7)
-    verilogBlackBox.io.mix_en_8 := io.clocking_ctl.pi.mix_en(8)
-    verilogBlackBox.io.mix_en_9 := io.clocking_ctl.pi.mix_en(9)
-    verilogBlackBox.io.mix_en_10 := io.clocking_ctl.pi.mix_en(10)
-    verilogBlackBox.io.mix_en_11 := io.clocking_ctl.pi.mix_en(11)
-    verilogBlackBox.io.mix_en_12 := io.clocking_ctl.pi.mix_en(12)
-    verilogBlackBox.io.mix_en_13 := io.clocking_ctl.pi.mix_en(13)
-    verilogBlackBox.io.mix_en_14 := io.clocking_ctl.pi.mix_en(14)
-    verilogBlackBox.io.mix_en_15 := io.clocking_ctl.pi.mix_en(15)
-    verilogBlackBox.io.mix_enb_0 := io.clocking_ctl.pi.mix_enb(0)
-    verilogBlackBox.io.mix_enb_1 := io.clocking_ctl.pi.mix_enb(1)
-    verilogBlackBox.io.mix_enb_2 := io.clocking_ctl.pi.mix_enb(2)
-    verilogBlackBox.io.mix_enb_3 := io.clocking_ctl.pi.mix_enb(3)
-    verilogBlackBox.io.mix_enb_4 := io.clocking_ctl.pi.mix_enb(4)
-    verilogBlackBox.io.mix_enb_5 := io.clocking_ctl.pi.mix_enb(5)
-    verilogBlackBox.io.mix_enb_6 := io.clocking_ctl.pi.mix_enb(6)
-    verilogBlackBox.io.mix_enb_7 := io.clocking_ctl.pi.mix_enb(7)
-    verilogBlackBox.io.mix_enb_8 := io.clocking_ctl.pi.mix_enb(8)
-    verilogBlackBox.io.mix_enb_9 := io.clocking_ctl.pi.mix_enb(9)
-    verilogBlackBox.io.mix_enb_10 := io.clocking_ctl.pi.mix_enb(10)
-    verilogBlackBox.io.mix_enb_11 := io.clocking_ctl.pi.mix_enb(11)
-    verilogBlackBox.io.mix_enb_12 := io.clocking_ctl.pi.mix_enb(12)
-    verilogBlackBox.io.mix_enb_13 := io.clocking_ctl.pi.mix_enb(13)
-    verilogBlackBox.io.mix_enb_14 := io.clocking_ctl.pi.mix_enb(14)
-    verilogBlackBox.io.mix_enb_15 := io.clocking_ctl.pi.mix_enb(15)
-    verilogBlackBox.io.mux_en_0 := io.clocking_ctl.pi.mux_en(0)
-    verilogBlackBox.io.mux_en_1 := io.clocking_ctl.pi.mux_en(1)
-    verilogBlackBox.io.mux_en_2 := io.clocking_ctl.pi.mux_en(2)
-    verilogBlackBox.io.mux_en_3 := io.clocking_ctl.pi.mux_en(3)
-    verilogBlackBox.io.mux_en_4 := io.clocking_ctl.pi.mux_en(4)
-    verilogBlackBox.io.mux_en_5 := io.clocking_ctl.pi.mux_en(5)
-    verilogBlackBox.io.mux_en_6 := io.clocking_ctl.pi.mux_en(6)
-    verilogBlackBox.io.mux_en_7 := io.clocking_ctl.pi.mux_en(7)
-    verilogBlackBox.io.mux_enb_0 := io.clocking_ctl.pi.mux_enb(0)
-    verilogBlackBox.io.mux_enb_1 := io.clocking_ctl.pi.mux_enb(1)
-    verilogBlackBox.io.mux_enb_2 := io.clocking_ctl.pi.mux_enb(2)
-    verilogBlackBox.io.mux_enb_3 := io.clocking_ctl.pi.mux_enb(3)
-    verilogBlackBox.io.mux_enb_4 := io.clocking_ctl.pi.mux_enb(4)
-    verilogBlackBox.io.mux_enb_5 := io.clocking_ctl.pi.mux_enb(5)
-    verilogBlackBox.io.mux_enb_6 := io.clocking_ctl.pi.mux_enb(6)
-    verilogBlackBox.io.mux_enb_7 := io.clocking_ctl.pi.mux_enb(7)
-    verilogBlackBox.io.clkp_pen_0 := io.clocking_ctl.misc.clkp_pen(0)
-    verilogBlackBox.io.clkp_pen_1 := io.clocking_ctl.misc.clkp_pen(1)
-    verilogBlackBox.io.clkp_pen_2 := io.clocking_ctl.misc.clkp_pen(2)
-    verilogBlackBox.io.clkp_pen_3 := io.clocking_ctl.misc.clkp_pen(3)
-    verilogBlackBox.io.clkp_pen_4 := io.clocking_ctl.misc.clkp_pen(4)
-    verilogBlackBox.io.clkp_nen_0 := io.clocking_ctl.misc.clkp_nen(0)
-    verilogBlackBox.io.clkp_nen_1 := io.clocking_ctl.misc.clkp_nen(1)
-    verilogBlackBox.io.clkp_nen_2 := io.clocking_ctl.misc.clkp_nen(2)
-    verilogBlackBox.io.clkp_nen_3 := io.clocking_ctl.misc.clkp_nen(3)
-    verilogBlackBox.io.clkp_nen_4 := io.clocking_ctl.misc.clkp_nen(4)
-    verilogBlackBox.io.clkn_pen_0 := io.clocking_ctl.misc.clkn_pen(0)
-    verilogBlackBox.io.clkn_pen_1 := io.clocking_ctl.misc.clkn_pen(1)
-    verilogBlackBox.io.clkn_pen_2 := io.clocking_ctl.misc.clkn_pen(2)
-    verilogBlackBox.io.clkn_pen_3 := io.clocking_ctl.misc.clkn_pen(3)
-    verilogBlackBox.io.clkn_pen_4 := io.clocking_ctl.misc.clkn_pen(4)
-    verilogBlackBox.io.clkn_nen_0 := io.clocking_ctl.misc.clkn_nen(0)
-    verilogBlackBox.io.clkn_nen_1 := io.clocking_ctl.misc.clkn_nen(1)
-    verilogBlackBox.io.clkn_nen_2 := io.clocking_ctl.misc.clkn_nen(2)
-    verilogBlackBox.io.clkn_nen_3 := io.clocking_ctl.misc.clkn_nen(3)
-    verilogBlackBox.io.clkn_nen_4 := io.clocking_ctl.misc.clkn_nen(4)
-    val delayb = Wire(UInt(5.W))
-    delayb := ~io.clocking_ctl.misc.delay
-    verilogBlackBox.io.delay_0 := io.clocking_ctl.misc.delay(0)
-    verilogBlackBox.io.delay_1 := io.clocking_ctl.misc.delay(1)
-    verilogBlackBox.io.delay_2 := io.clocking_ctl.misc.delay(2)
-    verilogBlackBox.io.delay_3 := io.clocking_ctl.misc.delay(3)
-    verilogBlackBox.io.delay_4 := io.clocking_ctl.misc.delay(4)
-    verilogBlackBox.io.delayb_0 := delayb(0)
-    verilogBlackBox.io.delayb_1 := delayb(1)
-    verilogBlackBox.io.delayb_2 := delayb(2)
-    verilogBlackBox.io.delayb_3 := delayb(3)
-    verilogBlackBox.io.delayb_4 := delayb(4)
-    io.dll_code := VecInit(Seq(
-      verilogBlackBox.io.dll_code_0,
-      verilogBlackBox.io.dll_code_1,
-      verilogBlackBox.io.dll_code_2,
-      verilogBlackBox.io.dll_code_3,
-      verilogBlackBox.io.dll_code_4
-    )).asUInt
-    io.dll_codeb := VecInit(Seq(
-      verilogBlackBox.io.dll_codeb_0,
-      verilogBlackBox.io.dll_codeb_1,
-      verilogBlackBox.io.dll_codeb_2,
-      verilogBlackBox.io.dll_codeb_3,
-      verilogBlackBox.io.dll_codeb_4
-    )).asUInt
-    verilogBlackBox.io.dll_en := io.clocking_ctl.misc.dll_en
-    verilogBlackBox.io.mode68 := io.clocking_ctl.misc.mode68
-    verilogBlackBox.io.ocl := io.clocking_ctl.misc.ocl
-  }
+  val verilogBlackBox = Module(new VerilogTxLaneDll(sim))
+  verilogBlackBox.io.vinp := io.vinp
+  verilogBlackBox.io.vinn := io.vinn
+  verilogBlackBox.io.datapath_resetb := !io.reset
+  verilogBlackBox.io.dll_reset := io.reset
+  verilogBlackBox.io.din_0 :=  io.din.din_0
+  verilogBlackBox.io.din_1 :=  io.din.din_1
+  verilogBlackBox.io.din_2 :=  io.din.din_2
+  verilogBlackBox.io.din_3 :=  io.din.din_3
+  verilogBlackBox.io.din_4 :=  io.din.din_4
+  verilogBlackBox.io.din_5 :=  io.din.din_5
+  verilogBlackBox.io.din_6 :=  io.din.din_6
+  verilogBlackBox.io.din_7 :=  io.din.din_7
+  verilogBlackBox.io.din_8 :=  io.din.din_8
+  verilogBlackBox.io.din_9 :=  io.din.din_9
+  verilogBlackBox.io.din_10 := io.din.din_10
+  verilogBlackBox.io.din_11 := io.din.din_11
+  verilogBlackBox.io.din_12 := io.din.din_12
+  verilogBlackBox.io.din_13 := io.din.din_13
+  verilogBlackBox.io.din_14 := io.din.din_14
+  verilogBlackBox.io.din_15 := io.din.din_15
+  io.dout := verilogBlackBox.io.dout
+  io.divclk := verilogBlackBox.io.divclk
+  val puCtlTherm = Wire(UInt(64.W))
+  puCtlTherm := (1.U << io.driver_ctl.pu_ctl) - 1.U
+  val pdCtlbTherm = Wire(UInt(64.W))
+  pdCtlbTherm := ~((1.U << io.driver_ctl.pd_ctl) - 1.U)
+  verilogBlackBox.io.pu_ctl_0  := puCtlTherm(0)
+  verilogBlackBox.io.pu_ctl_1  := puCtlTherm(1)
+  verilogBlackBox.io.pu_ctl_2  := puCtlTherm(2)
+  verilogBlackBox.io.pu_ctl_3  := puCtlTherm(3)
+  verilogBlackBox.io.pu_ctl_4  := puCtlTherm(4)
+  verilogBlackBox.io.pu_ctl_5  := puCtlTherm(5)
+  verilogBlackBox.io.pu_ctl_6  := puCtlTherm(6)
+  verilogBlackBox.io.pu_ctl_7  := puCtlTherm(7)
+  verilogBlackBox.io.pu_ctl_8  := puCtlTherm(8)
+  verilogBlackBox.io.pu_ctl_9  := puCtlTherm(9)
+  verilogBlackBox.io.pu_ctl_10 := puCtlTherm(10)
+  verilogBlackBox.io.pu_ctl_11 := puCtlTherm(11)
+  verilogBlackBox.io.pu_ctl_12 := puCtlTherm(12)
+  verilogBlackBox.io.pu_ctl_13 := puCtlTherm(13)
+  verilogBlackBox.io.pu_ctl_14 := puCtlTherm(14)
+  verilogBlackBox.io.pu_ctl_15 := puCtlTherm(15)
+  verilogBlackBox.io.pu_ctl_16 := puCtlTherm(16)
+  verilogBlackBox.io.pu_ctl_17 := puCtlTherm(17)
+  verilogBlackBox.io.pu_ctl_18 := puCtlTherm(18)
+  verilogBlackBox.io.pu_ctl_19 := puCtlTherm(19)
+  verilogBlackBox.io.pu_ctl_20 := puCtlTherm(20)
+  verilogBlackBox.io.pu_ctl_21 := puCtlTherm(21)
+  verilogBlackBox.io.pu_ctl_22 := puCtlTherm(22)
+  verilogBlackBox.io.pu_ctl_23 := puCtlTherm(23)
+  verilogBlackBox.io.pu_ctl_24 := puCtlTherm(24)
+  verilogBlackBox.io.pu_ctl_25 := puCtlTherm(25)
+  verilogBlackBox.io.pu_ctl_26 := puCtlTherm(26)
+  verilogBlackBox.io.pu_ctl_27 := puCtlTherm(27)
+  verilogBlackBox.io.pu_ctl_28 := puCtlTherm(28)
+  verilogBlackBox.io.pu_ctl_29 := puCtlTherm(29)
+  verilogBlackBox.io.pu_ctl_30 := puCtlTherm(30)
+  verilogBlackBox.io.pu_ctl_31 := puCtlTherm(31)
+  verilogBlackBox.io.pu_ctl_32 := puCtlTherm(32)
+  verilogBlackBox.io.pu_ctl_33 := puCtlTherm(33)
+  verilogBlackBox.io.pu_ctl_34 := puCtlTherm(34)
+  verilogBlackBox.io.pu_ctl_35 := puCtlTherm(35)
+  verilogBlackBox.io.pu_ctl_36 := puCtlTherm(36)
+  verilogBlackBox.io.pu_ctl_37 := puCtlTherm(37)
+  verilogBlackBox.io.pu_ctl_38 := puCtlTherm(38)
+  verilogBlackBox.io.pu_ctl_39 := puCtlTherm(39)
+  verilogBlackBox.io.pu_ctl_40 := puCtlTherm(40)
+  verilogBlackBox.io.pu_ctl_41 := puCtlTherm(41)
+  verilogBlackBox.io.pu_ctl_42 := puCtlTherm(42)
+  verilogBlackBox.io.pu_ctl_43 := puCtlTherm(43)
+  verilogBlackBox.io.pu_ctl_44 := puCtlTherm(44)
+  verilogBlackBox.io.pu_ctl_45 := puCtlTherm(45)
+  verilogBlackBox.io.pu_ctl_46 := puCtlTherm(46)
+  verilogBlackBox.io.pu_ctl_47 := puCtlTherm(47)
+  verilogBlackBox.io.pd_ctlb_0  := pdCtlbTherm(0)
+  verilogBlackBox.io.pd_ctlb_1  := pdCtlbTherm(1)
+  verilogBlackBox.io.pd_ctlb_2  := pdCtlbTherm(2)
+  verilogBlackBox.io.pd_ctlb_3  := pdCtlbTherm(3)
+  verilogBlackBox.io.pd_ctlb_4  := pdCtlbTherm(4)
+  verilogBlackBox.io.pd_ctlb_5  := pdCtlbTherm(5)
+  verilogBlackBox.io.pd_ctlb_6  := pdCtlbTherm(6)
+  verilogBlackBox.io.pd_ctlb_7  := pdCtlbTherm(7)
+  verilogBlackBox.io.pd_ctlb_8  := pdCtlbTherm(8)
+  verilogBlackBox.io.pd_ctlb_9  := pdCtlbTherm(9)
+  verilogBlackBox.io.pd_ctlb_10 := pdCtlbTherm(10)
+  verilogBlackBox.io.pd_ctlb_11 := pdCtlbTherm(11)
+  verilogBlackBox.io.pd_ctlb_12 := pdCtlbTherm(12)
+  verilogBlackBox.io.pd_ctlb_13 := pdCtlbTherm(13)
+  verilogBlackBox.io.pd_ctlb_14 := pdCtlbTherm(14)
+  verilogBlackBox.io.pd_ctlb_15 := pdCtlbTherm(15)
+  verilogBlackBox.io.pd_ctlb_16 := pdCtlbTherm(16)
+  verilogBlackBox.io.pd_ctlb_17 := pdCtlbTherm(17)
+  verilogBlackBox.io.pd_ctlb_18 := pdCtlbTherm(18)
+  verilogBlackBox.io.pd_ctlb_19 := pdCtlbTherm(19)
+  verilogBlackBox.io.pd_ctlb_20 := pdCtlbTherm(20)
+  verilogBlackBox.io.pd_ctlb_21 := pdCtlbTherm(21)
+  verilogBlackBox.io.pd_ctlb_22 := pdCtlbTherm(22)
+  verilogBlackBox.io.pd_ctlb_23 := pdCtlbTherm(23)
+  verilogBlackBox.io.pd_ctlb_24 := pdCtlbTherm(24)
+  verilogBlackBox.io.pd_ctlb_25 := pdCtlbTherm(25)
+  verilogBlackBox.io.pd_ctlb_26 := pdCtlbTherm(26)
+  verilogBlackBox.io.pd_ctlb_27 := pdCtlbTherm(27)
+  verilogBlackBox.io.pd_ctlb_28 := pdCtlbTherm(28)
+  verilogBlackBox.io.pd_ctlb_29 := pdCtlbTherm(29)
+  verilogBlackBox.io.pd_ctlb_30 := pdCtlbTherm(30)
+  verilogBlackBox.io.pd_ctlb_31 := pdCtlbTherm(31)
+  verilogBlackBox.io.pd_ctlb_32 := pdCtlbTherm(32)
+  verilogBlackBox.io.pd_ctlb_33 := pdCtlbTherm(33)
+  verilogBlackBox.io.pd_ctlb_34 := pdCtlbTherm(34)
+  verilogBlackBox.io.pd_ctlb_35 := pdCtlbTherm(35)
+  verilogBlackBox.io.pd_ctlb_36 := pdCtlbTherm(36)
+  verilogBlackBox.io.pd_ctlb_37 := pdCtlbTherm(37)
+  verilogBlackBox.io.pd_ctlb_38 := pdCtlbTherm(38)
+  verilogBlackBox.io.pd_ctlb_39 := pdCtlbTherm(39)
+  verilogBlackBox.io.pd_ctlb_40 := pdCtlbTherm(40)
+  verilogBlackBox.io.pd_ctlb_41 := pdCtlbTherm(41)
+  verilogBlackBox.io.pd_ctlb_42 := pdCtlbTherm(42)
+  verilogBlackBox.io.pd_ctlb_43 := pdCtlbTherm(43)
+  verilogBlackBox.io.pd_ctlb_44 := pdCtlbTherm(44)
+  verilogBlackBox.io.pd_ctlb_45 := pdCtlbTherm(45)
+  verilogBlackBox.io.pd_ctlb_46 := pdCtlbTherm(46)
+  verilogBlackBox.io.pd_ctlb_47 := pdCtlbTherm(47)
+  verilogBlackBox.io.en := io.driver_ctl.en
+  verilogBlackBox.io.en_b := io.driver_ctl.en_b
+  verilogBlackBox.io.band_ctrl_0 := io.clocking_ctl.pi.band_ctrl(0)
+  verilogBlackBox.io.band_ctrl_1 := io.clocking_ctl.pi.band_ctrl(1)
+  verilogBlackBox.io.band_ctrlb_0 := io.clocking_ctl.pi.band_ctrlb(0)
+  verilogBlackBox.io.band_ctrlb_1 := io.clocking_ctl.pi.band_ctrlb(1)
+  verilogBlackBox.io.mix_en_0 := io.clocking_ctl.pi.mix_en(0)
+  verilogBlackBox.io.mix_en_1 := io.clocking_ctl.pi.mix_en(1)
+  verilogBlackBox.io.mix_en_2 := io.clocking_ctl.pi.mix_en(2)
+  verilogBlackBox.io.mix_en_3 := io.clocking_ctl.pi.mix_en(3)
+  verilogBlackBox.io.mix_en_4 := io.clocking_ctl.pi.mix_en(4)
+  verilogBlackBox.io.mix_en_5 := io.clocking_ctl.pi.mix_en(5)
+  verilogBlackBox.io.mix_en_6 := io.clocking_ctl.pi.mix_en(6)
+  verilogBlackBox.io.mix_en_7 := io.clocking_ctl.pi.mix_en(7)
+  verilogBlackBox.io.mix_en_8 := io.clocking_ctl.pi.mix_en(8)
+  verilogBlackBox.io.mix_en_9 := io.clocking_ctl.pi.mix_en(9)
+  verilogBlackBox.io.mix_en_10 := io.clocking_ctl.pi.mix_en(10)
+  verilogBlackBox.io.mix_en_11 := io.clocking_ctl.pi.mix_en(11)
+  verilogBlackBox.io.mix_en_12 := io.clocking_ctl.pi.mix_en(12)
+  verilogBlackBox.io.mix_en_13 := io.clocking_ctl.pi.mix_en(13)
+  verilogBlackBox.io.mix_en_14 := io.clocking_ctl.pi.mix_en(14)
+  verilogBlackBox.io.mix_en_15 := io.clocking_ctl.pi.mix_en(15)
+  verilogBlackBox.io.mix_enb_0 := io.clocking_ctl.pi.mix_enb(0)
+  verilogBlackBox.io.mix_enb_1 := io.clocking_ctl.pi.mix_enb(1)
+  verilogBlackBox.io.mix_enb_2 := io.clocking_ctl.pi.mix_enb(2)
+  verilogBlackBox.io.mix_enb_3 := io.clocking_ctl.pi.mix_enb(3)
+  verilogBlackBox.io.mix_enb_4 := io.clocking_ctl.pi.mix_enb(4)
+  verilogBlackBox.io.mix_enb_5 := io.clocking_ctl.pi.mix_enb(5)
+  verilogBlackBox.io.mix_enb_6 := io.clocking_ctl.pi.mix_enb(6)
+  verilogBlackBox.io.mix_enb_7 := io.clocking_ctl.pi.mix_enb(7)
+  verilogBlackBox.io.mix_enb_8 := io.clocking_ctl.pi.mix_enb(8)
+  verilogBlackBox.io.mix_enb_9 := io.clocking_ctl.pi.mix_enb(9)
+  verilogBlackBox.io.mix_enb_10 := io.clocking_ctl.pi.mix_enb(10)
+  verilogBlackBox.io.mix_enb_11 := io.clocking_ctl.pi.mix_enb(11)
+  verilogBlackBox.io.mix_enb_12 := io.clocking_ctl.pi.mix_enb(12)
+  verilogBlackBox.io.mix_enb_13 := io.clocking_ctl.pi.mix_enb(13)
+  verilogBlackBox.io.mix_enb_14 := io.clocking_ctl.pi.mix_enb(14)
+  verilogBlackBox.io.mix_enb_15 := io.clocking_ctl.pi.mix_enb(15)
+  verilogBlackBox.io.mux_en_0 := io.clocking_ctl.pi.mux_en(0)
+  verilogBlackBox.io.mux_en_1 := io.clocking_ctl.pi.mux_en(1)
+  verilogBlackBox.io.mux_en_2 := io.clocking_ctl.pi.mux_en(2)
+  verilogBlackBox.io.mux_en_3 := io.clocking_ctl.pi.mux_en(3)
+  verilogBlackBox.io.mux_en_4 := io.clocking_ctl.pi.mux_en(4)
+  verilogBlackBox.io.mux_en_5 := io.clocking_ctl.pi.mux_en(5)
+  verilogBlackBox.io.mux_en_6 := io.clocking_ctl.pi.mux_en(6)
+  verilogBlackBox.io.mux_en_7 := io.clocking_ctl.pi.mux_en(7)
+  verilogBlackBox.io.mux_enb_0 := io.clocking_ctl.pi.mux_enb(0)
+  verilogBlackBox.io.mux_enb_1 := io.clocking_ctl.pi.mux_enb(1)
+  verilogBlackBox.io.mux_enb_2 := io.clocking_ctl.pi.mux_enb(2)
+  verilogBlackBox.io.mux_enb_3 := io.clocking_ctl.pi.mux_enb(3)
+  verilogBlackBox.io.mux_enb_4 := io.clocking_ctl.pi.mux_enb(4)
+  verilogBlackBox.io.mux_enb_5 := io.clocking_ctl.pi.mux_enb(5)
+  verilogBlackBox.io.mux_enb_6 := io.clocking_ctl.pi.mux_enb(6)
+  verilogBlackBox.io.mux_enb_7 := io.clocking_ctl.pi.mux_enb(7)
+  verilogBlackBox.io.clkp_pen_0 := io.clocking_ctl.misc.clkp_pen(0)
+  verilogBlackBox.io.clkp_pen_1 := io.clocking_ctl.misc.clkp_pen(1)
+  verilogBlackBox.io.clkp_pen_2 := io.clocking_ctl.misc.clkp_pen(2)
+  verilogBlackBox.io.clkp_pen_3 := io.clocking_ctl.misc.clkp_pen(3)
+  verilogBlackBox.io.clkp_pen_4 := io.clocking_ctl.misc.clkp_pen(4)
+  verilogBlackBox.io.clkp_nen_0 := io.clocking_ctl.misc.clkp_nen(0)
+  verilogBlackBox.io.clkp_nen_1 := io.clocking_ctl.misc.clkp_nen(1)
+  verilogBlackBox.io.clkp_nen_2 := io.clocking_ctl.misc.clkp_nen(2)
+  verilogBlackBox.io.clkp_nen_3 := io.clocking_ctl.misc.clkp_nen(3)
+  verilogBlackBox.io.clkp_nen_4 := io.clocking_ctl.misc.clkp_nen(4)
+  verilogBlackBox.io.clkn_pen_0 := io.clocking_ctl.misc.clkn_pen(0)
+  verilogBlackBox.io.clkn_pen_1 := io.clocking_ctl.misc.clkn_pen(1)
+  verilogBlackBox.io.clkn_pen_2 := io.clocking_ctl.misc.clkn_pen(2)
+  verilogBlackBox.io.clkn_pen_3 := io.clocking_ctl.misc.clkn_pen(3)
+  verilogBlackBox.io.clkn_pen_4 := io.clocking_ctl.misc.clkn_pen(4)
+  verilogBlackBox.io.clkn_nen_0 := io.clocking_ctl.misc.clkn_nen(0)
+  verilogBlackBox.io.clkn_nen_1 := io.clocking_ctl.misc.clkn_nen(1)
+  verilogBlackBox.io.clkn_nen_2 := io.clocking_ctl.misc.clkn_nen(2)
+  verilogBlackBox.io.clkn_nen_3 := io.clocking_ctl.misc.clkn_nen(3)
+  verilogBlackBox.io.clkn_nen_4 := io.clocking_ctl.misc.clkn_nen(4)
+  val delayb = Wire(UInt(5.W))
+  delayb := ~io.clocking_ctl.misc.delay
+  verilogBlackBox.io.delay_0 := io.clocking_ctl.misc.delay(0)
+  verilogBlackBox.io.delay_1 := io.clocking_ctl.misc.delay(1)
+  verilogBlackBox.io.delay_2 := io.clocking_ctl.misc.delay(2)
+  verilogBlackBox.io.delay_3 := io.clocking_ctl.misc.delay(3)
+  verilogBlackBox.io.delay_4 := io.clocking_ctl.misc.delay(4)
+  verilogBlackBox.io.delayb_0 := delayb(0)
+  verilogBlackBox.io.delayb_1 := delayb(1)
+  verilogBlackBox.io.delayb_2 := delayb(2)
+  verilogBlackBox.io.delayb_3 := delayb(3)
+  verilogBlackBox.io.delayb_4 := delayb(4)
+  io.dll_code := VecInit(Seq(
+    verilogBlackBox.io.dll_code_0,
+    verilogBlackBox.io.dll_code_1,
+    verilogBlackBox.io.dll_code_2,
+    verilogBlackBox.io.dll_code_3,
+    verilogBlackBox.io.dll_code_4
+  )).asUInt
+  io.dll_codeb := VecInit(Seq(
+    verilogBlackBox.io.dll_codeb_0,
+    verilogBlackBox.io.dll_codeb_1,
+    verilogBlackBox.io.dll_codeb_2,
+    verilogBlackBox.io.dll_codeb_3,
+    verilogBlackBox.io.dll_codeb_4
+  )).asUInt
+  verilogBlackBox.io.dll_en := io.clocking_ctl.misc.dll_en
+  verilogBlackBox.io.mode68 := io.clocking_ctl.misc.mode68
+  verilogBlackBox.io.ocl := io.clocking_ctl.misc.ocl
 }
 
 class VerilogTxLaneDllIO extends Bundle {
@@ -1165,10 +1141,298 @@ class VerilogTxLaneDllIO extends Bundle {
   val ocl = Input(Bool())
 }
 
-class VerilogTxLaneDll extends BlackBox {
+class VerilogTxLaneDll(sim: Boolean = false) extends BlackBox with HasBlackBoxInline {
   val io = IO(new VerilogTxLaneDllIO)
 
   override val desiredName = "txdatatile_dll"
+
+  if (sim) {
+    setInline(
+      "txdatatile_dll.v",
+      """
+module txdatatile_dll (
+  inout vdd,
+  inout vss,
+  input vinp,
+  input vinn,
+  input clkp_nen_0,
+  input clkp_nen_1,
+  input clkp_nen_2,
+  input clkp_nen_3,
+  input clkp_nen_4,
+  input clkp_pen_0,
+  input clkp_pen_1,
+  input clkp_pen_2,
+  input clkp_pen_3,
+  input clkp_pen_4,
+  input clkn_nen_0,
+  input clkn_nen_1,
+  input clkn_nen_2,
+  input clkn_nen_3,
+  input clkn_nen_4,
+  input clkn_pen_0,
+  input clkn_pen_1,
+  input clkn_pen_2,
+  input clkn_pen_3,
+  input clkn_pen_4,
+  input delay_0,
+  input delay_1,
+  input delay_2,
+  input delay_3,
+  input delay_4,
+  input delayb_0,
+  input delayb_1,
+  input delayb_2,
+  input delayb_3,
+  input delayb_4,
+  output dll_code_0,
+  output dll_code_1,
+  output dll_code_2,
+  output dll_code_3,
+  output dll_code_4,
+  output dll_codeb_0,
+  output dll_codeb_1,
+  output dll_codeb_2,
+  output dll_codeb_3,
+  output dll_codeb_4,
+  input band_ctrl_0,
+  input band_ctrl_1,
+  input band_ctrlb_0,
+  input band_ctrlb_1,
+  input mix_en_0,
+  input mix_en_1,
+  input mix_en_2,
+  input mix_en_3,
+  input mix_en_4,
+  input mix_en_5,
+  input mix_en_6,
+  input mix_en_7,
+  input mix_en_8,
+  input mix_en_9,
+  input mix_en_10,
+  input mix_en_11,
+  input mix_en_12,
+  input mix_en_13,
+  input mix_en_14,
+  input mix_en_15,
+  input mix_enb_0,
+  input mix_enb_1,
+  input mix_enb_2,
+  input mix_enb_3,
+  input mix_enb_4,
+  input mix_enb_5,
+  input mix_enb_6,
+  input mix_enb_7,
+  input mix_enb_8,
+  input mix_enb_9,
+  input mix_enb_10,
+  input mix_enb_11,
+  input mix_enb_12,
+  input mix_enb_13,
+  input mix_enb_14,
+  input mix_enb_15,
+  input mux_en_0,
+  input mux_en_1,
+  input mux_en_2,
+  input mux_en_3,
+  input mux_en_4,
+  input mux_en_5,
+  input mux_en_6,
+  input mux_en_7,
+  input mux_enb_0,
+  input mux_enb_1,
+  input mux_enb_2,
+  input mux_enb_3,
+  input mux_enb_4,
+  input mux_enb_5,
+  input mux_enb_6,
+  input mux_enb_7,
+  input din_0,
+  input din_1,
+  input din_2,
+  input din_3,
+  input din_4,
+  input din_5,
+  input din_6,
+  input din_7,
+  input din_8,
+  input din_9,
+  input din_10,
+  input din_11,
+  input din_12,
+  input din_13,
+  input din_14,
+  input din_15,
+  output dout,
+  output divclk,
+  input datapath_resetb,
+  input dll_reset,
+  input dll_en,
+  input mode68,
+  input ocl,
+  input pu_ctl_0,
+  input pu_ctl_1,
+  input pu_ctl_2,
+  input pu_ctl_3,
+  input pu_ctl_4,
+  input pu_ctl_5,
+  input pu_ctl_6,
+  input pu_ctl_7,
+  input pu_ctl_8,
+  input pu_ctl_9,
+  input pu_ctl_10,
+  input pu_ctl_11,
+  input pu_ctl_12,
+  input pu_ctl_13,
+  input pu_ctl_14,
+  input pu_ctl_15,
+  input pu_ctl_16,
+  input pu_ctl_17,
+  input pu_ctl_18,
+  input pu_ctl_19,
+  input pu_ctl_20,
+  input pu_ctl_21,
+  input pu_ctl_22,
+  input pu_ctl_23,
+  input pu_ctl_24,
+  input pu_ctl_25,
+  input pu_ctl_26,
+  input pu_ctl_27,
+  input pu_ctl_28,
+  input pu_ctl_29,
+  input pu_ctl_30,
+  input pu_ctl_31,
+  input pu_ctl_32,
+  input pu_ctl_33,
+  input pu_ctl_34,
+  input pu_ctl_35,
+  input pu_ctl_36,
+  input pu_ctl_37,
+  input pu_ctl_38,
+  input pu_ctl_39,
+  input pu_ctl_40,
+  input pu_ctl_41,
+  input pu_ctl_42,
+  input pu_ctl_43,
+  input pu_ctl_44,
+  input pu_ctl_45,
+  input pu_ctl_46,
+  input pu_ctl_47,
+  input pd_ctlb_0,
+  input pd_ctlb_1,
+  input pd_ctlb_2,
+  input pd_ctlb_3,
+  input pd_ctlb_4,
+  input pd_ctlb_5,
+  input pd_ctlb_6,
+  input pd_ctlb_7,
+  input pd_ctlb_8,
+  input pd_ctlb_9,
+  input pd_ctlb_10,
+  input pd_ctlb_11,
+  input pd_ctlb_12,
+  input pd_ctlb_13,
+  input pd_ctlb_14,
+  input pd_ctlb_15,
+  input pd_ctlb_16,
+  input pd_ctlb_17,
+  input pd_ctlb_18,
+  input pd_ctlb_19,
+  input pd_ctlb_20,
+  input pd_ctlb_21,
+  input pd_ctlb_22,
+  input pd_ctlb_23,
+  input pd_ctlb_24,
+  input pd_ctlb_25,
+  input pd_ctlb_26,
+  input pd_ctlb_27,
+  input pd_ctlb_28,
+  input pd_ctlb_29,
+  input pd_ctlb_30,
+  input pd_ctlb_31,
+  input pd_ctlb_32,
+  input pd_ctlb_33,
+  input pd_ctlb_34,
+  input pd_ctlb_35,
+  input pd_ctlb_36,
+  input pd_ctlb_37,
+  input pd_ctlb_38,
+  input pd_ctlb_39,
+  input pd_ctlb_40,
+  input pd_ctlb_41,
+  input pd_ctlb_42,
+  input pd_ctlb_43,
+  input pd_ctlb_44,
+  input pd_ctlb_45,
+  input pd_ctlb_46,
+  input pd_ctlb_47,
+  input en,
+  input en_b
+);
+  wire rstbAsync = datapath_resetb;
+  reg rstbSync;
+  always @(negedge rstbAsync) begin
+    rstbSync <= rstbAsync;
+  end
+  always @(posedge vinp) begin
+    rstbSync <= rstbAsync;
+  end
+  reg [1:0] ctr;
+  reg divClock;
+  reg [15:0] shiftReg;
+  always @(posedge vinp) begin
+    if (rstbSync) begin
+      ctr <= ctr + 1'b1;
+      shiftReg <= shiftReg >> 1'b1;
+      if (ctr == 2'b0) begin
+        if (~divClock) begin
+          shiftReg <= {
+            din_15,
+            din_14, 
+            din_13,
+            din_12,
+            din_11,
+            din_10, 
+            din_9,
+            din_8,
+            din_7,
+            din_6, 
+            din_5,
+            din_4,
+            din_3,
+            din_2, 
+            din_1,
+            din_0
+          };
+        end        
+        divClock <= ~divClock;
+      end
+    end else begin
+      divClock <= 1'b0;
+      ctr <= 2'b1;
+      shiftReg <= 16'b0;
+    end
+  end
+  always @(posedge vinn) begin
+    shiftReg <= shiftReg >> 1'b1;
+  end
+  assign divclk = divClock;
+  assign dout = dll_reset ? 1'b0 : shiftReg[0];
+  assign dll_code_0 = delay_0;
+  assign dll_code_1 = delay_1;
+  assign dll_code_2 = delay_2;
+  assign dll_code_3 = delay_3;
+  assign dll_code_4 = delay_4;
+  assign dll_codeb_0 = delayb_0;
+  assign dll_codeb_1 = delayb_1;
+  assign dll_codeb_2 = delayb_2;
+  assign dll_codeb_3 = delayb_3;
+  assign dll_codeb_4 = delayb_4;
+
+endmodule
+      """.stripMargin
+    )
+  }
 }
 
 class TxClkIO extends Bundle {

@@ -33,7 +33,8 @@ case class UciephyTestParams(
                                     mbSerializerRatio = 32,
                                     mbLanes = 16,
                                     STANDALONE = false),
-  laneAsyncQueueParams: AsyncQueueParams = AsyncQueueParams()
+  laneAsyncQueueParams: AsyncQueueParams = AsyncQueueParams(),
+  sim: Boolean = false
 )
 
 case object UciephyTestKey extends Field[Option[UciephyTestParams]](None)
@@ -625,7 +626,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
       test.io.mmio.rxPermute := rxPermuteDelayed
 
       // PHY
-      val phy = Module(new Phy(params.numLanes))
+      val phy = Module(new Phy(params.numLanes, params.sim))
       when (ucieStack) { 
 
         phy.io.test.tx <> uciTL.module.io.phyAfe.get.tx.map(f => {
@@ -684,83 +685,83 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
         dllCode(lane) := Cat(phy.io.dllCode(lane), phy.io.dllCodeb(lane))
       }
 
-      val toRegField = (r: UInt) => {
+      val toRegField = (r: UInt, name: String) => {
         RegField(r.getWidth, r, RegWriteFn((valid, data) => {
           when (valid) {
             r := data
           }
           true.B
-        }), None)
+        }), Some(RegFieldDesc(name, "")))
       }
 
       var mmioRegs = Seq(
-        toRegField(txTestMode),
-        toRegField(txValidFramingMode),
+        toRegField(txTestMode, "txTestMode"),
+        toRegField(txValidFramingMode, "txValidFramingMode"),
       ) ++ (0 until params.numLanes).map((i: Int) => {
-        toRegField(txLfsrSeed(i))
+        toRegField(txLfsrSeed(i), s"txLfsrSeed_$i")
       }) ++ Seq(
-        toRegField(txManualRepeat),
-        RegField.w(1, txFsmRst),
-        RegField.w(1, txExecute),
-        RegField.r(params.bufferDepthPerLane, test.io.mmio.txBitsSent),
-        toRegField(txBitsToSend),
-        toRegField(txDataLaneGroup),
-        toRegField(txDataOffset),
-        RegField.w(64, test.io.mmio.txDataChunkIn),
-        RegField.r(64, test.io.mmio.txDataChunkOut),
+        toRegField(txManualRepeat, "txManualRepeat"),
+        RegField.w(1, txFsmRst, RegFieldDesc("txFsmRst", "")),
+        RegField.w(1, txExecute, RegFieldDesc("txExecute", "")),
+        RegField.r(params.bufferDepthPerLane, test.io.mmio.txBitsSent, RegFieldDesc("txBitsSent", "")),
+        toRegField(txBitsToSend, "txBitsToSend"),
+        toRegField(txDataLaneGroup, "txDataLaneGroup"),
+        toRegField(txDataOffset, "txDataOffset"),
+        RegField.w(64, test.io.mmio.txDataChunkIn, RegFieldDesc("txDataChunkIn", "")),
+        RegField.r(64, test.io.mmio.txDataChunkOut, RegFieldDesc("txDataChunkOut", "")),
       ) ++ (0 until Phy.SerdesRatio).map((i: Int) => {
-          toRegField(txPermute(i))
+          toRegField(txPermute(i), s"txPermute_$i")
       }) ++ Seq(
-        RegField.r(2, test.io.mmio.txTestState.asUInt),
+        RegField.r(2, test.io.mmio.txTestState.asUInt, RegFieldDesc("txTestState", "")),
       ) ++ (0 until params.numLanes).map((i: Int) => {
-          toRegField(rxLfsrSeed(i))
+          toRegField(rxLfsrSeed(i), s"rxLfsrSeed_$i")
       }) ++ (0 until params.numLanes).map((i: Int) => {
-        RegField.r(params.bufferDepthPerLane + 1, test.io.mmio.rxBitErrors(i))
+        RegField.r(params.bufferDepthPerLane + 1, test.io.mmio.rxBitErrors(i), RegFieldDesc(s"rxBitErrors_$i", ""))
       }) ++ Seq(
-        toRegField(rxValidStartThreshold),
-        toRegField(rxValidStartThreshold),
-        RegField.w(1, rxFsmRst),
-        toRegField(rxPauseCounters),
-        RegField.r(params.bufferDepthPerLane, test.io.mmio.rxBitsReceived),
-        RegField.r(32, test.io.mmio.rxSignature),
-        toRegField(rxDataLane),
-        toRegField(rxDataOffset),
-        RegField.r(32, test.io.mmio.rxDataChunk),
-        RegField.r(32, test.io.mmio.rxValidChunk),
+        toRegField(rxValidStartThreshold, "rxValidStartThreshold"),
+        toRegField(rxValidStartThreshold, "rxValidStartThreshold"),
+        RegField.w(1, rxFsmRst, RegFieldDesc("rxFsmRst", "")),
+        toRegField(rxPauseCounters, "rxPauseCounters"),
+        RegField.r(params.bufferDepthPerLane, test.io.mmio.rxBitsReceived, RegFieldDesc("rxBitsReceived", "")),
+        RegField.r(32, test.io.mmio.rxSignature, RegFieldDesc("rxSignature", "")),
+        toRegField(rxDataLane, "rxDataLane"),
+        toRegField(rxDataOffset, "rxDataOffset"),
+        RegField.r(32, test.io.mmio.rxDataChunk, RegFieldDesc("rxDataChunk", "")),
+        RegField.r(32, test.io.mmio.rxValidChunk, RegFieldDesc("rxValidChunk", "")),
       ) ++ (0 until Phy.SerdesRatio).map((i: Int) => {
-          toRegField(rxPermute(i))
+          toRegField(rxPermute(i), s"rxPermute_$i")
       }) ++ (0 until params.numLanes + 5).flatMap((i: Int) => {
           Seq(
-            toRegField(driverPuCtl(i)),
-            toRegField(driverPuCtl(i)),
-            toRegField(driverEn(i)),
+            toRegField(driverPuCtl(i), s"driverPuCtl_$i"),
+            toRegField(driverPuCtl(i), s"driverPuCtl_$i"),
+            toRegField(driverEn(i), s"driverEn_$i"),
           )
       }) ++ (0 until params.numLanes + 1).flatMap((i: Int) => {
           Seq(
-            toRegField(clockingPiCtl(i)),
-            toRegField(clockingMiscCtl(i)),
-            RegField.r(10, dllCodeDelayed(i))
+            toRegField(clockingPiCtl(i), s"clockingPiCtl_$i"),
+            toRegField(clockingMiscCtl(i), s"clockingMiscCtl_$i"),
+            RegField.r(10, dllCodeDelayed(i), RegFieldDesc(s"dllCodeDelayed_$i", ""))
           )
       }) ++ (0 until params.numLanes + 1).flatMap((i: Int) => {
           Seq(
-            toRegField(shufflerCtl(i)),
+            toRegField(shufflerCtl(i), s"shufflerCtl_$i"),
           )
       }) ++ (0 until params.numLanes + 3).flatMap((i: Int) => {
           Seq(
-            toRegField(terminationCtl(i)),
+            toRegField(terminationCtl(i), s"terminationCtl_$i"),
           )
       }) ++ (0 until params.numLanes + 1).flatMap((i: Int) => {
           Seq(
-            toRegField(vrefCtl(i)),
+            toRegField(vrefCtl(i), s"vrefCtl_$i"),
           )
       }) ++ Seq(
-        RegField.w(1, ucieStack),
-        RegField.r(1, outputValid)
+        RegField.w(1, ucieStack, RegFieldDesc("ucieStack", "")),
+        RegField.r(1, outputValid, RegFieldDesc("outputValid", ""))
       ) ++ (0 until params.numLanes).map((i: Int) => {
-        RegField.r(maxPatternCountWidth, errorCounts(i))
+        RegField.r(maxPatternCountWidth, errorCounts(i), RegFieldDesc(s"errorCounts_$i", ""))
       }) ++ Seq(
-        RegField.w(2, pattern),
-        RegField.w(32, patternUICount),
+        RegField.w(2, pattern, RegFieldDesc("pattern", "")),
+        RegField.w(32, patternUICount, RegFieldDesc("patternUICount", "")),
         RegField(1, 
           RegReadFn(triggerNew.reg.asUInt), 
           RegWriteFn((wen, data) => {
@@ -779,7 +780,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit p: Param
             }
             true.B
           }), 
-          RegFieldDesc("triggerNew", "training triggered")
+          RegFieldDesc("triggerExit", "training exited")
         ),
       )
 
