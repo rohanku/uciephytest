@@ -18,7 +18,7 @@ class RxLaneIO extends Bundle {
 class RxLane(sim: Boolean = false) extends RawModule {
   val io = IO(new RxLaneIO)
 
-  val verilogBlackBox = Module(new VerilogRxLane)
+  val verilogBlackBox = Module(new VerilogRxLane(sim))
   verilogBlackBox.io.din := io.din
   io.dout.dout_0 := verilogBlackBox.io.dout_0 
   io.dout.dout_1 := verilogBlackBox.io.dout_1 
