@@ -1143,7 +1143,8 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
             true.B
           }),
           RegFieldDesc("pllLockTrigger", "pll lock triggered")
-        )
+        ),
+        RegField.r(1, 0.U(64.W), RegFieldDesc("dummyRegister", ""))
       )
 
       node.regmap(mmioRegs.zipWithIndex.map({
