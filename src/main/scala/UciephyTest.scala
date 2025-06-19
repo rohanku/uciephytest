@@ -953,8 +953,18 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
         test.io.phy.rx.noenq()
         test.io.phy.tx_loopback.nodeq()
         test.io.phy.rx_loopback.noenq()
+
         phy.io.test.tx_loopback.noenq()
         phy.io.test.rx_loopback.nodeq()
+
+        val validFramer = Module(new ValidFramer(params.afeParams))
+        validFramer.io.phy <> phy.io.test.rx
+        validFramer.io.digital.map(f => {
+          val x = Wire(chiselTypeOf(uciTL.module.io.phyAfe.get.rx.bits))
+          x.data := f
+          x.valid := DontCare
+          x
+        }) <> uciTL.module.io.phyAfe.get.rx
       }.otherwise {
         phy.io.test <> test.io.phy
         uciTL.module.io.phyAfe.get.tx.nodeq()
