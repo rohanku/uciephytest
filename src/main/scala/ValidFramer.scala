@@ -63,6 +63,7 @@ class ValidFramer(
       for (lane <- 0 until afeParams.mbLanes) {
         io.digital.bits(lane) := (nextData(lane) >> firstOne)(afeParams.mbSerializerRatio - 1, 0)
       }
+      runningData(afeParams.mbLanes) := (io.phy.bits.valid >> firstOne) << firstOne
     }
   }
 }
