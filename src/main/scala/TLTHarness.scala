@@ -308,12 +308,12 @@ class TLUCIePhyTestHarness(implicit val p: Parameters) extends Module with HasTe
 class UCIePhyTLTConfig extends Config(
   new WithUciephyTest(Seq(UciephyTestParams(address=0x20000,
                                             numLanes = 16,
-                                            tlParams = TileLinkParams(address = 0x0L,
-                                            addressRange = (1L << 32) - 1,
-                                            configAddress = 0x8000,
-                                            inwardQueueDepth = 2,
-                                            outwardQueueDepth = 2,
-                                            dataWidth_arg = 256), 
+                                            tlParams = TileLinkParams(address = 0x100000000L,
+                                              addressRange = (1L << 32) - 1,
+                                              configAddress = 0x8000,
+                                              inwardQueueDepth = 2,
+                                              outwardQueueDepth = 2,
+                                              dataWidth_arg = 256), 
                                             sim = true))) ++
   new tlt.TLTConfig(maxInflight=1, beatBytes=32)
 )

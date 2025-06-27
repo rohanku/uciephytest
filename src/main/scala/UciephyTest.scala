@@ -754,7 +754,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       val rxDataLane = RegInit(0.U(test.io.mmio.rxDataLane.getWidth.W))
       val rxDataOffset = RegInit(0.U(test.io.mmio.rxDataOffset.getWidth.W))
 
-      val pllBypassEn = RegInit(false.B)
+      val pllBypassEn = RegInit(true.B)
       val txctl = RegInit(VecInit(Seq.fill(params.numLanes + 5)({
         val w = Wire(new TxLaneDigitalCtlIO)
         w.dll_reset := true.B
