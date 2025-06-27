@@ -760,9 +760,9 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
         w.dll_reset := false.B
         w.driver.pu_ctl := 0.U
         w.driver.pd_ctl := 0.U
-        w.driver.en := false.B
-        w.driver.en_b := true.B
-        w.skew.dll_en := false.B
+        w.driver.en := true.B
+        w.driver.en_b := false.B
+        w.skew.dll_en := true.B
         w.skew.ocl := false.B
         w.skew.delay := 0.U
         w.skew.mux_en := "b00000011".U
