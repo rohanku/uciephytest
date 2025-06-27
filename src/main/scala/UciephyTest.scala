@@ -868,14 +868,14 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       val commonData = RegInit(VecInit(Seq.fill(16)(0.U(64.W))))
 
       // UCIe logphy related
-      val ucieStack = RegInit(false.B)
+      val ucieStack = RegInit(true.B)
       val maxPatternCountWidth =
         log2Ceil(params.linkTrainingParams.maxPatternCount + 1)
       val pattern = RegInit(0.U(2.W))
       val patternUICount = RegInit(0.U(maxPatternCountWidth.W))
       val triggerNew = new RegisterRW(false.B, "triggerNew")
       val triggerExit = new RegisterRW(false.B, "triggerExit")
-      val pllLockTrigger = new RegisterRW(false.B, "pllLockTrigger")
+      val pllLockTrigger = new RegisterRW(true.B, "pllLockTrigger")
       val outputValid = RegInit(false.B)
       val errorCounts = RegInit(
         VecInit(Seq.fill(params.afeParams.mbLanes)(0.U(maxPatternCountWidth.W)))

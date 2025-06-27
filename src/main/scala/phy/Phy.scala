@@ -215,7 +215,8 @@ class Shuffler32 extends RawModule {
     val permutation = Input(Vec(32, UInt(5.W)))
   })
 
-  io.dout := VecInit((0 until 32).map(i => io.din(io.permutation(i)))).asUInt
+  io.dout := io.din
+  // io.dout := VecInit((0 until 32).map(i => io.din(io.permutation(i)))).asUInt
 }
 
 class TxLaneDigitalCtlIO extends Bundle {
