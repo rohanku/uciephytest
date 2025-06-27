@@ -729,9 +729,9 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
         RegInit(0.U(test.io.mmio.txManualRepeatPeriod.getWidth.W))
       val txPacketsToSend =
         RegInit(0.U(test.io.mmio.txPacketsToSend.getWidth.W))
-      val txClkP = RegInit(0.U(32.W))
-      val txClkN = RegInit(0.U(32.W))
-      val txValid = RegInit(0.U(32.W))
+      val txClkP = RegInit("haaaaaaaa".U(32.W))
+      val txClkN = RegInit("h55555555".U(32.W))
+      val txValid = RegInit("hf0f0f0f0".U(32.W))
       val txTrack = RegInit(0.U(32.W))
       val txDataLaneGroup =
         RegInit(0.U(test.io.mmio.txDataLaneGroup.getWidth.W))
@@ -757,7 +757,7 @@ class UciephyTestTL(params: UciephyTestParams, beatBytes: Int)(implicit
       val pllBypassEn = RegInit(true.B)
       val txctl = RegInit(VecInit(Seq.fill(params.numLanes + 5)({
         val w = Wire(new TxLaneDigitalCtlIO)
-        w.dll_reset := true.B
+        w.dll_reset := false.B
         w.driver.pu_ctl := 0.U
         w.driver.pd_ctl := 0.U
         w.driver.en := false.B
