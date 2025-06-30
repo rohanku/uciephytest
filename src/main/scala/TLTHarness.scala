@@ -239,7 +239,7 @@ class TLUCIePhyTester(implicit p: Parameters) extends LazyModule {
 
   val ucie = LazyModule(new UciephyTestTL(ucieParams, testerParams.beatBytes)(p))
 
-  val mem = LazyModule(new TLRAM(AddressSet(ucieParams.tlParams.address, ucieParams.tlParams.addressRange)))
+  val mem = LazyModule(new TLRAM(AddressSet(ucieParams.tlParams.address, ucieParams.tlParams.addressRange), beatBytes = ucieParams.tlParams.BEAT_BYTES))
 
   val clockSourceNode_digital = ClockSourceNode(Seq(ClockSourceParameters())) // drive uciephy and ucietl clock nodes
   val clockSourceNode_phy     = ClockSourceNode(Seq(ClockSourceParameters()))
